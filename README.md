@@ -1,92 +1,254 @@
-# Cutline Business Manager
+# 🎬 Cutline Business Manager
 
-Cutline Business Manager is a premium, full-stack B2B SaaS application designed to help creative studios, freelancers, and small businesses manage their entire workflow—from CRM and pipeline management to professional invoicing and asset tracking.
+> A premium, full-stack SaaS application for creative studios and freelancers. Manage projects, clients, invoicing, and assets in one beautiful, intuitive platform.
 
-## 🚀 Features
+<div align="center">
 
-- **Multi-Tenant Architecture**: Full multi-organization support powered by Clerk, ensuring completely isolated tenant data partitions (`businessId`).
-- **Premium UI/UX**: Designed with a calm, true-gray aesthetic inspired by Linear and Stripe, featuring a global Command Palette (Cmd+K) for instant navigation across projects, clients, invoices, and assets.
-- **Comprehensive Financials Engine**:
-  - Create and manage invoices (Draft, Sent, Paid, Partially Paid, Overdue, Void).
-  - Track payments, credit notes, and aging buckets.
-  - Auto-generate professional **PDF Invoices** directly in the browser or server-side.
-  - **1-Click Email Delivery**: Securely send beautiful React-based invoice emails directly to clients using the Resend API.
-  - **Auto-Billing Assets**: When a project is invoiced, attached assets (stock footage, font licenses) are automatically pulled into the invoice as billable line items!
-- **Studio Health Dashboard**: Get instant insights into MTD Revenue, Days Sales Outstanding (DSO), Overdue Invoices, and At-Risk Deadlines.
-- **Client CRM**: Manage client directories, track preferred channels, and maintain internal 5-star lifetime value ratings.
-- **Project Kanban Pipeline**: Visual drag-and-drop workflow stages to track active projects with dedicated stage icons, from lead to final delivery. Fully customizable via the Settings page.
-- **Asset & License Vault**: Store and manage studio assets (Music, Fonts, LUTs, SFX) including their costs, license expiration dates, and 1-click deletions.
-- **Studio Settings**: Configure default currency and fully customize the Kanban pipeline stages to match your exact workflow.
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black?logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Aiven-336791?logo=postgresql&logoColor=white)](https://aiven.io/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](#-license)
+
+[View Demo](#-screenshots) • [Get Started](#-getting-started) • [Features](#-features) • [Tech Stack](#-tech-stack)
+
+</div>
+
+---
+
+## 📸 Screenshots
+
+Experience the elegant, professional interface of Cutline Business Manager:
+
+<div align="center">
+
+| Dashboard | Clients Management |
+|-----------|-------------------|
+| [![Dashboard View](https://imgur.com/WLuuGat.jpg)](https://imgur.com/WLuuGat) | [![Clients View](https://imgur.com/t5FmvqD.jpg)](https://imgur.com/t5FmvqD) |
+
+| Projects Pipeline | Invoicing System |
+|------------------|-----------------|
+| [![Pipeline View](https://imgur.com/lmOMILg.jpg)](https://imgur.com/lmOMILg) | [![Invoicing View](https://imgur.com/lBXfGzd.jpg)](https://imgur.com/lBXfGzd) |
+
+</div>
+
+---
+
+## ✨ Features
+
+### 🏢 **Multi-Tenant Architecture**
+Complete business isolation with Clerk-powered multi-organization support. Each organization's data is completely partitioned using `businessId`.
+
+### 💼 **Professional Dashboard**
+- **Studio Health Dashboard**: Real-time insights into MTD Revenue, Days Sales Outstanding (DSO), Overdue Invoices, and At-Risk Deadlines
+- **Global Command Palette** (Cmd+K): Instantly search and navigate across projects, clients, invoices, and assets
+- **Calm, Professional UI**: Inspired by Linear and Stripe with a true-gray aesthetic
+
+### 👥 **CRM & Client Management**
+- Comprehensive client directory with full contact information
+- Track preferred communication channels (Email, Slack, WhatsApp)
+- **5-Star Rating System**: Rate clients for lifetime value analysis
+- Client performance insights and project history
+
+### 📊 **Advanced Financials Engine**
+- **Invoice Management**: Draft, Sent, Paid, Partially Paid, Overdue, and Void statuses
+- **Payment Tracking**: Record payments via multiple methods (Bank Transfer, Credit Card, Cash, Check)
+- **Credit Notes & Reminders**: Manage refunds and automatic payment reminders
+- **Auto-Billing Assets**: Attached studio assets are automatically included as billable line items
+- **Professional PDF Invoices**: Generated client-side or server-side with full customization
+- **1-Click Email Delivery**: Send beautiful React-based emails via Resend API
+
+### 📹 **Project & Pipeline Management**
+- **Kanban Pipeline**: Visual drag-and-drop workflow with customizable stages
+- **Stage Tracking**: Monitor project progression from concept to final delivery
+- **Time Tracking**: Billable and non-billable hours per project
+- **Project Notes**: Capture shots, client feedback, ideas, and todos
+- **Deadline Tracking**: Never miss a deadline with visual priority indicators
+
+### 🎵 **Asset & License Vault**
+- Manage studio assets (Music, Fonts, LUTs, Plugins, Stock Footage, SFX)
+- Track license types and expiration dates
+- Cost allocation by asset and project
+- 1-click asset deletion and project linking
+
+### ⚙️ **Customizable Settings**
+- Set default currency for your business
+- Fully customize pipeline stages to match your workflow
+- Configure team members and roles
+
+---
 
 ## 🛠️ Tech Stack
 
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router & Turbopack)
-- **Language**: TypeScript
-- **Database**: PostgreSQL (hosted on Aiven) with [Prisma ORM](https://www.prisma.io/)
-- **Authentication**: [Clerk](https://clerk.com/) (Next.js server-side & webhook integrations)
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) & [shadcn/ui](https://ui.shadcn.com/)
-- **Emails**: [Resend](https://resend.com/) & [@react-email](https://react.email/)
-- **PDF Generation**: [@react-pdf/renderer](https://react-pdf.org/) (Client & Server-side rendering)
+| Category | Technology |
+|----------|-----------|
+| **Frontend** | [Next.js 16](https://nextjs.org/) (App Router & Turbopack) |
+| **Language** | [TypeScript 5](https://www.typescriptlang.org/) |
+| **Database** | [PostgreSQL](https://www.postgresql.org/) via [Aiven](https://aiven.io/) |
+| **ORM** | [Prisma](https://www.prisma.io/) |
+| **Auth** | [Clerk](https://clerk.com/) |
+| **UI Components** | [shadcn/ui](https://ui.shadcn.com/) + [Tailwind CSS v4](https://tailwindcss.com/) |
+| **Emails** | [Resend](https://resend.com/) + [@react-email](https://react.email/) |
+| **PDF Generation** | [@react-pdf/renderer](https://react-pdf.org/) |
+| **Drag & Drop** | [@hello-pangea/dnd](https://react-beautiful-dnd.org/) |
+| **Database Seeding** | [Prisma Seed Scripts](https://www.prisma.io/docs/orm/more/recipes/seed-database) |
 
-## 🏗️ Getting Started
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-You will need the following API keys and services to run this app locally:
-- **Aiven / PostgreSQL**: A valid Postgres database connection string.
-- **Clerk**: Publishable key, Secret key, and Webhook secret.
-- **Resend**: API key for transactional emails.
+Before you begin, make sure you have the following:
 
-### 1. Environment Variables
+- **Node.js** 18+ and npm/yarn
+- **PostgreSQL Database**: [Aiven](https://aiven.io/) or any PostgreSQL provider
+- **Clerk Account**: For authentication and webhooks
+- **Resend API Key**: For transactional emails
 
-Create a `.env` file in the root directory and populate it with your keys:
+### Step 1: Clone & Install
+
+```bash
+# Clone the repository
+git clone https://github.com/heisenberg-611/Cutline_Business_manager.git
+cd Cutline_Business_manager
+
+# Install dependencies
+npm install
+```
+
+### Step 2: Environment Configuration
+
+Create a `.env` file in the root directory:
 
 ```env
-# Database
-DATABASE_URL="postgresql://user:password@host:port/defaultdb?sslmode=require"
+# 🔒 Database
+DATABASE_URL="postgresql://username:password@host:port/dbname?sslmode=require"
 
-# Clerk Auth
+# 🔑 Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
 CLERK_SECRET_KEY="sk_test_..."
-WEBHOOK_SECRET="whsec_..."
+CLERK_WEBHOOK_SECRET="whsec_..."
 
-# Clerk Redirects
+# 🔗 Clerk Redirect URLs
 NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
 NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL="/dashboard/select-business"
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/dashboard/select-business"
 
-# App
+# 🌐 Application
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
-# Resend Emails
+# 📧 Resend Email Service
 RESEND_API_KEY="re_..."
 ```
 
-### 2. Install Dependencies
+### Step 3: Database Setup
+
+Initialize your database schema:
 
 ```bash
-npm install
-```
+# Create database tables
+npx prisma migrate dev
 
-### 3. Setup the Database
-
-Push the Prisma schema to your database to create the necessary tables:
-
-```bash
+# Or push schema directly
 npx prisma db push
+
+# (Optional) Seed with demo data
+npm run seed
 ```
 
-*Note: The system requires Clerk webhooks to sync Business and User data into the database. You must use `svix` or a similar tool to forward webhooks to `http://localhost:3000/api/webhooks/clerk` during local development.*
+**Note**: Clerk webhooks are required to sync Business and User data. During local development, use [Svix CLI](https://docs.svix.com/cli) to forward webhooks:
 
-### 4. Run the Development Server
+```bash
+svix listen http://localhost:3000/api/webhooks/clerk
+```
+
+### Step 4: Start Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## 📝 License
+---
 
-Proprietary Software. All rights reserved.
+## 📦 Database Seeding
+
+Quickly populate your database with realistic demo data:
+
+```bash
+# Seed with demo data (4 clients, 4 projects, 5 invoices, etc.)
+npm run seed
+
+# Reset database and start fresh
+npm run reset-db
+
+# Reset and reseed
+npm run reset-db && npm run seed
+```
+
+See [scripts/SEED_README.md](scripts/SEED_README.md) for detailed seeding documentation.
+
+---
+
+## 🔧 Available Scripts
+
+```bash
+# Development
+npm run dev           # Start dev server with Turbopack
+
+# Production
+npm run build        # Build for production
+npm start            # Run production build
+
+# Database
+npm run seed         # Seed database with demo data
+npm run reset-db     # Clear all data from database
+
+# Code Quality
+npm run lint         # Run ESLint
+```
+
+---
+
+## 📁 Project Structure
+
+```
+cutline-business-manager/
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── api/                # API routes & webhooks
+│   │   └── dashboard/          # Dashboard pages
+│   ├── components/
+│   │   └── ui/                 # shadcn/ui components
+│   ├── modules/                # Feature modules
+│   │   ├── clients/            # Client management
+│   │   ├── projects/           # Project management
+│   │   ├── financials/         # Invoicing & payments
+│   │   ├── assets/             # Asset management
+│   │   ├── workflow/           # Pipeline & stages
+│   │   └── core/               # Database & auth
+│   ├── emails/                 # React email templates
+│   └── lib/                    # Utilities & helpers
+├── prisma/
+│   └── schema.prisma           # Database schema
+├── scripts/
+│   ├── seed.ts                 # Seed script
+│   ├── reset-db.ts             # Reset script
+│   └── SEED_README.md          # Seed documentation
+└── public/                     # Static assets
+```
+
+---
+
+## 🤝 Contributing
+
+This is a proprietary project. Internal contributions only.
+
+---
+
+## 📄 License
+
+Proprietary Software. All rights reserved. © 2026 Cutline Studios.
