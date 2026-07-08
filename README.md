@@ -243,6 +243,18 @@ cutline-business-manager/
 
 ---
 
+## 🧠 What I Learned
+
+Building Cutline Business Manager has been an incredible journey. Here are some of the key technical takeaways from this project:
+
+- **Next.js App Router & Server Actions**: Deepened my understanding of React server components, data fetching, and handling secure database mutations efficiently.
+- **Multi-Tenant Architecture**: Learned how to architect a robust multi-tenant system, partitioning data securely using Clerk Organizations and Prisma (`businessId`).
+- **Webhook Synchronization**: Implemented real-time data syncing between Clerk (Authentication) and the PostgreSQL database using Svix.
+- **Premium UI & Interactions**: Mastered crafting a professional, high-performance interface using Tailwind CSS v4, shadcn/ui, and implementing complex interactions like the global command palette (Cmd+K) and drag-and-drop Kanban boards.
+- **PDF Generation & Email Delivery**: Gained hands-on experience generating dynamic PDF invoices and designing React-based transactional emails with Resend.
+
+---
+
 ## 🤝 Contributing
 
 This is a proprietary project. Internal contributions only.
@@ -251,4 +263,10 @@ This is a proprietary project. Internal contributions only.
 
 ## 📄 License
 
-Proprietary Software. All rights reserved. © 2026 Cutline Studios.
+Proprietary Software. All rights reserved. © 2026 Dhrubojyoti
+
+---
+
+## 👨‍💻 Contributor
+
+**Dhrubojyoti** - *Lead Developer & Architect*
