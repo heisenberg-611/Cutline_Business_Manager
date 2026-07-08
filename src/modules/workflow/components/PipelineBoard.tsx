@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { updateProjectStage } from '../actions'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -60,7 +61,9 @@ export default function PipelineBoard({ stages, projects }: { stages: Stage[], p
                 
                 <div>
                   <div className="text-xs text-zinc-500 mb-1 font-medium">{project.client?.displayName || 'Unknown Client'}</div>
-                  <h5 className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{project.title}</h5>
+                  <Link href={`/dashboard/projects/${project.id}`} className="hover:underline">
+                    <h5 className="font-medium text-sm text-zinc-900 dark:text-zinc-100">{project.title}</h5>
+                  </Link>
                 </div>
 
                 <div className="flex justify-between items-center">

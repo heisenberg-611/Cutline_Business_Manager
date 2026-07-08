@@ -98,6 +98,8 @@ model Project {
   statusStage WorkflowStage? @relation(fields: [statusStageId], references: [id])
   stageHistory ProjectStageHistory[]
   invoices Invoice[]
+  notes    Note[]
+  timeEntries TimeEntry[]
 
   @@index([businessId])
   @@index([clientId])
@@ -196,4 +198,40 @@ model InvoiceLineItem {
 
   @@index([invoiceId])
   @@map("invoice_line_items")
+}
+
+// -----------------------------------------------------------------------------
+// NOTES & TIME TRACKING
+// -----------------------------------------------------------------------------
+
+model Note {
+  id        String   @id @default(cuid())
+  projectId String
+  type      String   // 'shot', 'client', 'idea', 'todo'
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("notes")
+}
+
+model TimeEntry {
+  id              String   @id @default(cuid())
+  projectId       String
+  userId          String?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationMinutes Int      @default(0)
+  isBillable      Boolean  @default(true)
+  source          String   @default("manual") // manual, stopwatch
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("time_entries")
 }

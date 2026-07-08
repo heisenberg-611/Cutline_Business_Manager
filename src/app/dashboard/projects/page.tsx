@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getProjects } from '@/modules/projects/actions'
 import { getClients } from '@/modules/clients/actions'
@@ -67,7 +68,9 @@ export default async function ProjectsPage() {
               {projects.map((project) => (
                 <TableRow key={project.id}>
                   <TableCell className="font-medium text-zinc-900 dark:text-zinc-100">
-                    {project.title}
+                    <Link href={`/dashboard/projects/${project.id}`} className="hover:underline">
+                      {project.title}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     {/* @ts-ignore - TS doesn't know client is included despite prisma query include */}
