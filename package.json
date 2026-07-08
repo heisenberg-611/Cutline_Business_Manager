@@ -11,6 +11,7 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@clerk/nextjs": "^7.5.14",
+    "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.4.0",
     "@prisma/client": "^5.22.0",
     "@react-email/components": "^1.0.12",
