@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { getProjectDetails } from '@/modules/projects/detail-actions'
 import { NotesPanel } from '@/modules/projects/components/NotesPanel'
 import { TimePanel } from '@/modules/projects/components/TimePanel'
+import { AssetPanel } from '@/modules/projects/components/AssetPanel'
 import { ProjectActions } from '@/modules/projects/components/ProjectActions'
+import prisma from '@/modules/core/db/prisma'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Clock, CalendarDays, Folder } from 'lucide-react'
@@ -19,7 +21,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   // Next.js 15: params must be awaited
   const { id } = await params
-  const project = await getProjectDetails(id)
+  
+  const [project, availableAssets] = await Promise.all([
+    getProjectDetails(id),
+    prisma.asset.findMany({
+      where: { businessId: orgId },
+      orderBy: { name: 'asc' }
+    })
+  ])
 
   return (
     <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
@@ -58,7 +67,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
       
       {/* Main Content Area - Split into Panels */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 min-h-0">
         {/* Notes Column */}
         <div className="min-h-0">
           <NotesPanel projectId={project.id} notes={project.notes} />
@@ -67,6 +76,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         {/* Time Tracking Column */}
         <div className="min-h-0">
           <TimePanel projectId={project.id} timeEntries={project.timeEntries} />
+        </div>
+
+        {/* Assets Column */}
+        <div className="min-h-0">
+          <AssetPanel 
+            projectId={project.id} 
+            currentAssets={project.assets} 
+            availableAssets={availableAssets} 
+          />
         </div>
       </div>
     </div>

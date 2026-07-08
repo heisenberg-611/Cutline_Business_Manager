@@ -23,6 +23,7 @@ model Business {
   projects        Project[]
   workflowTemplates WorkflowTemplate[]
   invoices        Invoice[]
+  assets          Asset[]
 
   @@map("businesses")
 }
@@ -100,6 +101,7 @@ model Project {
   invoices Invoice[]
   notes    Note[]
   timeEntries TimeEntry[]
+  assets   ProjectAsset[]
 
   @@index([businessId])
   @@index([clientId])
@@ -234,4 +236,42 @@ model TimeEntry {
 
   @@index([projectId])
   @@map("time_entries")
+}
+
+// -----------------------------------------------------------------------------
+// ASSET & LICENSE MANAGEMENT
+// -----------------------------------------------------------------------------
+
+model Asset {
+  id          String   @id @default(cuid())
+  businessId  String
+  type        String   // 'Music', 'Font', 'LUT', 'Plugin', 'Stock Footage', 'SFX', 'Motion Graphics'
+  name        String
+  vendor      String?
+  licenseType String?
+  expiresAt   DateTime?
+  cost        Int      @default(0) // stored in cents
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  projects    ProjectAsset[]
+
+  @@index([businessId])
+  @@map("assets")
+}
+
+model ProjectAsset {
+  id        String   @id @default(cuid())
+  projectId String
+  assetId   String
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, assetId])
+  @@index([projectId])
+  @@index([assetId])
+  @@map("project_assets")
 }

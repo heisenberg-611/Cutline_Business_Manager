@@ -21,6 +21,11 @@ export async function getProjectDetails(projectId: string) {
       },
       timeEntries: {
         orderBy: { createdAt: 'desc' }
+      },
+      assets: {
+        include: {
+          asset: true
+        }
       }
     }
   })

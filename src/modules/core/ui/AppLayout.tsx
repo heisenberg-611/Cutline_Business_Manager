@@ -10,7 +10,8 @@ import {
   Wallet, 
   Settings, 
   Search,
-  Command as CmdIcon
+  Command as CmdIcon,
+  Box
 } from 'lucide-react'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -34,6 +35,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: 'Projects', icon: FolderKanban, href: '/dashboard/projects' },
     { label: 'Clients', icon: Users, href: '/dashboard/clients' },
     { label: 'Financials', icon: Wallet, href: '/dashboard/financials' },
+    { label: 'Assets', icon: Box, href: '/dashboard/assets' },
   ]
 
   return (
