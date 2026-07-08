@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// CORE & MULTI-TENANCY (Synced via Clerk Webhooks)
+// -----------------------------------------------------------------------------
+
+model Business {
+  id              String               @id // Matches Clerk Organization ID
+  name            String
+  defaultCurrency String               @default("USD")
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  memberships     BusinessMembership[]
+  clients         Client[]
+  projects        Project[]
+
+  @@map("businesses")
+}
+
+model User {
+  id        String               @id // Matches Clerk User ID
+  email     String               @unique
+  firstName String?
+  lastName  String?
+  imageUrl  String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  memberships BusinessMembership[]
+
+  @@map("users")
+}
+
+model BusinessMembership {
+  id         String   @id @default(cuid())
+  businessId String
+  userId     String
+  role       String   // e.g., "org:admin", "org:member"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId])
+  @@map("business_memberships")
+}
+
+// -----------------------------------------------------------------------------
+// DOMAIN MODELS (Strictly partitioned by businessId)
+// -----------------------------------------------------------------------------
+
+model Client {
+  id                      String   @id @default(cuid())
+  businessId              String
+  displayName             String
+  companyName             String?
+  industry                String?
+  preferredChannel        String?
+  preferredDeliveryMethod String?
+  internalRating          Int?     @default(0) // 1-5 stars
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  projects Project[]
+
+  @@index([businessId]) // Critical for tenant data isolation performance
+  @@map("clients")
+}
+
+model Project {
+  id         String    @id @default(cuid())
+  businessId String
+  clientId   String
+  title      String
+  type       String?   // e.g., "YouTube Long-Form", "Corporate Ad"
+  priority   String?
+  deadline   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([clientId])
+  @@map("projects")
+}
