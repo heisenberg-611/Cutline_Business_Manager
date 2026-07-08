@@ -18,6 +18,23 @@ const DEFAULT_STAGES = [
 export async function ensureDefaultTemplate(orgId: string) {
   if (!orgId) return null
 
+  // Check if business exists
+  const business = await prisma.business.findUnique({
+    where: { id: orgId }
+  })
+
+  if (!business) {
+    console.warn(`Business ${orgId} not found. Creating it now.`)
+    // Create business if it doesn't exist (synced from Clerk webhook)
+    await prisma.business.create({
+      data: {
+        id: orgId,
+        name: `Business ${orgId}`,
+        defaultCurrency: 'USD'
+      }
+    })
+  }
+
   // Check if any template exists for this org
   const existing = await prisma.workflowTemplate.findFirst({
     where: { businessId: orgId },

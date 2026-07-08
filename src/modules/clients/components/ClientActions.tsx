@@ -7,7 +7,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { updateClient, deleteClient } from '../actions'
+import { updateClient, deleteClient, updateClientRating } from '../actions'
+import { Star } from 'lucide-react'
 
 type Client = {
   id: string
@@ -16,6 +17,7 @@ type Client = {
   email?: string | null
   industry: string
   preferredChannel: string
+  internalRating?: number | null
 }
 
 export function ClientActions({ client }: { client: Client }) {
@@ -26,12 +28,17 @@ export function ClientActions({ client }: { client: Client }) {
     ...client,
     email: client.email || ''
   })
+  const [rating, setRating] = useState(client.internalRating || 3)
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault()
     startTransition(async () => {
       try {
         await updateClient(client.id, formData)
+        // Update rating if changed
+        if (rating !== (client.internalRating || 3)) {
+          await updateClientRating(client.id, rating)
+        }
         setIsEditOpen(false)
       } catch (err) {
         alert("Failed to update client")
@@ -117,6 +124,28 @@ export function ClientActions({ client }: { client: Client }) {
                   onChange={e => setFormData({ ...formData, preferredChannel: e.target.value })}
                 />
               </div>
+            </div>
+            <div className="space-y-3">
+              <Label>Internal Rating</Label>
+              <div className="flex gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setRating(i + 1)}
+                    className="transition-colors"
+                  >
+                    <Star
+                      className={`w-6 h-6 cursor-pointer ${
+                        i < rating
+                          ? 'fill-amber-500 text-amber-500'
+                          : 'text-zinc-300 dark:text-zinc-600 hover:text-amber-400'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-500">{rating} out of 5 stars</p>
             </div>
             <div className="flex justify-end pt-2">
               <Button type="submit" disabled={isPending}>

@@ -71,6 +71,29 @@ export async function deleteClient(clientId: string) {
   revalidatePath('/dashboard/clients')
 }
 
+export async function updateClientRating(clientId: string, rating: number) {
+  const { orgId } = await auth()
+  if (!orgId) throw new Error('Unauthorized')
+
+  // Validate rating
+  if (rating < 0 || rating > 5) {
+    throw new Error('Rating must be between 0 and 5')
+  }
+
+  // Verify ownership
+  const client = await prisma.client.findFirst({
+    where: { id: clientId, businessId: orgId }
+  })
+  if (!client) throw new Error('Client not found')
+
+  await prisma.client.update({
+    where: { id: clientId },
+    data: { internalRating: rating }
+  })
+
+  revalidatePath('/dashboard/clients')
+}
+
 export async function getClients(orgId: string) {
   if (!orgId) {
     return []

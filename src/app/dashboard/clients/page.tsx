@@ -1,6 +1,7 @@
 import { getClients } from '@/modules/clients/actions'
 import { ClientForm } from '@/modules/clients/components/ClientForm'
 import { ClientActions } from '@/modules/clients/components/ClientActions'
+import { ClientRating } from '@/modules/clients/components/ClientRating'
 import {
   Table,
   TableBody,
@@ -9,7 +10,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Star } from 'lucide-react'
 
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
@@ -65,14 +65,7 @@ export default async function ClientsPage() {
                   <TableCell>{client.industry || '-'}</TableCell>
                   <TableCell>{client.preferredChannel || '-'}</TableCell>
                   <TableCell>
-                    <div className="flex items-center text-amber-500">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`w-4 h-4 ${i < (client.internalRating || 0) ? 'fill-current' : 'text-zinc-200 dark:text-zinc-800'}`} 
-                        />
-                      ))}
-                    </div>
+                    <ClientRating clientId={client.id} initialRating={client.internalRating} />
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end">
@@ -82,7 +75,8 @@ export default async function ClientsPage() {
                         companyName: client.companyName || '',
                         email: client.email || '',
                         industry: client.industry || '',
-                        preferredChannel: client.preferredChannel || ''
+                        preferredChannel: client.preferredChannel || '',
+                        internalRating: client.internalRating
                       }} />
                     </div>
                   </TableCell>
