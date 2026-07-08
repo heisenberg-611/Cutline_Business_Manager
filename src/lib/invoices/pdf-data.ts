@@ -26,6 +26,7 @@ export async function getInvoiceDataForPdf(
       business: true,
       client: true,
       lineItems: true,
+      payments: true,
     },
   })
 
@@ -41,6 +42,8 @@ export async function getInvoiceDataForPdf(
     taxRateBps: invoice.taxRateBps,
     taxAmountCents: invoice.taxAmountCents,
     totalCents: invoice.totalCents,
+    amountPaidCents: invoice.payments.reduce((sum, p) => sum + p.amountCents, 0),
+    amountDueCents: invoice.totalCents - invoice.payments.reduce((sum, p) => sum + p.amountCents, 0),
     notes: invoice.notes,
 
     business: {
@@ -64,6 +67,13 @@ export async function getInvoiceDataForPdf(
       description: item.description,
       quantity: item.quantity,
       amountCents: item.amountCents,
+    })),
+
+    payments: invoice.payments.map((p) => ({
+      date: p.createdAt,
+      amountCents: p.amountCents,
+      method: p.method,
+      reference: p.reference,
     })),
   }
 }

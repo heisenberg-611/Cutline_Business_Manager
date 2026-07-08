@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
-import { updateProjectStage } from '../actions'
+import { updateProjectStage, updateProjectOrder } from '../actions'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
@@ -17,8 +17,25 @@ import {
   MonitorPlay, 
   MessageSquare, 
   PackageCheck, 
-  CircleDashed 
+  CircleDashed,
+  Layers,
+  Hexagon,
+  Triangle,
+  Square,
+  Component,
+  Workflow,
+  Zap,
+  Activity,
+  Star,
+  Sparkles,
+  Target,
+  Rocket
 } from 'lucide-react'
+
+const DYNAMIC_ICONS = [
+  Layers, Hexagon, Triangle, Square, Component, Workflow, 
+  Zap, Activity, Star, Sparkles, Target, Rocket, CircleDashed
+]
 
 /**
  * Maps stage names → Lucide icons for the pipeline columns.
@@ -36,8 +53,16 @@ const getStageIcon = (name: string) => {
   if (lower.includes('review'))                                  return <MonitorPlay className="w-4 h-4" />
   if (lower.includes('revision'))                                return <MessageSquare className="w-4 h-4" />
   if (lower.includes('deliver') || lower.includes('final'))      return <PackageCheck className="w-4 h-4 text-green-500" />
-  // Fallback for custom user-created stages
-  return <CircleDashed className="w-4 h-4" />
+  
+  // Dynamic system: Hash the stage name to deterministically pick a cool icon
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const index = Math.abs(hash) % DYNAMIC_ICONS.length
+  const IconComponent = DYNAMIC_ICONS[index]
+  
+  return <IconComponent className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
 }
 
 type Stage = {
@@ -52,8 +77,11 @@ type Project = {
   priority: string | null
   deadline: Date | null
   statusStageId: string | null
+  orderIndex: number
   client?: { displayName: string }
 }
+
+type SortMode = 'custom' | 'deadline' | 'priority'
 
 export default function PipelineBoard({ stages, projects: initialProjects }: { stages: Stage[], projects: Project[] }) {
   const [isPending, startTransition] = useTransition()
@@ -72,9 +100,32 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
     setIsMounted(true)
   }, [])
 
+  const [sortMode, setSortMode] = useState<SortMode>('custom')
+
   // Group projects by stageId
   const projectsByStage = stages.reduce((acc, stage) => {
-    acc[stage.id] = projects.filter(p => p.statusStageId === stage.id)
+    let stageProjects = projects.filter(p => p.statusStageId === stage.id)
+
+    if (sortMode === 'custom') {
+      stageProjects.sort((a, b) => a.orderIndex - b.orderIndex)
+    } else if (sortMode === 'deadline') {
+      stageProjects.sort((a, b) => {
+        if (!a.deadline) return 1
+        if (!b.deadline) return -1
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+      })
+    } else if (sortMode === 'priority') {
+      const pWeight = (p: string | null) => {
+        const val = p?.toLowerCase()
+        if (val === 'high') return 3
+        if (val === 'medium') return 2
+        if (val === 'low') return 1
+        return 0
+      }
+      stageProjects.sort((a, b) => pWeight(b.priority) - pWeight(a.priority))
+    }
+
+    acc[stage.id] = stageProjects
     return acc
   }, {} as Record<string, Project[]>)
 
@@ -85,26 +136,70 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
   }
 
   const handleDragEnd = (result: any) => {
+    if (sortMode !== 'custom') return
+
     const { destination, source, draggableId } = result
 
     if (!destination) return
     if (destination.droppableId === source.droppableId && destination.index === source.index) return
 
-    const newStageId = destination.droppableId
+    const sourceStageId = source.droppableId
+    const destStageId = destination.droppableId
     
-    // Optimistic update
-    setProjects(prev => prev.map(p => p.id === draggableId ? { ...p, statusStageId: newStageId } : p))
+    // Get current sorted lists
+    const sourceList = Array.from(projectsByStage[sourceStageId] || [])
+    const destList = sourceStageId === destStageId ? sourceList : Array.from(projectsByStage[destStageId] || [])
+    
+    const draggedProject = projects.find(p => p.id === draggableId)
+    if (!draggedProject) return
+
+    // Remove from source list
+    sourceList.splice(source.index, 1)
+    
+    // Add to destination list
+    destList.splice(destination.index, 0, { ...draggedProject, statusStageId: destStageId })
+
+    // Generate updates
+    const updates: { id: string, statusStageId: string, orderIndex: number }[] = []
+    destList.forEach((p, i) => {
+      updates.push({ id: p.id, statusStageId: destStageId, orderIndex: i })
+    })
+
+    // Optimistically update
+    setProjects(prev => {
+      const newProjects = [...prev]
+      updates.forEach(u => {
+        const idx = newProjects.findIndex(p => p.id === u.id)
+        if (idx !== -1) {
+          newProjects[idx] = { ...newProjects[idx], statusStageId: u.statusStageId, orderIndex: u.orderIndex }
+        }
+      })
+      return newProjects
+    })
 
     startTransition(() => {
-      updateProjectStage(draggableId, newStageId)
+      updateProjectOrder(updates)
     })
   }
 
   if (!isMounted) return null
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="flex h-full gap-4 overflow-x-auto pb-4 pt-2">
+    <div className="flex flex-col h-full gap-4">
+      <div className="flex justify-end px-1 shrink-0">
+        <Select value={sortMode} onValueChange={(val) => setSortMode(val as SortMode)}>
+          <SelectTrigger className="w-[180px] h-9 text-sm bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+            <SelectValue placeholder="Sort by..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="custom" className="text-sm">Custom Order</SelectItem>
+            <SelectItem value="deadline" className="text-sm">Due Date</SelectItem>
+            <SelectItem value="priority" className="text-sm">Priority</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="flex flex-1 gap-4 overflow-x-auto pb-4 min-h-0">
         {stages.map(stage => (
           <Droppable key={stage.id} droppableId={stage.id}>
             {(provided, snapshot) => (
@@ -127,14 +222,20 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
                 
                 <div className="flex-1 p-3 space-y-3 overflow-y-auto min-h-[150px]">
                   {projectsByStage[stage.id]?.map((project, index) => (
-                    <Draggable key={project.id} draggableId={project.id} index={index}>
+                    <Draggable key={project.id} draggableId={project.id} index={index} isDragDisabled={sortMode !== 'custom'}>
                       {(provided, snapshot) => (
                         <div 
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className={`bg-white dark:bg-zinc-950 p-4 rounded-lg border shadow-sm flex flex-col gap-3 transition-all duration-200 ease-out-smooth border-l-4 ${project.priority === 'High' ? 'border-l-red-500' : project.priority === 'Medium' ? 'border-l-amber-500' : project.priority === 'Low' ? 'border-l-green-500' : 'border-l-transparent'} ${snapshot.isDragging ? 'border-blue-500 shadow-xl scale-[1.02] rotate-1 z-50' : 'border-zinc-200 dark:border-zinc-800 hover:shadow-md hover:border-zinc-300'} ${isPending ? 'opacity-50 pointer-events-none' : ''}`}
-                          style={{...provided.draggableProps.style}}
+                          className={`bg-white dark:bg-zinc-950 p-4 rounded-lg border shadow-sm flex flex-col gap-3 transition-all duration-200 ease-out-smooth border-l-4 ${snapshot.isDragging ? 'border-blue-500 shadow-xl scale-[1.02] rotate-1 z-50' : 'border-zinc-200 dark:border-zinc-800 hover:shadow-md hover:border-zinc-300'} ${isPending ? 'opacity-50 pointer-events-none' : ''}`}
+                          style={{
+                            ...provided.draggableProps.style,
+                            ...(project.priority?.toLowerCase() === 'high' ? { borderLeftColor: '#ef4444' } : 
+                                project.priority?.toLowerCase() === 'medium' ? { borderLeftColor: '#f97316' } : 
+                                project.priority?.toLowerCase() === 'low' ? { borderLeftColor: '#3b82f6' } : 
+                                {})
+                          }}
                         >
                           <div>
                             <div className="text-xs text-zinc-500 mb-1 font-medium">{project.client?.displayName || 'Unknown Client'}</div>
@@ -149,9 +250,9 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
                                 <Badge 
                                   variant="secondary" 
                                   className={
-                                    project.priority === 'High' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px] px-1.5' :
-                                    project.priority === 'Medium' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] px-1.5' :
-                                    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-[10px] px-1.5'
+                                    project.priority?.toLowerCase() === 'high' ? 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400 border border-red-200/50 dark:border-red-500/20 text-[10px] px-1.5' :
+                                    project.priority?.toLowerCase() === 'medium' ? 'bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/20 text-[10px] px-1.5' :
+                                    'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20 text-[10px] px-1.5'
                                   }
                                 >
                                   {project.priority}
@@ -199,6 +300,7 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
           </Droppable>
         ))}
       </div>
-    </DragDropContext>
+      </DragDropContext>
+    </div>
   )
 }

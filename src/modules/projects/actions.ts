@@ -27,7 +27,7 @@ export async function createProject(data: FormData) {
 
   const deadline = deadlineStr ? new Date(deadlineStr) : null
 
-  await prisma.project.create({
+  const project = await prisma.project.create({
     data: {
       businessId: orgId,
       clientId,
@@ -39,6 +39,7 @@ export async function createProject(data: FormData) {
   })
 
   revalidatePath('/dashboard/projects')
+  return project
 }
 
 export async function updateProject(projectId: string, data: { title: string, deadline: Date | null, priority: string | null }) {

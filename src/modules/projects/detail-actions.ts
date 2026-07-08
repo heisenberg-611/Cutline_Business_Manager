@@ -30,7 +30,7 @@ export async function getProjectDetails(projectId: string) {
     }
   })
 
-  if (!project) throw new Error('Project not found')
+  if (!project) return null
   return project
 }
 

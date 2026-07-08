@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getProjectDetails } from '@/modules/projects/detail-actions'
 import { NotesPanel } from '@/modules/projects/components/NotesPanel'
@@ -29,6 +29,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       orderBy: { name: 'asc' }
     })
   ])
+
+  if (!project) {
+    notFound()
+  }
 
   return (
     <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">

@@ -130,3 +130,27 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
     revalidatePath('/dashboard/projects')
   }
 }
+
+export async function updateProjectOrder(updates: { id: string, statusStageId: string, orderIndex: number }[]) {
+  const { orgId } = await auth()
+  
+  if (!orgId) {
+    throw new Error('Unauthorized')
+  }
+
+  // Update all projects in a transaction
+  await prisma.$transaction(
+    updates.map((update) => 
+      prisma.project.update({
+        where: { id: update.id, businessId: orgId },
+        data: {
+          statusStageId: update.statusStageId,
+          orderIndex: update.orderIndex
+        }
+      })
+    )
+  )
+
+  revalidatePath('/dashboard/pipeline')
+  revalidatePath('/dashboard/projects')
+}

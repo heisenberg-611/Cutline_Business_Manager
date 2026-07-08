@@ -3,11 +3,18 @@ import { redirect } from 'next/navigation'
 import { ensureDefaultTemplate } from '@/modules/workflow/actions'
 import { getProjects } from '@/modules/projects/actions'
 import PipelineBoard from '@/modules/workflow/components/PipelineBoard'
+import { PipelineTable } from '@/modules/workflow/components/PipelineTable'
+import { PipelineTimeline } from '@/modules/workflow/components/PipelineTimeline'
+import { PipelineViewToggle } from '@/modules/workflow/components/PipelineViewToggle'
 
-import { LayoutGrid, List, TableProperties } from 'lucide-react'
-
-export default async function PipelinePage() {
+export default async function PipelinePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
   const { orgId } = await auth()
+  const resolvedSearchParams = await searchParams
+  const view = resolvedSearchParams?.view || 'board'
   
   if (!orgId) {
     redirect('/dashboard/select-business')
@@ -35,26 +42,18 @@ export default async function PipelinePage() {
             Drag and drop your projects through the editing stages.
           </p>
         </div>
-        
-        <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-lg border border-zinc-200 dark:border-zinc-800">
-          <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 shadow-sm border border-zinc-200 dark:border-zinc-800">
-            <LayoutGrid className="w-3.5 h-3.5" />
-            Board
-          </button>
-          <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
-            <List className="w-3.5 h-3.5" />
-            Timeline
-          </button>
-          <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
-            <TableProperties className="w-3.5 h-3.5" />
-            Table
-          </button>
-        </div>
+        <PipelineViewToggle />
       </div>
       
-      {/* The Kanban Board Client Component */}
+      {/* View Container */}
       <div className="flex-1 min-h-[600px] overflow-hidden -mx-6 md:-mx-10 px-6 md:px-10 pb-6">
-        <PipelineBoard stages={template.stages} projects={projects as any[]} />
+        {view === 'timeline' ? (
+          <PipelineTimeline stages={template.stages} projects={projects as any[]} />
+        ) : view === 'table' ? (
+          <PipelineTable stages={template.stages} projects={projects as any[]} />
+        ) : (
+          <PipelineBoard stages={template.stages} projects={projects as any[]} />
+        )}
       </div>
     </div>
   )

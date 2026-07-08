@@ -102,3 +102,37 @@ export async function deleteWorkflowStage(stageId: string) {
   revalidatePath('/dashboard/settings')
   revalidatePath('/dashboard/pipeline')
 }
+
+/**
+ * Reorder workflow stages.
+ */
+export async function reorderWorkflowStages(stageIds: string[]) {
+  const { orgId } = await auth()
+  if (!orgId) throw new Error('Unauthorized')
+
+  // Verify all stages belong to this business's template
+  const template = await prisma.workflowTemplate.findFirst({
+    where: { businessId: orgId },
+    include: { stages: true },
+  })
+
+  if (!template) throw new Error('Template not found')
+
+  const validStageIds = new Set(template.stages.map(s => s.id))
+  if (stageIds.some(id => !validStageIds.has(id))) {
+    throw new Error('Invalid stage IDs provided')
+  }
+
+  // Update order in a transaction
+  await prisma.$transaction(
+    stageIds.map((id, index) => 
+      prisma.workflowStage.update({
+        where: { id },
+        data: { orderIndex: index },
+      })
+    )
+  )
+
+  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/pipeline')
+}

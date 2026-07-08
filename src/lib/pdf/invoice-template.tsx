@@ -145,6 +145,15 @@ const styles = StyleSheet.create({
   statusTextOverdue: {
     color: COLORS.danger,
   },
+  statusBadgePartial: {
+    backgroundColor: COLORS.warningBg,
+  },
+  statusDotPartial: {
+    backgroundColor: COLORS.warning,
+  },
+  statusTextPartial: {
+    color: '#b45309',
+  },
 
   // Meta section
   meta: {
@@ -315,6 +324,36 @@ const styles = StyleSheet.create({
     lineHeight: 1.6,
   },
 
+  // Payments
+  paymentsSection: {
+    marginTop: 24,
+  },
+  paymentsTitle: {
+    fontSize: 8,
+    fontWeight: 700,
+    color: COLORS.inkMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.lineSoft,
+  },
+  paymentText: {
+    fontSize: 8,
+    color: COLORS.inkMuted,
+  },
+  paymentAmount: {
+    fontSize: 8,
+    color: COLORS.inkMuted,
+    // @ts-ignore - fontVariant is valid in @react-pdf but types sometimes miss it
+    fontVariant: ['tabular-nums'],
+  },
+
   // Footer
   footer: {
     position: 'absolute',
@@ -368,6 +407,14 @@ export type InvoiceData = {
     quantity: number
     amountCents: number
   }>
+  amountPaidCents: number
+  amountDueCents: number
+  payments: Array<{
+    date: Date
+    amountCents: number
+    method: string
+    reference: string | null
+  }>
 }
 
 const formatMoney = (cents: number, currency: string) => {
@@ -387,10 +434,18 @@ const formatDate = (date: Date | null) => {
   }).format(date)
 }
 
-const getStatusStyle = (status: InvoiceStatus) => {
+const getComputedStatus = (invoice: InvoiceData): string => {
+  if (invoice.amountDueCents <= 0) return 'PAID'
+  if (invoice.amountPaidCents > 0 && invoice.amountDueCents > 0) return 'PARTIALLY PAID'
+  return invoice.status
+}
+
+const getStatusStyle = (status: string) => {
   switch (status) {
     case 'PAID':
       return { badge: styles.statusBadge, dot: styles.statusDot, text: styles.statusText }
+    case 'PARTIALLY PAID':
+      return { badge: styles.statusBadgePartial, dot: styles.statusDotPartial, text: styles.statusTextPartial }
     case 'SENT':
       return { badge: styles.statusBadgeSent, dot: styles.statusDotSent, text: styles.statusTextSent }
     case 'OVERDUE':
@@ -401,7 +456,8 @@ const getStatusStyle = (status: InvoiceStatus) => {
 }
 
 export const InvoiceTemplate = ({ invoice }: { invoice: InvoiceData }) => {
-  const statusStyle = getStatusStyle(invoice.status)
+  const computedStatus = getComputedStatus(invoice)
+  const statusStyle = getStatusStyle(computedStatus)
 
   return (
     <Document>
@@ -425,7 +481,7 @@ export const InvoiceTemplate = ({ invoice }: { invoice: InvoiceData }) => {
               <Text style={styles.invoiceTitle}>Invoice</Text>
               <View style={statusStyle.badge}>
                 <View style={statusStyle.dot} />
-                <Text style={statusStyle.text}>{invoice.status.replace('_', ' ')}</Text>
+                <Text style={statusStyle.text}>{computedStatus.replace('_', ' ')}</Text>
               </View>
             </View>
           </View>
@@ -510,14 +566,47 @@ export const InvoiceTemplate = ({ invoice }: { invoice: InvoiceData }) => {
                   </Text>
                 </View>
               )}
-              <View style={styles.grandTotalRow}>
-                <Text style={styles.grandTotalLabel}>Total Due</Text>
-                <Text style={styles.grandTotalValue}>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalValue}>
                   {formatMoney(invoice.totalCents, invoice.currency)}
+                </Text>
+              </View>
+              {invoice.amountPaidCents > 0 && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Amount Paid</Text>
+                  <Text style={styles.totalValue}>
+                    -{formatMoney(invoice.amountPaidCents, invoice.currency)}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.grandTotalRow}>
+                <Text style={styles.grandTotalLabel}>Balance Due</Text>
+                <Text style={styles.grandTotalValue}>
+                  {formatMoney(Math.max(0, invoice.amountDueCents), invoice.currency)}
                 </Text>
               </View>
             </View>
           </View>
+
+          {/* Payments Received */}
+          {invoice.payments && invoice.payments.length > 0 && (
+            <View style={styles.paymentsSection}>
+              <Text style={styles.paymentsTitle}>Payments Received</Text>
+              {invoice.payments.map((payment, i) => (
+                <View key={i} style={styles.paymentRow}>
+                  <Text style={styles.paymentText}>
+                    {formatDate(payment.date)}
+                    {payment.method ? ` · ${payment.method}` : ''}
+                    {payment.reference ? ` (${payment.reference})` : ''}
+                  </Text>
+                  <Text style={styles.paymentAmount}>
+                    {formatMoney(payment.amountCents, invoice.currency)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Notes */}
           {invoice.notes && (

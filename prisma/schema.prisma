@@ -97,6 +97,7 @@ model Project {
   priority   String?
   deadline   DateTime?
   statusStageId String?
+  orderIndex Int       @default(0)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 

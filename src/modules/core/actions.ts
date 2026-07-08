@@ -53,7 +53,7 @@ export async function globalSearch(query: string) {
       id: c.id,
       title: c.displayName,
       type: 'Client',
-      href: `/dashboard/clients/${c.id}`
+      href: `/dashboard/clients`
     })),
     ...invoices.map(i => ({
       id: i.id,
