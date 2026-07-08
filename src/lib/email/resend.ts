@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { InvoiceSentEmail } from '@/emails/invoice-sent'
+import { render } from '@react-email/render'
 import React from 'react'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -20,16 +21,18 @@ export const sendInvoiceEmail = async (
     return { id: 'stub-id' }
   }
 
+  const htmlContent = await render(React.createElement(InvoiceSentEmail, invoiceData))
+
   const { data, error } = await resend.emails.send({
-    from: 'billing@yourdomain.com', // Replace with verified domain later
+    from: 'onboarding@resend.dev', // Resend testing domain
     to,
     subject: `Invoice ${invoiceData.invoiceNumber} from ${invoiceData.businessName}`,
-    react: React.createElement(InvoiceSentEmail, invoiceData),
+    html: htmlContent,
   })
 
   if (error) {
     console.error('Failed to send email:', error)
-    throw new Error('Failed to send email')
+    throw new Error(`Resend Error: ${error.message || JSON.stringify(error)}`)
   }
 
   return data

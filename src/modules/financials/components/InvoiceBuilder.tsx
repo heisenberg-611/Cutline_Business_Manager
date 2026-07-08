@@ -11,7 +11,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 type Client = { id: string, displayName: string }
-type Project = { id: string, title: string, clientId: string }
+type Project = { id: string, title: string, clientId: string, assets?: { asset: { id: string, name: string, cost: number, type: string } }[] }
 
 export default function InvoiceBuilder({ clients, projects }: { clients: Client[], projects: Project[] }) {
   const router = useRouter()
@@ -107,7 +107,27 @@ export default function InvoiceBuilder({ clients, projects }: { clients: Client[
 
         <div className="space-y-2">
           <Label>Project (Optional)</Label>
-          <Select value={projectId} onValueChange={(val) => setProjectId(val || '')} disabled={!clientId || availableProjects.length === 0}>
+          <Select value={projectId} onValueChange={(val) => {
+            setProjectId(val || '')
+            if (val) {
+              const proj = projects.find(p => p.id === val)
+              if (proj && proj.assets && proj.assets.length > 0) {
+                const newLines = proj.assets.map((pa, idx) => ({
+                  id: Date.now() + idx,
+                  description: `${pa.asset.type}: ${pa.asset.name}`,
+                  quantity: '1',
+                  amount: (pa.asset.cost / 100).toString()
+                }))
+                
+                // If the only line item is empty, replace it. Otherwise append.
+                if (lineItems.length === 1 && !lineItems[0].description && !lineItems[0].amount) {
+                  setLineItems(newLines)
+                } else {
+                  setLineItems([...lineItems, ...newLines])
+                }
+              }
+            }
+          }} disabled={!clientId || availableProjects.length === 0}>
             <SelectTrigger>
               <SelectValue placeholder={!clientId ? "Select a client first" : "Select Project"}>
                  {projectId ? projects.find(p => p.id === projectId)?.title : ""}

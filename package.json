@@ -14,6 +14,7 @@
     "@hookform/resolvers": "^5.4.0",
     "@prisma/client": "^5.22.0",
     "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.10",
     "@react-pdf/renderer": "^4.5.1",
     "@tanstack/react-query": "^5.101.2",
     "class-variance-authority": "^0.7.1",

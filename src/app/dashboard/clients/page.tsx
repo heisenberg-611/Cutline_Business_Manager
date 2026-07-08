@@ -80,6 +80,7 @@ export default async function ClientsPage() {
                         id: client.id,
                         displayName: client.displayName,
                         companyName: client.companyName || '',
+                        email: client.email || '',
                         industry: client.industry || '',
                         preferredChannel: client.preferredChannel || ''
                       }} />

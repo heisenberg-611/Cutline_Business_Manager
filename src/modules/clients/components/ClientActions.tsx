@@ -13,6 +13,7 @@ type Client = {
   id: string
   displayName: string
   companyName: string
+  email?: string | null
   industry: string
   preferredChannel: string
 }
@@ -21,7 +22,10 @@ export function ClientActions({ client }: { client: Client }) {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   
-  const [formData, setFormData] = useState(client)
+  const [formData, setFormData] = useState({
+    ...client,
+    email: client.email || ''
+  })
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,8 +86,18 @@ export function ClientActions({ client }: { client: Client }) {
               <Label htmlFor="companyName">Company Name</Label>
               <Input
                 id="companyName"
-                value={formData.companyName}
+                value={formData.companyName || ''}
                 onChange={e => setFormData({ ...formData, companyName: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Required for Invoicing"
+                value={formData.email || ''}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

@@ -185,8 +185,29 @@ export async function updateInvoice(id: string, input: InvoiceInput) {
 }
 
 export async function deleteInvoice(id: string) {
-  // Soft delete -> VOID
-  return voidInvoice(id)
+  const { orgId } = await requireBusiness()
+  
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.invoice.findFirst({ where: { id, businessId: orgId } })
+    if (!existing) throw new Error('Invoice not found')
+    
+    await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id } })
+    await tx.payment.deleteMany({ where: { invoiceId: id } })
+    await tx.invoice.delete({ where: { id } })
+    
+    await tx.auditLog.create({
+      data: {
+        businessId: orgId,
+        entityType: 'Invoice',
+        entityId: id,
+        action: 'DELETE',
+        metadataJson: JSON.stringify({ invoiceNumber: existing.invoiceNumber })
+      }
+    })
+  })
+  
+  revalidatePath('/dashboard/financials')
+  redirect('/dashboard/financials')
 }
 
 export async function voidInvoice(id: string) {

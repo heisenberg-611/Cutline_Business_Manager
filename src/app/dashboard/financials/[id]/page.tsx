@@ -5,7 +5,7 @@ import prisma from '@/modules/core/db/prisma'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Mail, Ban } from 'lucide-react'
 import { RecordPaymentDialog } from '@/modules/financials/components/RecordPaymentDialog'
-import { sendInvoice } from '@/modules/financials/actions'
+import { sendInvoice, deleteInvoice } from '@/modules/financials/actions'
 import { Badge } from '@/components/ui/badge'
 
 const formatMoney = (cents: number, currency = 'USD') => {
@@ -61,6 +61,15 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               </Button>
             </form>
           )}
+
+          <form action={async () => {
+            'use server'
+            await deleteInvoice(invoice.id)
+          }}>
+            <Button type="submit" variant="outline" className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+              <Ban className="h-4 w-4 mr-2" /> Delete
+            </Button>
+          </form>
           
           <a href={`/api/invoices/${invoice.id}/pdf`} target="_blank" rel="noreferrer">
             <Button variant="outline" className="text-zinc-500">

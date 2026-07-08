@@ -86,7 +86,10 @@ export async function getProjects(orgId: string) {
       businessId: orgId
     },
     include: {
-      client: true
+      client: true,
+      assets: {
+        include: { asset: true }
+      }
     },
     orderBy: {
       createdAt: 'desc'
