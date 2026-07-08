@@ -4,11 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
-    "reset-db": "tsx scripts/reset-db.ts"
+    "reset-db": "tsx scripts/reset-db.ts",
+    "postinstall": "prisma generate",
+    "vercel-build": "prisma generate && next build"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
