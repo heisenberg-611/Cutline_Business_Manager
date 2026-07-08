@@ -27,7 +27,8 @@ import {
   ChevronRight,
   Plus,
   Pin,
-  PinOff
+  PinOff,
+  BarChart3
 } from 'lucide-react'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -72,6 +73,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: 'Projects', icon: FolderKanban, href: '/dashboard/projects' },
     { label: 'Clients', icon: Users, href: '/dashboard/clients' },
     { label: 'Financials', icon: Wallet, href: '/dashboard/financials' },
+    { label: 'Reports', icon: BarChart3, href: '/dashboard/reports' },
     { label: 'Assets', icon: Box, href: '/dashboard/assets' },
   ]
 
@@ -82,6 +84,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (pathname.includes('/projects')) return 'Projects'
     if (pathname.includes('/clients')) return 'Clients'
     if (pathname.includes('/financials')) return 'Financials'
+    if (pathname.includes('/reports')) return 'Reports'
     if (pathname.includes('/assets')) return 'Assets'
     return 'Cutline'
   }
