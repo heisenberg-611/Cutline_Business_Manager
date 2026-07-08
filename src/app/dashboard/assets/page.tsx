@@ -111,7 +111,7 @@ export default async function AssetsPage() {
                   <TableCell>
                     <div className="flex justify-end gap-2">
                       <Dialog>
-                        <DialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-950 disabled:pointer-events-none disabled:opacity-50 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 h-8 rounded-md px-3 text-zinc-500">
+                        <DialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-950 disabled:pointer-events-none disabled:opacity-50 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-50 h-8 px-3 text-zinc-500">
                           Edit
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[500px]">
@@ -121,6 +121,15 @@ export default async function AssetsPage() {
                           <AssetForm asset={asset} />
                         </DialogContent>
                       </Dialog>
+
+                      <form action={async () => {
+                        'use server'
+                        await deleteAsset(asset.id)
+                      }}>
+                        <Button type="submit" variant="ghost" className="h-8 px-3 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                          Delete
+                        </Button>
+                      </form>
                     </div>
                   </TableCell>
                 </TableRow>
