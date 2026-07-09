@@ -39,33 +39,33 @@ Experience the elegant, professional interface of Cutline OS:
     </td>
     <td width="50%" align="center">
       <img src="public/SS2.JPG" width="100%" />
-      <br><b>Clients Management</b>
+      <br><b>Project Pipeline</b>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <img src="public/SS3.JPG" width="100%" />
-      <br><b>Projects Pipeline</b>
+      <br><b>Projects Management</b>
     </td>
     <td width="50%" align="center">
       <img src="public/SS4.JPG" width="100%" />
-      <br><b>Invoicing System</b>
+      <br><b>Clients Management</b>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <img src="public/SS5.JPG" width="100%" />
-      <br><b>Invoice PDF</b>
+      <br><b>Financials Management</b>
     </td>
     <td width="50%" align="center">
       <img src="public/SS6.JPG" width="100%" />
-      <br><b>Assets Management</b>
+      <br><b>Reports and Analytics</b>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
       <img src="public/SS7.JPG" width="100%" />
-      <br><b>Reports Dashboard</b>
+      <br><b>Assets Management</b>
     </td>
     <td width="50%"></td>
   </tr>
