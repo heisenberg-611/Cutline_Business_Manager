@@ -1,4 +1,8 @@
-# 🎬 Cutline OS
+<div align="center">
+  <img src="public/cutline-logo.png" alt="Cutline OS" width="600" style="border-radius: 12px; margin-bottom: 20px;" />
+</div>
+
+# Cutline OS
 
 > A premium, full-stack SaaS application built for **all creative professionals**—designers, photographers, video editors, copywriters, and creative agencies. Manage your projects, clients, invoicing, and assets in one beautiful, intuitive platform that lets you focus on what you do best: being creative.
 
@@ -36,8 +40,9 @@ Experience the elegant, professional interface of Cutline OS:
 
 ## ✨ Features
 
-### 🏢 **Multi-Tenant Architecture**
-Complete business isolation with Clerk-powered multi-organization support. Each organization's data is completely partitioned using `businessId`.
+### 🏢 **Multi-Tenant Architecture & RBAC**
+- **Business Isolation**: Complete business isolation with Clerk-powered multi-organization support. Each organization's data is completely partitioned using `businessId`.
+- **Role-Based Access Control (RBAC)**: Secure routing and layout logic for `org:admin` vs `org:member`. Admins have full control, while members are securely restricted to a read-only view of the project pipeline.
 
 ### 💼 **Professional Dashboard**
 - **Business Health Dashboard**: Real-time insights into MTD Revenue, Days Sales Outstanding (DSO), Overdue Invoices, and At-Risk Deadlines
@@ -47,12 +52,12 @@ Complete business isolation with Clerk-powered multi-organization support. Each 
 ### 👥 **CRM & Client Management**
 - Comprehensive client directory with full contact information
 - Track preferred communication channels (Email, Slack, WhatsApp)
-- **5-Star Rating System**: Rate clients for lifetime value analysis
+- **5-Star Rating System**: Rate clients for lifetime value analysis, with smart sorting bringing your top-rated clients to the top of the list instantly.
 - Client performance insights and project history
 
 ### 📊 **Advanced Financials Engine**
 - **Invoice Management**: Draft, Sent, Paid, Partially Paid, Overdue, and Void statuses
-- **Payment Tracking**: Record payments via multiple methods (Bank Transfer, Credit Card, Cash, Check)
+- **Payment Tracking**: Record payments via multiple methods (Bank Transfer, Credit Card, Cash, Check) with precise timestamping automatically reflected on the UI and generated PDFs.
 - **Credit Notes & Reminders**: Manage refunds and automatic payment reminders
 - **Auto-Billing Assets**: Attached business assets are automatically included as billable line items
 - **Professional PDF Invoices**: Generated client-side or server-side with ISO code fallbacks for global currency safety
@@ -84,7 +89,7 @@ Complete business isolation with Clerk-powered multi-organization support. Each 
 
 | Category | Technology |
 |----------|-----------|
-| **Frontend** | [Next.js 16](https://nextjs.org/) (App Router & Turbopack) |
+| **Frontend** | [Next.js 16](https://nextjs.org/) (App Router & Webpack) |
 | **Language** | [TypeScript 5](https://www.typescriptlang.org/) |
 | **Database** | [PostgreSQL](https://www.postgresql.org/) via [Aiven](https://aiven.io/) |
 | **ORM** | [Prisma](https://www.prisma.io/) |
@@ -199,7 +204,7 @@ See [scripts/SEED_README.md](scripts/SEED_README.md) for detailed seeding docume
 
 ```bash
 # Development
-npm run dev           # Start dev server with Turbopack
+npm run dev           # Start dev server with Webpack
 
 # Production
 npm run build        # Build for production
@@ -224,6 +229,7 @@ cutline-business-manager/
 │   │   ├── api/                # API routes & webhooks
 │   │   ├── dashboard/          # Internal Dashboard pages
 │   │   └── invoices/           # Public client-facing invoice pages
+│   ├── middleware.ts           # Centralized RBAC and routing security
 │   ├── components/
 │   │   └── ui/                 # shadcn/ui components
 │   ├── modules/                # Feature modules (Domain Driven Design)

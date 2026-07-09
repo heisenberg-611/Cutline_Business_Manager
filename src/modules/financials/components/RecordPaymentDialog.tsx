@@ -14,6 +14,12 @@ export function RecordPaymentDialog({ invoiceId, amountDueCents }: { invoiceId: 
   const [amount, setAmount] = useState((amountDueCents / 100).toFixed(2))
   const [method, setMethod] = useState('BANK_TRANSFER')
   const [reference, setReference] = useState('')
+  
+  // Format for datetime-local: YYYY-MM-DDThh:mm
+  const now = new Date()
+  const offset = now.getTimezoneOffset() * 60000
+  const localIso = new Date(now.getTime() - offset).toISOString().slice(0, 16)
+  const [paymentDate, setPaymentDate] = useState(localIso)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,7 +28,8 @@ export function RecordPaymentDialog({ invoiceId, amountDueCents }: { invoiceId: 
       await recordPayment(invoiceId, {
         amountCents: Math.round(parseFloat(amount) * 100),
         method: method as any,
-        reference: reference || null
+        reference: reference || null,
+        paidAt: new Date(paymentDate).toISOString()
       })
       setOpen(false)
     } catch (err: any) {
@@ -51,6 +58,15 @@ export function RecordPaymentDialog({ invoiceId, amountDueCents }: { invoiceId: 
               max={(amountDueCents / 100).toFixed(2)} 
               value={amount} 
               onChange={e => setAmount(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Date and Time</Label>
+            <Input 
+              type="datetime-local" 
+              value={paymentDate} 
+              onChange={e => setPaymentDate(e.target.value)} 
               required 
             />
           </div>

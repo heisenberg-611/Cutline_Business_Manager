@@ -103,8 +103,9 @@ export async function getClients(orgId: string) {
     where: {
       businessId: orgId
     },
-    orderBy: {
-      createdAt: 'desc'
-    }
+    orderBy: [
+      { internalRating: 'desc' },
+      { createdAt: 'desc' }
+    ]
   })
 }

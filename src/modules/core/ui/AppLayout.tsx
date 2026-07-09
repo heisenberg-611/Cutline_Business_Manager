@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { OrganizationSwitcher, UserButton } from '@clerk/nextjs'
+import { OrganizationSwitcher, UserButton, useAuth } from '@clerk/nextjs'
 import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
 
@@ -37,6 +37,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [isHovered, setIsHovered] = useState(false)
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
   const pathname = usePathname()
+  const { orgRole } = useAuth()
 
   React.useEffect(() => {
     const saved = localStorage.getItem('cutline_sidebar_pinned')
@@ -75,7 +76,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: 'Financials', icon: Wallet, href: '/dashboard/financials' },
     { label: 'Reports', icon: BarChart3, href: '/dashboard/reports' },
     { label: 'Assets', icon: Box, href: '/dashboard/assets' },
-  ]
+  ].filter(item => {
+    if (orgRole === 'org:member') {
+      return item.label === 'Pipeline'
+    }
+    return true
+  })
 
   // Contextual Topbar Logic
   const getContextualTitle = () => {
@@ -166,14 +172,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}
           </button>
           
-          <Link 
-            href="/dashboard/settings"
-            className={`group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
-            title={isCollapsed ? 'Settings' : undefined}
-          >
-            <Settings className="h-4 w-4 shrink-0" />
-            {!isCollapsed && <span>Settings</span>}
-          </Link>
+          
+          {orgRole !== 'org:member' && (
+            <Link 
+              href="/dashboard/settings"
+              className={`group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
+              title={isCollapsed ? 'Settings' : undefined}
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              {!isCollapsed && <span>Settings</span>}
+            </Link>
+          )}
 
           <ThemeToggle isCollapsed={isCollapsed} />
 
@@ -196,13 +205,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <h1 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{getContextualTitle()}</h1>
           </div>
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsQuickActionsOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm hover:opacity-90 transition-opacity"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              New
-            </button>
+            {orgRole !== 'org:member' && (
+              <button 
+                onClick={() => setIsQuickActionsOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm hover:opacity-90 transition-opacity"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New
+              </button>
+            )}
             <UserButton />
           </div>
         </header>

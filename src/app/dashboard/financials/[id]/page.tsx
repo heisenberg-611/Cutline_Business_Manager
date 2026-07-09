@@ -171,7 +171,9 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                       <span>{payment.method}</span>
                       <span>{formatMoney(payment.amountCents, invoice.currency)}</span>
                     </div>
-                    <p className="text-zinc-500 text-xs mt-1">{new Date(payment.createdAt).toLocaleDateString()}</p>
+                    <p className="text-zinc-500 text-xs mt-1">
+                      {new Date(payment.createdAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
                     {payment.reference && <p className="text-zinc-500 text-xs mt-1">Ref: {payment.reference}</p>}
                   </div>
                 ))}

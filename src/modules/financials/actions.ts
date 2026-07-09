@@ -73,7 +73,8 @@ export type InvoiceInput = z.infer<typeof InvoiceInputSchema>
 const PaymentInputSchema = z.object({
   amountCents: z.number().min(1),
   method: z.enum(["CREDIT_CARD", "BANK_TRANSFER", "CASH", "CHECK", "OTHER"]),
-  reference: z.string().optional().nullable()
+  reference: z.string().optional().nullable(),
+  paidAt: z.string().optional().nullable()
 })
 
 // -----------------------------------------------------------------------------
@@ -268,6 +269,8 @@ export async function recordPayment(invoiceId: string, input: z.infer<typeof Pay
     if (!invoice) throw new Error('Invoice not found')
     if (invoice.status === 'VOID') throw new Error('Cannot pay a voided invoice')
 
+    const paymentDate = data.paidAt ? new Date(data.paidAt) : new Date()
+
     // Create payment
     await tx.payment.create({
       data: {
@@ -277,7 +280,8 @@ export async function recordPayment(invoiceId: string, input: z.infer<typeof Pay
         method: data.method,
         reference: data.reference,
         reconciledAt: new Date(),
-        reconciledByUserId: userId
+        reconciledByUserId: userId,
+        createdAt: paymentDate
       }
     })
 
@@ -295,7 +299,7 @@ export async function recordPayment(invoiceId: string, input: z.infer<typeof Pay
         amountPaidCents: newPaid,
         amountDueCents: newDue,
         status: newStatus,
-        paidAt: newDue === 0 ? new Date() : null
+        paidAt: newDue === 0 ? paymentDate : null
       }
     })
   })

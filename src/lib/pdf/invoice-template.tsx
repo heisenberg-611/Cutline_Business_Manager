@@ -435,6 +435,17 @@ const formatDate = (date: Date | null) => {
   }).format(date)
 }
 
+const formatDateTime = (date: Date | null) => {
+  if (!date) return '—'
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)
+}
+
 const getComputedStatus = (invoice: InvoiceData): string => {
   if (invoice.amountDueCents <= 0) return 'PAID'
   if (invoice.amountPaidCents > 0 && invoice.amountDueCents > 0) return 'PARTIALLY PAID'
@@ -597,7 +608,7 @@ export const InvoiceTemplate = ({ invoice }: { invoice: InvoiceData }) => {
               {invoice.payments.map((payment, i) => (
                 <View key={i} style={styles.paymentRow}>
                   <Text style={styles.paymentText}>
-                    {formatDate(payment.date)}
+                    {formatDateTime(payment.date)}
                     {payment.method ? ` · ${payment.method}` : ''}
                     {payment.reference ? ` (${payment.reference})` : ''}
                   </Text>

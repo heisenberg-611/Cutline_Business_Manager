@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    '@prisma/client',
+    '@react-pdf/renderer', 
+    '@react-email/render', 
+    '@react-email/components', 
+    'resend'
+  ],
 };
 
 export default nextConfig;
