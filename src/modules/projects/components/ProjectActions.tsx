@@ -2,13 +2,13 @@
 
 import React, { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Edit, Trash } from 'lucide-react'
+import { Edit, Trash, Archive, ArchiveRestore } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { updateProject, deleteProject } from '../actions'
+import { updateProject, deleteProject, archiveProject, unarchiveProject } from '../actions'
 import { format } from 'date-fns'
 
 type Project = {
@@ -16,6 +16,7 @@ type Project = {
   title: string
   priority: string | null
   deadline: Date | null
+  isArchived?: boolean
 }
 
 export function ProjectActions({ project }: { project: Project }) {
@@ -58,6 +59,28 @@ export function ProjectActions({ project }: { project: Project }) {
     }
   }
 
+  const handleArchive = () => {
+    if (confirm(`Are you sure you want to archive ${project.title}?`)) {
+      startTransition(async () => {
+        try {
+          await archiveProject(project.id)
+        } catch (err) {
+          alert("Failed to archive project")
+        }
+      })
+    }
+  }
+
+  const handleUnarchive = () => {
+    startTransition(async () => {
+      try {
+        await unarchiveProject(project.id)
+      } catch (err) {
+        alert("Failed to unarchive project")
+      }
+    })
+  }
+
   return (
     <>
       <div className="flex items-center gap-2">
@@ -65,7 +88,16 @@ export function ProjectActions({ project }: { project: Project }) {
           <Edit className="h-4 w-4 mr-2" />
           Edit
         </Button>
-        <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950">
+        {project.isArchived ? (
+          <Button variant="outline" size="sm" onClick={handleUnarchive} title="Unarchive Project">
+            <ArchiveRestore className="h-4 w-4 text-emerald-600" />
+          </Button>
+        ) : (
+          <Button variant="outline" size="sm" onClick={handleArchive} title="Archive Project">
+            <Archive className="h-4 w-4" />
+          </Button>
+        )}
+        <Button variant="outline" size="sm" onClick={handleDelete} className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950" title="Delete Project">
           <Trash className="h-4 w-4" />
         </Button>
       </div>

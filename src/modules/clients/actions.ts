@@ -14,6 +14,7 @@ export async function createClient(data: FormData) {
   const displayName = data.get('displayName') as String
   const companyName = data.get('companyName') as String
   const email = data.get('email') as String
+  const phone = data.get('phone') as String
   const industry = data.get('industry') as String
   const preferredChannel = data.get('preferredChannel') as String
 
@@ -27,6 +28,7 @@ export async function createClient(data: FormData) {
       displayName: displayName.toString(),
       companyName: companyName ? companyName.toString() : null,
       email: email ? email.toString() : null,
+      phone: phone ? phone.toString() : null,
       industry: industry ? industry.toString() : null,
       preferredChannel: preferredChannel ? preferredChannel.toString() : null,
       internalRating: 3 // Default 3 stars
@@ -36,7 +38,7 @@ export async function createClient(data: FormData) {
   revalidatePath('/dashboard/clients')
 }
 
-export async function updateClient(clientId: string, data: { displayName: string, companyName: string, email?: string, industry: string, preferredChannel: string }) {
+export async function updateClient(clientId: string, data: { displayName: string, companyName: string, email?: string, phone?: string, industry: string, preferredChannel: string }) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
 

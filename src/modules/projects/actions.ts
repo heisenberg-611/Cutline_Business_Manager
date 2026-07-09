@@ -84,7 +84,8 @@ export async function getProjects(orgId: string) {
 
   return await prisma.project.findMany({
     where: {
-      businessId: orgId
+      businessId: orgId,
+      isArchived: false
     },
     include: {
       client: true,
@@ -96,4 +97,66 @@ export async function getProjects(orgId: string) {
       createdAt: 'desc'
     }
   })
+}
+
+export async function getArchivedProjects(orgId: string) {
+  if (!orgId) {
+    return []
+  }
+
+  return await prisma.project.findMany({
+    where: {
+      businessId: orgId,
+      isArchived: true
+    },
+    include: {
+      client: true,
+      assets: {
+        include: { asset: true }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  })
+}
+
+export async function archiveProject(projectId: string) {
+  const { orgId } = await auth()
+  if (!orgId) throw new Error('Unauthorized')
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, businessId: orgId }
+  })
+  if (!project) throw new Error('Project not found')
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { isArchived: true }
+  })
+
+  revalidatePath('/dashboard/projects')
+  revalidatePath('/dashboard/archive')
+  revalidatePath('/dashboard/pipeline')
+  revalidatePath(`/dashboard/projects/${projectId}`)
+}
+
+export async function unarchiveProject(projectId: string) {
+  const { orgId } = await auth()
+  if (!orgId) throw new Error('Unauthorized')
+
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, businessId: orgId }
+  })
+  if (!project) throw new Error('Project not found')
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { isArchived: false }
+  })
+
+  revalidatePath('/dashboard/projects')
+  revalidatePath('/dashboard/archive')
+  revalidatePath('/dashboard/pipeline')
+  revalidatePath(`/dashboard/projects/${projectId}`)
 }

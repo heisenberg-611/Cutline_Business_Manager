@@ -60,6 +60,7 @@ export async function getInvoiceDataForPdf(
       displayName: invoice.client.displayName,
       companyName: invoice.client.companyName,
       email: invoice.client.email ?? undefined,
+      phone: invoice.client.phone ?? undefined,
       address: undefined, // Client model doesn't have address yet
     },
 

@@ -74,6 +74,7 @@ export default async function ClientsPage() {
                         displayName: client.displayName,
                         companyName: client.companyName || '',
                         email: client.email || '',
+                        phone: client.phone || '',
                         industry: client.industry || '',
                         preferredChannel: client.preferredChannel || '',
                         internalRating: client.internalRating

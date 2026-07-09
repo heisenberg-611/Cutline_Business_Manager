@@ -64,6 +64,10 @@ export function ClientForm() {
             <Input id="email" name="email" type="email" placeholder="client@example.com (Required for Invoicing)" />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="phone">Mobile Number</Label>
+            <Input id="phone" name="phone" type="tel" placeholder="+1 (555) 000-0000" />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="industry">Industry</Label>
             <Input id="industry" name="industry" placeholder="e.g. YouTube, Tech, Real Estate" />
           </div>

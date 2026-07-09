@@ -15,6 +15,7 @@ type Client = {
   displayName: string
   companyName: string
   email?: string | null
+  phone?: string | null
   industry: string
   preferredChannel: string
   internalRating?: number | null
@@ -26,7 +27,8 @@ export function ClientActions({ client }: { client: Client }) {
   
   const [formData, setFormData] = useState({
     ...client,
-    email: client.email || ''
+    email: client.email || '',
+    phone: client.phone || ''
   })
   const [rating, setRating] = useState(client.internalRating || 3)
 
@@ -105,6 +107,16 @@ export function ClientActions({ client }: { client: Client }) {
                 placeholder="Required for Invoicing"
                 value={formData.email || ''}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Mobile Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+1 (555) 000-0000"
+                value={formData.phone || ''}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

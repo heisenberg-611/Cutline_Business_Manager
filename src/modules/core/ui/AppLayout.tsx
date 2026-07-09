@@ -37,7 +37,8 @@ import {
   Pin,
   PinOff,
   BarChart3,
-  Calculator
+  Calculator,
+  Archive
 } from 'lucide-react'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -86,6 +87,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { label: 'Financials', icon: Wallet, href: '/dashboard/financials' },
     { label: 'Reports', icon: BarChart3, href: '/dashboard/reports' },
     { label: 'Assets', icon: Box, href: '/dashboard/assets' },
+    { label: 'Archive', icon: Archive, href: '/dashboard/archive' },
   ].filter(item => {
     if (orgRole === 'org:member') {
       return item.label === 'Pipeline'

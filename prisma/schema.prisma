@@ -84,6 +84,7 @@ model Client {
   displayName             String
   companyName             String?
   email                   String?
+  phone                   String?
   industry                String?
   preferredChannel        String?
   preferredDeliveryMethod String?
@@ -109,6 +110,7 @@ model Project {
   deadline   DateTime?
   statusStageId String?
   orderIndex Int       @default(0)
+  isArchived Boolean   @default(false)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
 

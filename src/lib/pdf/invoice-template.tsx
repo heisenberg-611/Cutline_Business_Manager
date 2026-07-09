@@ -400,6 +400,7 @@ export type InvoiceData = {
     displayName: string
     companyName: string | null
     email?: string
+    phone?: string
     address?: string
   }
   lineItems: Array<{
@@ -510,6 +511,9 @@ export const InvoiceTemplate = ({ invoice }: { invoice: InvoiceData }) => {
               )}
               {invoice.client.email && (
                 <Text style={styles.metaText}>{invoice.client.email}</Text>
+              )}
+              {invoice.client.phone && (
+                <Text style={styles.metaText}>{invoice.client.phone}</Text>
               )}
               {invoice.client.address && (
                 <Text style={styles.metaText}>{invoice.client.address}</Text>
