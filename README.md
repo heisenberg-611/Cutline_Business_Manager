@@ -326,3 +326,10 @@ This project is [MIT](LICENSE) licensed. © 2026 Dhrubojyoti
 ## 👨‍💻 Contributor
 
 **Dhrubojyoti** - *Lead Developer & Architect*
+
+---
+
+## 📚 Documentation
+
+For a deep dive into the system architecture, database schema, API conventions, and contributing guidelines, please refer to our comprehensive documentation suite:
+- [Read the Cutline OS Documentation](DOCUMENTATION.md)

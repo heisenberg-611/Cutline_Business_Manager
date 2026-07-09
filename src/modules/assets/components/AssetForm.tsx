@@ -20,7 +20,7 @@ type Asset = {
 
 const ASSET_TYPES = ['Music', 'Font', 'LUT', 'Plugin', 'Stock Footage', 'SFX', 'Motion Graphics']
 
-export function AssetForm({ asset, onSuccess }: { asset?: Asset, onSuccess?: () => void }) {
+export function AssetForm({ asset, onSuccess, currency = 'USD' }: { asset?: Asset, onSuccess?: () => void, currency?: string }) {
   const [isPending, startTransition] = useTransition()
   
   const [formData, setFormData] = useState({
@@ -31,6 +31,21 @@ export function AssetForm({ asset, onSuccess }: { asset?: Asset, onSuccess?: () 
     expiresAt: asset?.expiresAt ? format(new Date(asset.expiresAt), 'yyyy-MM-dd') : '',
     costDollar: asset?.cost ? (asset.cost / 100).toString() : '0'
   })
+
+  const getCurrencySymbol = (currencyCode: string) => {
+    try {
+      const formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyCode,
+        currencyDisplay: 'narrowSymbol'
+      });
+      return formatter.formatToParts(0).find(part => part.type === 'currency')?.value || currencyCode;
+    } catch {
+      return currencyCode;
+    }
+  };
+
+  const currencySymbol = getCurrencySymbol(currency);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -119,7 +134,7 @@ export function AssetForm({ asset, onSuccess }: { asset?: Asset, onSuccess?: () 
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="cost">Cost ($)</Label>
+          <Label htmlFor="cost">Cost ({currencySymbol})</Label>
           <Input
             id="cost"
             type="number"
@@ -139,3 +154,4 @@ export function AssetForm({ asset, onSuccess }: { asset?: Asset, onSuccess?: () 
     </form>
   )
 }
+

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
+import prisma from '@/modules/core/db/prisma'
 
 export default async function AssetsPage() {
   const { orgId } = await auth()
@@ -15,12 +16,17 @@ export default async function AssetsPage() {
     redirect('/dashboard/select-business')
   }
 
-  const assets = await getAssets(orgId)
+  const [assets, business] = await Promise.all([
+    getAssets(orgId),
+    prisma.business.findUnique({ where: { id: orgId } })
+  ])
+
+  const currency = business?.defaultCurrency || 'USD'
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat('en-US', { 
       style: 'currency', 
-      currency: 'USD',
+      currency: currency,
       currencyDisplay: 'narrowSymbol'
     }).format(cents / 100)
   }
@@ -52,7 +58,7 @@ export default async function AssetsPage() {
             <DialogHeader>
               <DialogTitle>Add New Asset</DialogTitle>
             </DialogHeader>
-            <AssetForm />
+            <AssetForm currency={currency} />
           </DialogContent>
         </Dialog>
       </div>
@@ -122,7 +128,7 @@ export default async function AssetsPage() {
                           <DialogHeader>
                             <DialogTitle>Edit Asset</DialogTitle>
                           </DialogHeader>
-                          <AssetForm asset={asset} />
+                          <AssetForm asset={asset} currency={currency} />
                         </DialogContent>
                       </Dialog>
 

@@ -11,6 +11,10 @@ const GlobalSearch = dynamic(
   () => import('./GlobalSearch').then(mod => mod.GlobalSearch), 
   { ssr: false }
 )
+const CurrencyConverter = dynamic(
+  () => import('./CurrencyConverter').then(mod => mod.CurrencyConverter),
+  { ssr: false }
+)
 import { ThemeToggle } from '@/components/theme-toggle'
 
 import { 
@@ -28,7 +32,8 @@ import {
   Plus,
   Pin,
   PinOff,
-  BarChart3
+  BarChart3,
+  Calculator
 } from 'lucide-react'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +41,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [isPinned, setIsPinned] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
+  const [isCurrencyConverterOpen, setIsCurrencyConverterOpen] = useState(false)
   const pathname = usePathname()
   const { orgRole } = useAuth()
 
@@ -139,11 +145,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <motion.div
                     variants={{
-                      initial: { scale: 1, rotate: 0 },
-                      hover: { scale: 1.15, rotate: 10 },
+                      initial: { scale: 1 },
+                      hover: { scale: 1.1 },
                       tap: { scale: 0.95 }
                     }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   >
                     <item.icon className={`h-4 w-4 shrink-0 transition-colors ${isActive ? '' : 'group-hover:text-indigo-500 dark:group-hover:text-indigo-400'}`} />
                   </motion.div>
@@ -156,44 +162,100 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Bottom Actions */}
         <div className="p-3 border-t border-zinc-200 dark:border-white/10 space-y-1">
-          <button 
-            onClick={() => setIsCommandOpen(true)}
-            className={`w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 rounded-md transition-colors ${isCollapsed ? 'justify-center' : 'justify-between'}`}
-            title={isCollapsed ? 'Search (Cmd+K)' : undefined}
-          >
-            <div className="flex items-center gap-3">
-              <Search className="h-4 w-4 shrink-0" />
-              {!isCollapsed && <span>Search...</span>}
-            </div>
-            {!isCollapsed && (
-              <span className="flex items-center text-xs opacity-50 bg-zinc-200 dark:bg-white/10 px-1.5 py-0.5 rounded">
-                <CmdIcon className="h-3 w-3 mr-0.5" /> K
-              </span>
-            )}
-          </button>
+          <motion.div initial="initial" whileHover="hover" whileTap="tap">
+            <button 
+              onClick={() => setIsCommandOpen(true)}
+              className={`group w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isCollapsed ? 'justify-center' : 'justify-between'}`}
+              title={isCollapsed ? 'Search (Cmd+K)' : undefined}
+            >
+              <div className="flex items-center gap-3">
+                <motion.div
+                  variants={{
+                    initial: { scale: 1 },
+                    hover: { scale: 1.1 },
+                    tap: { scale: 0.95 }
+                  }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                </motion.div>
+                {!isCollapsed && <span>Search...</span>}
+              </div>
+              {!isCollapsed && (
+                <span className="flex items-center text-xs opacity-50 bg-zinc-200 dark:bg-white/10 px-1.5 py-0.5 rounded">
+                  <CmdIcon className="h-3 w-3 mr-0.5" /> K
+                </span>
+              )}
+            </button>
+          </motion.div>
           
+          <motion.div initial="initial" whileHover="hover" whileTap="tap">
+            <button 
+              onClick={() => setIsCurrencyConverterOpen(true)}
+              className={`group w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isCollapsed ? 'justify-center' : 'justify-start gap-3'}`}
+              title={isCollapsed ? 'Currency Converter' : undefined}
+            >
+              <motion.div
+                variants={{
+                  initial: { scale: 1 },
+                  hover: { scale: 1.1 },
+                  tap: { scale: 0.95 }
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+              </motion.div>
+              {!isCollapsed && <span>Currency Converter</span>}
+            </button>
+          </motion.div>
           
           {orgRole !== 'org:member' && (
-            <Link 
-              href="/dashboard/settings"
-              className={`group flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 transition-colors ${isCollapsed ? 'justify-center' : ''}`}
-              title={isCollapsed ? 'Settings' : undefined}
-            >
-              <Settings className="h-4 w-4 shrink-0" />
-              {!isCollapsed && <span>Settings</span>}
-            </Link>
+            <motion.div initial="initial" whileHover="hover" whileTap="tap">
+              <Link 
+                href="/dashboard/settings"
+                className={`group flex items-center gap-3 px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isCollapsed ? 'justify-center' : ''}`}
+                title={isCollapsed ? 'Settings' : undefined}
+              >
+                <motion.div
+                  variants={{
+                    initial: { scale: 1 },
+                    hover: { scale: 1.1 },
+                    tap: { scale: 0.95 }
+                  }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <Settings className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                </motion.div>
+                {!isCollapsed && <span>Settings</span>}
+              </Link>
+            </motion.div>
           )}
 
           <ThemeToggle isCollapsed={isCollapsed} />
 
-          <button 
-            onClick={togglePin}
-            className={`w-full flex items-center py-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors ${isExpanded ? 'justify-between px-3' : 'justify-center'}`}
-            title={isExpanded ? (isPinned ? 'Unpin Sidebar' : 'Pin Sidebar') : undefined}
-          >
-            {isExpanded && <span className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{isPinned ? 'Unpin' : 'Pin'}</span>}
-            {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-          </button>
+          <motion.div initial="initial" whileHover="hover" whileTap="tap">
+            <button 
+              onClick={togglePin}
+              className={`group w-full flex items-center py-2 px-3 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isExpanded ? 'justify-between' : 'justify-center'}`}
+              title={isExpanded ? (isPinned ? 'Unpin Sidebar' : 'Pin Sidebar') : undefined}
+            >
+              {isExpanded && <span>{isPinned ? 'Unpin' : 'Pin'}</span>}
+              <motion.div
+                variants={{
+                  initial: { scale: 1 },
+                  hover: { scale: 1.1 },
+                  tap: { scale: 0.95 }
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                {isPinned ? (
+                  <PinOff className="h-4 w-4 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                ) : (
+                  <Pin className="h-4 w-4 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                )}
+              </motion.div>
+            </button>
+          </motion.div>
         </div>
       </aside>
 
@@ -254,8 +316,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       </main>
 
-      {/* COMMAND PALETTE MODAL */}
       <GlobalSearch open={isCommandOpen} onOpenChange={setIsCommandOpen} />
+      <CurrencyConverter open={isCurrencyConverterOpen} onOpenChange={setIsCurrencyConverterOpen} />
     </div>
   )
 }

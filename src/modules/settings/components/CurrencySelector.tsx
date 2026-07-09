@@ -18,17 +18,19 @@ const CURRENCIES = [
 
 export function CurrencySelector({ currentCurrency }: { currentCurrency: string }) {
   const [isPending, startTransition] = useTransition()
+  const [value, setValue] = React.useState(currentCurrency)
 
-  const handleChange = (value: string | null) => {
-    if (!value) return
+  const handleChange = (val: string | null) => {
+    if (!val) return
+    setValue(val)
     startTransition(async () => {
-      await updateBusinessCurrency(value)
+      await updateBusinessCurrency(val)
     })
   }
 
   return (
     <div className="flex items-center gap-4">
-      <Select defaultValue={currentCurrency} onValueChange={handleChange} disabled={isPending}>
+      <Select value={value} onValueChange={handleChange} disabled={isPending}>
         <SelectTrigger className="w-[240px]">
           <SelectValue placeholder="Select currency" />
         </SelectTrigger>
