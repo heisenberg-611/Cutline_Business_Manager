@@ -15,6 +15,15 @@ model Business {
   id              String               @id // Matches Clerk Organization ID
   name            String
   defaultCurrency String               @default("USD")
+  
+  // Invoice & Email Settings
+  invoicePrefix        String          @default("INV")
+  invoiceSeparator     String          @default("-")
+  invoiceSequence      Int             @default(0)
+  emailSubjectTemplate String          @default("Invoice {{invoice_number}} from {{business_name}}")
+  emailBodyTemplate    String          @default("Hi {{client_name}},\n\nHere is your invoice for {{total_amount}}.\n\nDue Date: {{due_date}}\n\nThank you!")
+  paymentInstructions  String          @default("Please send payment via bank transfer to:\nBank: \nAccount Number: \nRouting Number: ")
+
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 
@@ -107,6 +116,7 @@ model Project {
   stageHistory ProjectStageHistory[]
   invoices Invoice[]
   notes    Note[]
+  links    ProjectLink[]
   timeEntries TimeEntry[]
   assets   ProjectAsset[]
   expenses Expense[]
@@ -427,4 +437,17 @@ model ProjectAsset {
   @@index([projectId])
   @@index([assetId])
   @@map("project_assets")
+}
+
+model ProjectLink {
+  id        String   @id @default(cuid())
+  projectId String
+  url       String
+  label     String
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_links")
 }

@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation'
 import prisma from '@/modules/core/db/prisma'
 import { PipelineStagesEditor } from '@/modules/settings/components/PipelineStagesEditor'
 import { CurrencySelector } from '@/modules/settings/components/CurrencySelector'
-import { Building2, Workflow, DollarSign } from 'lucide-react'
+import { Building2, Workflow, DollarSign, Mail } from 'lucide-react'
+import Link from 'next/link'
+import { BusinessNameEditor } from '@/modules/settings/components/BusinessNameEditor'
 
 export default async function SettingsPage() {
   const { orgId } = await auth()
@@ -44,9 +46,9 @@ export default async function SettingsPage() {
         </div>
         <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-xl p-6 space-y-4">
           <div>
-            <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Studio Name</label>
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 mt-1">{business.name}</p>
-            <p className="text-xs text-zinc-400 mt-1">Managed via Clerk Organization settings</p>
+            <label className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-2 block">Business Name</label>
+            <BusinessNameEditor currentName={business.name} />
+            <p className="text-xs text-zinc-400 mt-2">This is your official Clerk Organization name. Updating it will automatically sync across the platform.</p>
           </div>
         </div>
       </section>
@@ -64,6 +66,28 @@ export default async function SettingsPage() {
         </div>
         <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-xl p-6">
           <CurrencySelector currentCurrency={business.defaultCurrency} />
+        </div>
+      </section>
+
+      {/* Invoice & Email Settings */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900">
+            <Mail className="w-4 h-4 text-zinc-500" />
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Invoice & Email Customization</h4>
+            <p className="text-xs text-zinc-500">Customize invoice numbers and client email templates</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-xl p-6 flex justify-between items-center">
+          <div>
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Manage Email Templates</p>
+            <p className="text-xs text-zinc-500 mt-1">Setup dynamic placeholders and numbering prefixes.</p>
+          </div>
+          <Link href="/dashboard/settings/invoice" className="inline-flex h-9 items-center justify-center rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-50 shadow transition-colors hover:bg-zinc-900/90 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-50/90">
+            Configure
+          </Link>
         </div>
       </section>
 

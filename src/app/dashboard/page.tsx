@@ -31,7 +31,8 @@ export default async function DashboardPage() {
   const formatCurrency = (cents: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: currency
+      currency,
+      currencyDisplay: 'narrowSymbol'
     }).format(cents / 100)
   }
 
@@ -57,7 +58,7 @@ export default async function DashboardPage() {
           Studio Dashboard
         </h3>
         <p className="mt-2 max-w-4xl text-sm text-zinc-500">
-          Welcome to your Cutline dashboard. Here is a high-level overview of your studio health.
+          Welcome to your Cutline OS dashboard. Here is a high-level overview of your business health.
         </p>
       </div>
       

@@ -9,10 +9,12 @@ interface Props {
   }
 }
 
-const formatMoney = (cents: number) => {
+const formatMoney = (cents: number, currency: string = 'USD') => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
+    currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: 0,
   }).format(cents / 100)
 }
 

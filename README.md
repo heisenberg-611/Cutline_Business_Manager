@@ -1,6 +1,6 @@
-# 🎬 Cutline Business Manager
+# 🎬 Cutline OS
 
-> A premium, full-stack SaaS application for creative studios and freelancers. Manage projects, clients, invoicing, and assets in one beautiful, intuitive platform.
+> A premium, full-stack SaaS application built for **all creative professionals**—designers, photographers, video editors, copywriters, and creative agencies. Manage your projects, clients, invoicing, and assets in one beautiful, intuitive platform that lets you focus on what you do best: being creative.
 
 <div align="center">
 
@@ -10,7 +10,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-Proprietary-red)](#-license)
 
-[View Demo](#-screenshots) • [Get Started](#-getting-started) • [Features](#-features) • [Tech Stack](#-tech-stack)
+[View Demo](#-screenshots) • [Get Started](#-getting-started) • [📖 Cutline for Dummies](CUTLINE_FOR_DUMMIES.md) • [Features](#-features) • [Tech Stack](#-tech-stack)
 
 </div>
 
@@ -18,7 +18,7 @@
 
 ## 📸 Screenshots
 
-Experience the elegant, professional interface of Cutline Business Manager:
+Experience the elegant, professional interface of Cutline OS:
 
 <div align="center">
 
@@ -40,7 +40,7 @@ Experience the elegant, professional interface of Cutline Business Manager:
 Complete business isolation with Clerk-powered multi-organization support. Each organization's data is completely partitioned using `businessId`.
 
 ### 💼 **Professional Dashboard**
-- **Studio Health Dashboard**: Real-time insights into MTD Revenue, Days Sales Outstanding (DSO), Overdue Invoices, and At-Risk Deadlines
+- **Business Health Dashboard**: Real-time insights into MTD Revenue, Days Sales Outstanding (DSO), Overdue Invoices, and At-Risk Deadlines
 - **Global Command Palette** (Cmd+K): Instantly search and navigate across projects, clients, invoices, and assets
 - **Calm, Professional UI**: Inspired by Linear and Stripe with a true-gray aesthetic
 
@@ -54,9 +54,11 @@ Complete business isolation with Clerk-powered multi-organization support. Each 
 - **Invoice Management**: Draft, Sent, Paid, Partially Paid, Overdue, and Void statuses
 - **Payment Tracking**: Record payments via multiple methods (Bank Transfer, Credit Card, Cash, Check)
 - **Credit Notes & Reminders**: Manage refunds and automatic payment reminders
-- **Auto-Billing Assets**: Attached studio assets are automatically included as billable line items
-- **Professional PDF Invoices**: Generated client-side or server-side with full customization
+- **Auto-Billing Assets**: Attached business assets are automatically included as billable line items
+- **Professional PDF Invoices**: Generated client-side or server-side with ISO code fallbacks for global currency safety
 - **1-Click Email Delivery**: Send beautiful React-based emails via Resend API
+- **Public Payment Portals**: Client-facing public invoice pages (`/invoices/[id]/pay`) with customizable payment instructions
+- **Global Currency Support**: Native currency symbols ($, ₹, ৳, £) across all web dashboards and emails
 
 ### 📹 **Project & Pipeline Management**
 - **Kanban Pipeline**: Visual drag-and-drop workflow with customizable stages
@@ -66,7 +68,7 @@ Complete business isolation with Clerk-powered multi-organization support. Each 
 - **Deadline Tracking**: Never miss a deadline with visual priority indicators
 
 ### 🎵 **Asset & License Vault**
-- Manage studio assets (Music, Fonts, LUTs, Plugins, Stock Footage, SFX)
+- Manage creative assets (Music, Fonts, LUTs, Plugins, Stock Footage, SFX, Vectors, Templates)
 - Track license types and expiration dates
 - Cost allocation by asset and project
 - 1-click asset deletion and project linking
@@ -220,18 +222,21 @@ cutline-business-manager/
 ├── src/
 │   ├── app/                    # Next.js App Router pages
 │   │   ├── api/                # API routes & webhooks
-│   │   └── dashboard/          # Dashboard pages
+│   │   ├── dashboard/          # Internal Dashboard pages
+│   │   └── invoices/           # Public client-facing invoice pages
 │   ├── components/
 │   │   └── ui/                 # shadcn/ui components
-│   ├── modules/                # Feature modules
+│   ├── modules/                # Feature modules (Domain Driven Design)
 │   │   ├── clients/            # Client management
 │   │   ├── projects/           # Project management
-│   │   ├── financials/         # Invoicing & payments
+│   │   ├── financials/         # Invoicing, reporting & payments
 │   │   ├── assets/             # Asset management
 │   │   ├── workflow/           # Pipeline & stages
 │   │   └── core/               # Database & auth
-│   ├── emails/                 # React email templates
+│   ├── emails/                 # React email templates (Resend)
 │   └── lib/                    # Utilities & helpers
+│       ├── pdf/                # PDF Generation logic & templates
+│       └── emails/             # Email dispatch services
 ├── prisma/
 │   └── schema.prisma           # Database schema
 ├── scripts/
@@ -245,7 +250,7 @@ cutline-business-manager/
 
 ## 🧠 What I Learned
 
-Building Cutline Business Manager has been an incredible journey. Here are some of the key technical takeaways from this project:
+Building Cutline OS has been an incredible journey. Here are some of the key technical takeaways from this project:
 
 - **Next.js App Router & Server Actions**: Deepened my understanding of React server components, data fetching, and handling secure database mutations efficiently.
 - **Multi-Tenant Architecture**: Learned how to architect a robust multi-tenant system, partitioning data securely using Clerk Organizations and Prisma (`businessId`).

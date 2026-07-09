@@ -17,7 +17,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <div className="p-1.5 bg-zinc-900 dark:bg-white rounded-lg shadow-sm transition-transform group-hover:scale-105">
             <Scissors className="w-4 h-4 text-white dark:text-black" />
           </div>
-          <span className="font-bold text-lg tracking-tight text-zinc-900 dark:text-zinc-100">Cutline</span>
+          <span className="font-bold text-lg tracking-tight text-zinc-900 dark:text-zinc-100">Cutline OS</span>
         </Link>
       </header>
 
@@ -28,7 +28,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </main>
       
       <footer className="relative z-10 py-6 text-center text-xs text-zinc-500">
-        &copy; {new Date().getFullYear()} Cutline. All rights reserved.
+        &copy; {new Date().getFullYear()} Cutline OS. All rights reserved.
       </footer>
     </div>
   )

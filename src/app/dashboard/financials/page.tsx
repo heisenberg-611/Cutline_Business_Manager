@@ -10,7 +10,7 @@ import { AgingBucketsCard } from '@/modules/financials/components/AgingBucketsCa
 import { InvoiceTable } from '@/modules/financials/components/InvoiceTable'
 
 export const metadata = {
-  title: 'Financials | Cutline',
+  title: 'Financials | Cutline OS',
 }
 
 export default async function FinancialsPage() {

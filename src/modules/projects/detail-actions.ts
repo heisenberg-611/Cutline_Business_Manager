@@ -22,6 +22,9 @@ export async function getProjectDetails(projectId: string) {
       timeEntries: {
         orderBy: { createdAt: 'desc' }
       },
+      links: {
+        orderBy: { createdAt: 'desc' }
+      },
       assets: {
         include: {
           asset: true
@@ -73,6 +76,44 @@ export async function logTime(projectId: string, durationMinutes: number, isBill
       isBillable,
       source: 'manual'
     }
+  })
+
+  revalidatePath(`/dashboard/projects/${projectId}`)
+}
+
+export async function addLink(projectId: string, url: string, label: string) {
+  const { orgId } = await auth()
+  if (!orgId) throw new Error('Unauthorized')
+
+  // Verify access
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, businessId: orgId }
+  })
+  if (!project) throw new Error('Project not found')
+
+  await prisma.projectLink.create({
+    data: {
+      projectId,
+      url,
+      label
+    }
+  })
+
+  revalidatePath(`/dashboard/projects/${projectId}`)
+}
+
+export async function deleteLink(linkId: string, projectId: string) {
+  const { orgId } = await auth()
+  if (!orgId) throw new Error('Unauthorized')
+
+  // Verify access
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, businessId: orgId }
+  })
+  if (!project) throw new Error('Project not found')
+
+  await prisma.projectLink.delete({
+    where: { id: linkId }
   })
 
   revalidatePath(`/dashboard/projects/${projectId}`)

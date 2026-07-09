@@ -21,6 +21,44 @@ export async function updateBusinessCurrency(currency: string) {
 }
 
 /**
+ * Synchronously update the business name in our DB.
+ * Normally Clerk webhooks handle this, but this guarantees immediate UI updates locally.
+ */
+export async function syncBusinessName(name: string) {
+  const { orgId } = await auth()
+  if (!orgId) throw new Error('Unauthorized')
+
+  await prisma.business.update({
+    where: { id: orgId },
+    data: { name },
+  })
+
+  revalidatePath('/dashboard', 'layout')
+}
+
+/**
+ * Update the business's invoice and email settings.
+ */
+export async function updateInvoiceSettings(data: {
+  invoicePrefix: string
+  invoiceSeparator: string
+  emailSubjectTemplate: string
+  emailBodyTemplate: string
+  paymentInstructions: string
+}) {
+  const { orgId } = await auth()
+  if (!orgId) throw new Error('Unauthorized')
+
+  await prisma.business.update({
+    where: { id: orgId },
+    data,
+  })
+
+  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/settings/invoice')
+}
+
+/**
  * Add a new workflow stage to the business's pipeline template.
  */
 export async function addWorkflowStage(name: string) {

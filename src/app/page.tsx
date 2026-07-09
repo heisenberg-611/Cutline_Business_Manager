@@ -24,7 +24,7 @@ export default function Home() {
           <div className="bg-zinc-900 text-white dark:bg-white dark:text-black p-1.5 rounded-lg flex items-center justify-center">
             <Scissors className="w-5 h-5" strokeWidth={2.5} />
           </div>
-          <span className="font-semibold text-lg tracking-tight text-zinc-900 dark:text-white">Cutline</span>
+          <span className="font-semibold text-lg tracking-tight text-zinc-900 dark:text-white">Cutline OS</span>
         </motion.div>
         
         <motion.div
@@ -35,13 +35,9 @@ export default function Home() {
         >
           <Link 
             href="/sign-in" 
-            className="relative inline-flex h-9 overflow-hidden rounded-full p-[1px] hover:scale-105 transition-transform"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-5 py-1 text-sm font-medium text-zinc-900 dark:text-zinc-100 transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-900 whitespace-nowrap"
           >
-            <span className="absolute inset-[-1000%] animate-[spin_3s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#c4b5fd_0%,#4f46e5_50%,#c4b5fd_100%)] opacity-0 hover:opacity-100 transition-opacity duration-500" />
-            <span className="absolute inset-[-1000%] bg-zinc-200 dark:bg-white/10 group-hover:opacity-0 transition-opacity" />
-            <span className="inline-flex h-full w-full items-center justify-center rounded-full bg-white dark:bg-zinc-950 px-5 py-1 text-sm font-medium text-zinc-900 dark:text-zinc-100 backdrop-blur-3xl transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50">
-              Log in
-            </span>
+            Log in
           </Link>
           <ThemeToggle />
         </motion.div>
@@ -58,16 +54,16 @@ export default function Home() {
             className="mb-8 inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-200 dark:border-white/10 bg-white/50 dark:bg-white/5 backdrop-blur-md text-xs font-medium text-zinc-600 dark:text-zinc-300"
           >
             <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-            <span>Cutline Business Manager v1.0</span>
+            <span>Cutline OS v1.0</span>
           </motion.div>
 
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3, ease: [0.21, 0.47, 0.32, 0.98] }}
-            className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-tighter leading-[1.05] text-transparent bg-clip-text bg-gradient-to-b from-zinc-900 to-zinc-500 dark:from-white dark:to-white/60 mb-8"
+            className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-tighter leading-[1.05] text-transparent bg-clip-text bg-gradient-to-b from-zinc-900 to-zinc-500 dark:from-white dark:to-white/60 mb-8 pb-2"
           >
-            Post-production,<br />
+            Creative work,<br />
             perfectly pipelined.
           </motion.h1>
 
@@ -77,7 +73,7 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.4, ease: [0.21, 0.47, 0.32, 0.98] }}
             className="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mb-12 font-light leading-relaxed"
           >
-            Manage your editing workflows, track video assets, handle client invoicing, and deliver projects faster than ever. Built for the modern creative studio.
+            Manage your creative workflows, track project assets, handle client invoicing, and deliver work faster than ever. Built for the modern creative professional.
           </motion.p>
 
           <motion.div
@@ -88,12 +84,12 @@ export default function Home() {
           >
             <Link 
               href="/sign-in"
-              className="group relative flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-zinc-900 dark:bg-white font-semibold rounded-full overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-xl hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] ring-1 ring-zinc-900/5 dark:ring-white/10"
+              className="group relative flex items-center justify-center gap-2 w-full sm:w-auto px-8 py-4 bg-zinc-900 dark:bg-white font-semibold rounded-full overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-xl hover:shadow-2xl ring-1 ring-zinc-900/5 dark:ring-white/10"
             >
-              {/* Gradient hover background */}
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 via-purple-500 to-fuchsia-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              {/* Professional subtle hover background */}
+              <div className="absolute inset-0 bg-zinc-800 dark:bg-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               
-              <span className="relative text-white dark:text-black group-hover:text-white transition-colors duration-300 flex items-center gap-2 drop-shadow-sm">
+              <span className="relative text-white dark:text-zinc-950 transition-colors duration-300 flex items-center gap-2 drop-shadow-sm whitespace-nowrap">
                 Sign In to Workspace
                 <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
               </span>
@@ -109,7 +105,7 @@ export default function Home() {
         transition={{ duration: 1, delay: 1 }}
         className="py-8 text-center text-xs text-zinc-600 font-medium relative z-10"
       >
-        <p>&copy; {new Date().getFullYear()} Cutline Business Manager. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Cutline OS. All rights reserved.</p>
       </motion.footer>
     </div>
   )

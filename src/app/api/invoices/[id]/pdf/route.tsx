@@ -54,9 +54,8 @@ export async function GET(
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `inline; filename="invoice-${invoiceData.invoiceNumber}.pdf"`,
-      // Cache for 5 minutes on CDN, revalidate in background.
-      // The PDF changes rarely (only on invoice edits), so this is safe.
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+      // Force immediate re-fetch to reflect updates (e.g. business name changes) instantly
+      'Cache-Control': 'no-store, max-age=0',
     },
   })
 }

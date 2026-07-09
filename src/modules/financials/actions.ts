@@ -3,7 +3,8 @@
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
-import { sendInvoiceEmail } from '@/lib/email/resend'
+import { generateInvoiceNumber } from '@/lib/invoices/number-generator'
+import { sendDynamicInvoiceEmail } from '@/lib/emails/send-invoice'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 
@@ -63,7 +64,8 @@ const InvoiceInputSchema = z.object({
   dueDate: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   taxRateBps: z.number().min(0).max(10000).default(0),
-  lineItems: z.array(LineItemSchema).min(1, "At least one line item is required")
+  lineItems: z.array(LineItemSchema).min(1, "At least one line item is required"),
+  currency: z.string().optional().default('USD')
 })
 
 export type InvoiceInput = z.infer<typeof InvoiceInputSchema>
@@ -88,11 +90,8 @@ export async function createInvoice(input: InvoiceInput) {
   const totalCents = subtotalCents + taxAmountCents
 
   const invoice = await prisma.$transaction(async (tx) => {
-    // 1. Generate sequential invoice number (naive approach with count, ideally use sequence table)
-    const count = await tx.invoice.count({ where: { businessId: orgId } })
-    const nextNum = (count + 1).toString().padStart(4, '0')
-    const year = new Date().getFullYear()
-    const invoiceNumber = `CUT-${year}-${nextNum}`
+    // 1. Generate sequential invoice number atomically
+    const invoiceNumber = await generateInvoiceNumber(tx, orgId)
 
     // 2. Create invoice
     const newInvoice = await tx.invoice.create({
@@ -104,6 +103,7 @@ export async function createInvoice(input: InvoiceInput) {
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
         notes: data.notes || null,
         taxRateBps: data.taxRateBps,
+        currency: data.currency,
         subtotalCents,
         taxAmountCents,
         totalCents,
@@ -164,6 +164,7 @@ export async function updateInvoice(id: string, input: InvoiceInput) {
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
         notes: data.notes || null,
         taxRateBps: data.taxRateBps,
+        currency: data.currency,
         subtotalCents,
         taxAmountCents,
         totalCents,
@@ -249,18 +250,7 @@ export async function sendInvoice(id: string) {
     })
 
     if (existing.client.email) {
-      const amountFormatted = new Intl.NumberFormat('en-US', { style: 'currency', currency: existing.currency }).format(existing.amountDueCents / 100)
-      const dueDateFormatted = existing.dueDate ? existing.dueDate.toLocaleDateString() : 'Upon Receipt'
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      
-      await sendInvoiceEmail(existing.client.email, {
-        invoiceNumber: existing.invoiceNumber,
-        amountDue: amountFormatted,
-        dueDate: dueDateFormatted,
-        businessName: existing.business.name,
-        clientName: existing.client.displayName,
-        pdfLink: `${appUrl}/api/invoices/${id}/pdf`
-      })
+      await sendDynamicInvoiceEmail(id, orgId)
     }
   })
 

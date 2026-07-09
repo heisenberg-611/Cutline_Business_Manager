@@ -7,18 +7,20 @@ interface Props {
     outstanding: number
     overdue: number
     dso: number
+    currency?: string
   }
 }
 
-const formatMoney = (cents: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-  }).format(cents / 100)
-}
-
 export function StudioHealthFinanceStrip({ data }: Props) {
+  const formatMoney = (cents: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: data.currency || 'USD',
+      currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 0,
+    }).format(cents / 100)
+  }
+
   return (
     <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-zinc-200 dark:divide-white/10 bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
       

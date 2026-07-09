@@ -24,7 +24,7 @@ export const sendInvoiceEmail = async (
   const htmlContent = await render(React.createElement(InvoiceSentEmail, invoiceData))
 
   const { data, error } = await resend.emails.send({
-    from: 'onboarding@resend.dev', // Resend testing domain
+    from: 'invoices@cutlin.tech',
     to,
     subject: `Invoice ${invoiceData.invoiceNumber} from ${invoiceData.businessName}`,
     html: htmlContent,

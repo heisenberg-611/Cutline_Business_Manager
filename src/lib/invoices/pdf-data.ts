@@ -42,8 +42,8 @@ export async function getInvoiceDataForPdf(
     taxRateBps: invoice.taxRateBps,
     taxAmountCents: invoice.taxAmountCents,
     totalCents: invoice.totalCents,
-    amountPaidCents: invoice.payments.reduce((sum, p) => sum + p.amountCents, 0),
-    amountDueCents: invoice.totalCents - invoice.payments.reduce((sum, p) => sum + p.amountCents, 0),
+    amountPaidCents: invoice.amountPaidCents,
+    amountDueCents: invoice.amountDueCents,
     notes: invoice.notes,
 
     business: {

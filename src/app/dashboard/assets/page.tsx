@@ -18,7 +18,11 @@ export default async function AssetsPage() {
   const assets = await getAssets(orgId)
 
   const formatCurrency = (cents: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: 'USD',
+      currencyDisplay: 'narrowSymbol'
+    }).format(cents / 100)
   }
 
   const isExpiringSoon = (date: Date | null) => {

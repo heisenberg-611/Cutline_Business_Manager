@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import prisma from '@/modules/core/db/prisma'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Download, Mail, Ban } from 'lucide-react'
+import { ArrowLeft, Download, Mail, Ban, Edit } from 'lucide-react'
 import { RecordPaymentDialog } from '@/modules/financials/components/RecordPaymentDialog'
 import { sendInvoice, deleteInvoice } from '@/modules/financials/actions'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +14,7 @@ const formatMoney = (cents: number, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
+    currencyDisplay: 'narrowSymbol'
   }).format(cents / 100)
 }
 
@@ -60,6 +61,14 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
         
         <div className="flex items-center gap-2">
+          {invoice.status === 'DRAFT' && (
+            <Link href={`/dashboard/financials/${invoice.id}/edit`}>
+              <Button variant="outline" className="text-zinc-500">
+                <Edit className="h-4 w-4 mr-2" /> Edit
+              </Button>
+            </Link>
+          )}
+          
           {invoice.status === 'DRAFT' && (
             <form action={async () => {
               'use server'

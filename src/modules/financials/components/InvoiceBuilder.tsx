@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { createInvoice } from '../actions'
+import { createInvoice, updateInvoice } from '../actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,15 +13,37 @@ import { useRouter } from 'next/navigation'
 type Client = { id: string, displayName: string }
 type Project = { id: string, title: string, clientId: string, assets?: { asset: { id: string, name: string, cost: number, type: string } }[] }
 
-export default function InvoiceBuilder({ clients, projects }: { clients: Client[], projects: Project[] }) {
+export default function InvoiceBuilder({ 
+  clients, 
+  projects,
+  invoiceId,
+  initialData,
+  currency
+}: { 
+  clients: Client[], 
+  projects: Project[],
+  invoiceId?: string,
+  initialData?: any,
+  currency?: string
+}) {
+  const currencySymbol = (0).toLocaleString('en-US', { style: 'currency', currency: currency || 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\d/g, '').trim()
   const router = useRouter()
-  const [clientId, setClientId] = useState('')
-  const [projectId, setProjectId] = useState('')
-  const [dueDate, setDueDate] = useState('')
-  const [notes, setNotes] = useState('')
-  const [taxRatePct, setTaxRatePct] = useState('0')
+  const [clientId, setClientId] = useState(initialData?.clientId || '')
+  const [projectId, setProjectId] = useState(initialData?.projectId || '')
+  const [dueDate, setDueDate] = useState(initialData?.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '')
+  const [notes, setNotes] = useState(initialData?.notes || '')
+  const [taxRatePct, setTaxRatePct] = useState(initialData?.taxRateBps ? (initialData.taxRateBps / 100).toString() : '0')
   
-  const [lineItems, setLineItems] = useState([{ id: 1, description: '', quantity: '1', amount: '' }])
+  type LineItemState = { id: number | string; description: string; quantity: string; amount: string }
+  const [lineItems, setLineItems] = useState<LineItemState[]>(initialData?.lineItems?.length > 0 
+    ? initialData.lineItems.map((li: any) => ({
+        id: li.id,
+        description: li.description,
+        quantity: li.quantity.toString(),
+        amount: (li.amountCents / 100).toString()
+      }))
+    : [{ id: 1, description: '', quantity: '1', amount: '' }]
+  )
   const [loading, setLoading] = useState(false)
 
   // Filter projects by selected client
@@ -33,19 +55,19 @@ export default function InvoiceBuilder({ clients, projects }: { clients: Client[
     setLineItems([...lineItems, { id: Date.now(), description: '', quantity: '1', amount: '' }])
   }
 
-  const handleRemoveLine = (id: number) => {
+  const handleRemoveLine = (id: number | string) => {
     if (lineItems.length > 1) {
-      setLineItems(lineItems.filter(item => item.id !== id))
+      setLineItems(lineItems.filter((item: LineItemState) => item.id !== id))
     }
   }
 
-  const handleLineChange = (id: number, field: 'description' | 'amount' | 'quantity', value: string) => {
-    setLineItems(lineItems.map(item => 
+  const handleLineChange = (id: number | string, field: 'description' | 'amount' | 'quantity', value: string) => {
+    setLineItems(lineItems.map((item: LineItemState) => 
       item.id === id ? { ...item, [field]: value } : item
     ))
   }
 
-  const subtotalCents = lineItems.reduce((sum, item) => {
+  const subtotalCents = lineItems.reduce((sum: number, item: LineItemState) => {
     const qty = parseInt(item.quantity) || 0
     const amt = parseFloat(item.amount) || 0
     return sum + Math.round(qty * amt * 100)
@@ -59,22 +81,31 @@ export default function InvoiceBuilder({ clients, projects }: { clients: Client[
     e.preventDefault()
     
     if (!clientId) return alert("Please select a client")
-    if (lineItems.some(i => !i.description || !i.amount)) return alert("Please fill out all line items")
+    if (lineItems.some((i: LineItemState) => !i.description || !i.amount)) return alert("Please fill out all line items")
 
     setLoading(true)
     try {
-      const invoice = await createInvoice({
+      const payload = {
         clientId,
         projectId: projectId || undefined,
         dueDate: dueDate || undefined,
         notes: notes || undefined,
         taxRateBps,
-        lineItems: lineItems.map(i => ({
+        currency: currency || 'USD',
+        lineItems: lineItems.map((i: any) => ({
           description: i.description,
           quantity: parseInt(i.quantity) || 1,
           amountCents: Math.round(parseFloat(i.amount) * 100) // Convert to cents
         }))
-      })
+      }
+
+      let invoice
+      if (invoiceId) {
+        invoice = await updateInvoice(invoiceId, payload)
+      } else {
+        invoice = await createInvoice(payload)
+      }
+
       router.push(`/dashboard/financials/${invoice.id}`)
     } catch (err: any) {
       alert(err.message || 'Failed to create invoice')
@@ -153,7 +184,7 @@ export default function InvoiceBuilder({ clients, projects }: { clients: Client[
           <h4 className="font-semibold text-zinc-900 dark:text-zinc-100">Line Items</h4>
         </div>
         
-        {lineItems.map((item, index) => (
+        {lineItems.map((item: LineItemState, index: number) => (
           <div key={item.id} className="flex gap-4 items-start">
             <div className="flex-1 space-y-2">
               {index === 0 && <Label className="text-xs text-zinc-500">Description</Label>}
@@ -175,7 +206,7 @@ export default function InvoiceBuilder({ clients, projects }: { clients: Client[
               />
             </div>
             <div className="w-32 space-y-2">
-              {index === 0 && <Label className="text-xs text-zinc-500">Rate ($)</Label>}
+              {index === 0 && <Label className="text-xs text-zinc-500">Rate ({currencySymbol})</Label>}
               <Input 
                 type="number" 
                 step="0.01"
@@ -189,7 +220,7 @@ export default function InvoiceBuilder({ clients, projects }: { clients: Client[
             <div className="w-32 space-y-2">
               {index === 0 && <Label className="text-xs text-zinc-500">Amount</Label>}
               <div className="h-9 flex items-center justify-end px-3 bg-zinc-50 dark:bg-zinc-900 rounded-md border border-transparent font-medium">
-                ${((parseInt(item.quantity) || 0) * (parseFloat(item.amount) || 0)).toFixed(2)}
+                {currencySymbol}{((parseInt(item.quantity) || 0) * (parseFloat(item.amount) || 0)).toFixed(2)}
               </div>
             </div>
             <div className={index === 0 ? "pt-6" : ""}>
@@ -232,7 +263,7 @@ export default function InvoiceBuilder({ clients, projects }: { clients: Client[
         <div className="w-64 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-zinc-500">Subtotal</span>
-            <span className="font-medium">${(subtotalCents / 100).toFixed(2)}</span>
+            <span className="font-medium">{currencySymbol}{(subtotalCents / 100).toFixed(2)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
@@ -246,18 +277,18 @@ export default function InvoiceBuilder({ clients, projects }: { clients: Client[
                 step="0.1"
               />
             </div>
-            <span className="font-medium">${(taxAmountCents / 100).toFixed(2)}</span>
+            <span className="font-medium">{currencySymbol}{(taxAmountCents / 100).toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-lg font-bold border-t border-zinc-200 dark:border-zinc-800 pt-3">
             <span>Total</span>
-            <span>${(totalCents / 100).toFixed(2)}</span>
+            <span>{currencySymbol}{(totalCents / 100).toFixed(2)}</span>
           </div>
         </div>
       </div>
 
       <div className="flex justify-end pt-4">
         <Button type="submit" disabled={loading} className="w-40 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
-          {loading ? "Saving..." : "Create Invoice"}
+          {loading ? "Saving..." : invoiceId ? "Save Changes" : "Create Invoice"}
         </Button>
       </div>
     </form>

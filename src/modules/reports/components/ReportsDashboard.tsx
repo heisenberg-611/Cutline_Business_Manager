@@ -35,10 +35,11 @@ export function ReportsDashboard() {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<ReportData | null>(null)
 
-  const formatMoney = (cents: number) => {
+  const formatMoney = (cents: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency,
+      currencyDisplay: 'narrowSymbol'
     }).format(cents / 100)
   }
 
@@ -69,9 +70,9 @@ export function ReportsDashboard() {
     <div className="space-y-8">
       {/* Date Controls */}
       <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
-        <CardContent className="p-6">
+        <CardContent className="p-5">
           <div className="flex flex-col sm:flex-row items-end gap-4">
-            <div className="space-y-2 flex-1">
+            <div className="space-y-2 flex-1 mt-3">
               <Label>Start Date</Label>
               <Input 
                 type="date" 

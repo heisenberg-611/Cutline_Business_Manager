@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { SendEmailButton } from './SendEmailButton'
 
 interface Invoice {
   id: string
@@ -32,6 +33,7 @@ const formatMoney = (cents: number, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
+    currencyDisplay: 'narrowSymbol'
   }).format(cents / 100)
 }
 
@@ -76,12 +78,13 @@ export function InvoiceTable({ invoices }: Props) {
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Total</TableHead>
             <TableHead className="text-right">Due</TableHead>
+            <TableHead className="text-right w-12"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {invoices.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8 text-zinc-500">
+              <TableCell colSpan={8} className="text-center py-8 text-zinc-500">
                 No invoices found
               </TableCell>
             </TableRow>
@@ -102,6 +105,9 @@ export function InvoiceTable({ invoices }: Props) {
                 <TableCell className="text-right">{formatMoney(invoice.totalCents, invoice.currency)}</TableCell>
                 <TableCell className="text-right font-medium text-zinc-900 dark:text-zinc-100">
                   {formatMoney(invoice.amountDueCents, invoice.currency)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <SendEmailButton invoiceId={invoice.id} disabled={invoice.status !== 'DRAFT'} />
                 </TableCell>
               </TableRow>
             ))

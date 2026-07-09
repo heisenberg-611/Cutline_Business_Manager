@@ -79,14 +79,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Contextual Topbar Logic
   const getContextualTitle = () => {
-    if (pathname === '/dashboard') return 'Dashboard'
-    if (pathname.includes('/pipeline')) return 'Pipeline'
-    if (pathname.includes('/projects')) return 'Projects'
-    if (pathname.includes('/clients')) return 'Clients'
-    if (pathname.includes('/financials')) return 'Financials'
-    if (pathname.includes('/reports')) return 'Reports'
-    if (pathname.includes('/assets')) return 'Assets'
-    return 'Cutline'
+    return 'Cutline OS'
   }
 
   return (

@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getProjectDetails } from '@/modules/projects/detail-actions'
 import { NotesPanel } from '@/modules/projects/components/NotesPanel'
+import { LinksPanel } from '@/modules/projects/components/LinksPanel'
 import { TimePanel } from '@/modules/projects/components/TimePanel'
 import { AssetPanel } from '@/modules/projects/components/AssetPanel'
 import { ProjectActions } from '@/modules/projects/components/ProjectActions'
@@ -71,10 +72,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
       
       {/* Main Content Area - Split into Panels */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 min-h-0">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-6 min-h-0">
         {/* Notes Column */}
         <div className="min-h-0">
           <NotesPanel projectId={project.id} notes={project.notes} />
+        </div>
+
+        {/* Links Column */}
+        <div className="min-h-0">
+          <LinksPanel projectId={project.id} links={project.links as any} />
         </div>
 
         {/* Time Tracking Column */}
