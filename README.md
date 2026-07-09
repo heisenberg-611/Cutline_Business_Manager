@@ -135,6 +135,16 @@ Experience the elegant, professional interface of Cutline OS:
 | **Drag & Drop** | [@hello-pangea/dnd](https://react-beautiful-dnd.org/) |
 | **Database Seeding** | [Prisma Seed Scripts](https://www.prisma.io/docs/orm/more/recipes/seed-database) |
 
+### Important Considerations for Raw SQL vs. Prisma
+
+- **@updatedAt Triggers**: Prisma handles `@updatedAt` automatically at the ORM level. In raw PostgreSQL, you must use a trigger to automatically update the timestamp on row modifications. I have included a reusable trigger function and applied it to all relevant tables.
+- **@default(cuid())**: PostgreSQL does not have a native CUID generator. In raw SQL, the id columns are defined as `VARCHAR`, and your application layer (e.g., Node.js/Prisma client) must generate and insert the CUID string. (Alternatively, you can change the type to UUID and use `gen_random_uuid()` if you prefer native Postgres UUIDs).
+- **Naming Conventions**: Prisma's camelCase fields have been converted to standard PostgreSQL snake_case columns, and table names match your `@@map()` directives.
+
+<div align="center">
+  <img src="public/Schema.webp" alt="Database Schema" width="100%" />
+</div>
+
 ---
 
 ## 🚀 Getting Started
