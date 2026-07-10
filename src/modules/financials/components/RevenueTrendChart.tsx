@@ -29,7 +29,7 @@ export function RevenueTrendChart({ data, currency = 'USD' }: Props) {
   }
 
   return (
-    <div className="w-full h-[250px] mt-4">
+    <div className="w-full h-[250px] mt-4 text-zinc-900 dark:text-zinc-100">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
@@ -70,7 +70,7 @@ export function RevenueTrendChart({ data, currency = 'USD' }: Props) {
             dataKey="revenue" 
             radius={[4, 4, 0, 0]}
             maxBarSize={40}
-            className="fill-zinc-900 dark:fill-zinc-100"
+            fill="currentColor"
           />
         </BarChart>
       </ResponsiveContainer>
