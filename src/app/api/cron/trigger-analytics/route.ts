@@ -2,9 +2,14 @@ import { NextResponse } from 'next/server'
 import prisma from '@/modules/core/db/prisma'
 import { Client } from '@upstash/qstash'
 
-const qstashClient = new Client({
-  token: process.env.QSTASH_TOKEN || '',
-})
+// Lazy initialization
+let qstashClient: Client | null = null
+function getQStashClient() {
+  if (!qstashClient && process.env.QSTASH_TOKEN) {
+    qstashClient = new Client({ token: process.env.QSTASH_TOKEN })
+  }
+  return qstashClient
+}
 
 export const dynamic = 'force-dynamic'
 
@@ -35,9 +40,10 @@ export async function GET(request: Request) {
     // Fan-out to QStash in chunks
     for (let i = 0; i < businessIds.length; i += BATCH_SIZE) {
       const chunk = businessIds.slice(i, i + BATCH_SIZE)
+      const client = getQStashClient()
       
-      if (process.env.QSTASH_TOKEN) {
-        await qstashClient.publishJSON({
+      if (client) {
+        await client.publishJSON({
           url: webhookUrl,
           body: { businessIds: chunk },
           // Optional: deduplicationId to prevent duplicate runs on the same day

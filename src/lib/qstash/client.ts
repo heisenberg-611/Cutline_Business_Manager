@@ -1,11 +1,19 @@
 import { Client } from '@upstash/qstash'
 
-const qstashClient = new Client({
-  token: process.env.QSTASH_TOKEN || '',
-})
+// Lazy initialization to prevent Upstash from spamming the console 
+// on every module load if the token is missing in local dev.
+let qstashClient: Client | null = null
+
+function getQStashClient() {
+  if (!qstashClient && process.env.QSTASH_TOKEN) {
+    qstashClient = new Client({ token: process.env.QSTASH_TOKEN })
+  }
+  return qstashClient
+}
 
 export async function triggerPdfGeneration(invoiceId: string, orgId: string) {
-  if (!process.env.QSTASH_TOKEN) {
+  const client = getQStashClient()
+  if (!client) {
     console.warn('QSTASH_TOKEN is not set, skipping background PDF generation.')
     return
   }
@@ -15,7 +23,7 @@ export async function triggerPdfGeneration(invoiceId: string, orgId: string) {
   const webhookUrl = `${baseUrl}/api/webhooks/qstash/pdf`
 
   try {
-    await qstashClient.publishJSON({
+    await client.publishJSON({
       url: webhookUrl,
       body: { invoiceId, orgId },
       // Optional: Prevent duplicates in case of quick rapid edits (but here we want the latest to generate, so we'll omit deduplicationId to allow it to overwrite)
