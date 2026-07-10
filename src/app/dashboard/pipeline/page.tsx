@@ -50,7 +50,7 @@ export default async function PipelinePage({
       </div>
       
       {/* View Container */}
-      <div className="flex-1 min-h-[600px] overflow-hidden -mx-6 md:-mx-10 px-6 md:px-10 pb-6">
+      <div className="flex-1 overflow-visible -mx-6 md:-mx-10 px-6 md:px-10 pb-6">
         {view === 'timeline' ? (
           <PipelineTimeline stages={template.stages} projects={projects as any[]} />
         ) : view === 'table' ? (

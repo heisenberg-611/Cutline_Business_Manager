@@ -41,7 +41,9 @@ import {
   Calculator,
   Archive,
   MessageSquare,
-  Video
+  Video,
+  Menu,
+  X
 } from 'lucide-react'
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
@@ -115,13 +117,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen w-full bg-zinc-50 dark:bg-[#0A0A0A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans">
+    <div className="flex h-[100dvh] w-full bg-zinc-50 dark:bg-[#0A0A0A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans">
       
       {/* LEFT SIDEBAR */}
       <aside 
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`border-r border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-[#0A0A0A] flex flex-col transition-all duration-300 ease-in-out-smooth z-20 ${isExpanded ? 'w-64' : 'w-16'}`}
+        className={`hidden md:flex border-r border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-[#0A0A0A] flex-col transition-all duration-300 ease-in-out-smooth z-20 ${isExpanded ? 'w-64' : 'w-16'}`}
       >
         {/* Business Switcher Top Header */}
         <div className="h-14 flex items-center px-4 border-b border-zinc-200 dark:border-white/10 overflow-hidden">
@@ -301,8 +303,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Contextual Top bar */}
-        <header className="h-14 flex items-center justify-between px-6 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] shrink-0">
+          <div className="flex items-center gap-3 md:gap-4">
             <h1 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{getContextualTitle()}</h1>
           </div>
           <div className="flex items-center gap-4">
@@ -320,9 +322,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         
-        {/* Page Content Scrollable Area */}
-        <div className="flex-1 overflow-auto p-6 md:p-10 relative">
-          <div className="mx-auto max-w-6xl">
+        <div className="flex-1 overflow-auto p-4 md:p-10 relative pb-24 md:pb-10">
+          <div className="mx-auto w-full">
             {isNavigating ? <DashboardLoading /> : children}
           </div>
         </div>
@@ -358,6 +359,54 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <GlobalSearch open={isCommandOpen} onOpenChange={setIsCommandOpen} />
       <CurrencyConverter open={isCurrencyConverterOpen} onOpenChange={setIsCurrencyConverterOpen} />
+
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#0A0A0A] border-t border-zinc-200 dark:border-white/10 flex items-center gap-2 px-3 py-2 overflow-x-auto snap-x [&::-webkit-scrollbar]:hidden shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+        {navItems.map((item) => {
+          const currentPath = optimisticPathname || pathname
+          const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href))
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => {
+                if (pathname !== item.href) {
+                  setIsNavigating(true)
+                  setOptimisticPathname(item.href)
+                }
+              }}
+              className={`flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center transition-colors ${
+                isActive 
+                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10' 
+                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+              }`}
+            >
+              <item.icon className="w-5 h-5 shrink-0" />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </Link>
+          )
+        })}
+
+        <div className="w-[1px] h-8 bg-zinc-200 dark:bg-white/10 shrink-0 mx-1" />
+
+        <button 
+          onClick={() => setIsCurrencyConverterOpen(true)} 
+          className="flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <Calculator className="w-5 h-5 shrink-0" />
+          <span className="text-[10px] font-medium">Calculator</span>
+        </button>
+
+        {orgRole !== 'org:member' && (
+          <Link 
+            href="/dashboard/settings" 
+            className="flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
+            <Settings className="w-5 h-5 shrink-0" />
+            <span className="text-[10px] font-medium">Settings</span>
+          </Link>
+        )}
+      </nav>
     </div>
   )
 }

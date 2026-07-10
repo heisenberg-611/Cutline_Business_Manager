@@ -14,7 +14,7 @@ export default async function FeedbackInboxPage() {
   const responses = await getFeedbackResponses()
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
+    <div className="p-8 w-full mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Feedback Inbox</h1>
         <Link href="/dashboard/feedback/testimonials" className="text-sm font-medium hover:underline">

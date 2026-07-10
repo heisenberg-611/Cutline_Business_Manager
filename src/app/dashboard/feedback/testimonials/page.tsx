@@ -12,7 +12,7 @@ export default async function TestimonialsPage() {
   const testimonials = await getTestimonials()
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
+    <div className="p-8 w-full mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Testimonials</h1>
         <Link href="/dashboard/feedback" className="text-sm font-medium hover:underline">

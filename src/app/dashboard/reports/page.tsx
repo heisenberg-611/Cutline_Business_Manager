@@ -20,7 +20,7 @@ export default async function ReportsPage() {
   const defaultCurrency = business?.defaultCurrency || 'USD'
 
   return (
-    <div className="container py-8 max-w-6xl mx-auto h-[calc(100vh-4rem)] overflow-y-auto">
+    <div className="container py-8 w-full mx-auto h-[calc(100vh-4rem)] overflow-y-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">Reports & Analytics</h1>
         <p className="text-zinc-500 dark:text-zinc-400 mt-1">
