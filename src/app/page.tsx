@@ -8,10 +8,10 @@ import { ThemeToggle } from '@/components/theme-toggle'
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-[#050505] text-zinc-900 dark:text-zinc-100 flex flex-col relative overflow-hidden selection:bg-indigo-500/30">
+    <div className="min-h-[100dvh] bg-zinc-50 dark:bg-[#050505] text-zinc-900 dark:text-zinc-100 flex flex-col relative overflow-hidden selection:bg-indigo-500/30">
       {/* AMBIENT BACKGROUND GLOWS */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-300/40 dark:bg-indigo-500/20 blur-[100px] dark:blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen" />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-fuchsia-300/40 dark:bg-fuchsia-500/20 blur-[100px] dark:blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen" />
+      <div className="absolute top-[-10%] md:top-[-20%] left-[-10%] w-[80%] md:w-[50%] h-[60%] md:h-[50%] rounded-full bg-indigo-300/40 dark:bg-indigo-500/20 blur-[100px] dark:blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen" />
+      <div className="absolute bottom-[-10%] md:bottom-[-20%] right-[-10%] w-[80%] md:w-[50%] h-[60%] md:h-[50%] rounded-full bg-fuchsia-300/40 dark:bg-fuchsia-500/20 blur-[100px] dark:blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen" />
       
       {/* HEADER */}
       <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 md:py-6">
@@ -39,7 +39,12 @@ export default function Home() {
           >
             Log in
           </Link>
-          <ThemeToggle />
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
+          <div className="sm:hidden">
+            <ThemeToggle isCollapsed={true} />
+          </div>
         </motion.div>
       </header>
 
@@ -61,7 +66,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3, ease: [0.21, 0.47, 0.32, 0.98] }}
-            className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-tighter leading-[1.05] text-transparent bg-clip-text bg-gradient-to-b from-zinc-900 to-zinc-500 dark:from-white dark:to-white/60 mb-8 pb-2"
+            className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-medium tracking-tighter leading-[1.05] text-transparent bg-clip-text bg-gradient-to-b from-zinc-900 to-zinc-500 dark:from-white dark:to-white/60 mb-8 pb-2"
           >
             Creative work,<br />
             perfectly pipelined.

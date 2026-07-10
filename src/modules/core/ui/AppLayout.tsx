@@ -305,13 +305,27 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Contextual Top bar */}
         <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] shrink-0">
           <div className="flex items-center gap-3 md:gap-4">
-            <h1 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{getContextualTitle()}</h1>
+            <h1 className="hidden md:block text-sm font-medium text-zinc-900 dark:text-zinc-100">{getContextualTitle()}</h1>
+            <div className="md:hidden">
+              <OrganizationSwitcher 
+                hidePersonal
+                appearance={{
+                  elements: {
+                    organizationSwitcherTrigger: "focus:shadow-none focus:outline-none justify-start px-0 py-0",
+                    organizationPreviewMainIdentifier: "font-semibold text-sm",
+                  }
+                }}
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="md:hidden">
+              <ThemeToggle isCollapsed={true} />
+            </div>
             {orgRole !== 'org:member' && (
               <button 
                 onClick={() => setIsQuickActionsOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm hover:opacity-90 transition-opacity"
+                className="hidden md:flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm hover:opacity-90 transition-opacity"
               >
                 <Plus className="h-3.5 w-3.5" />
                 New
