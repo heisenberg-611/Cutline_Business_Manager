@@ -63,7 +63,7 @@ export function RevenueTrendChart({ data, currency = 'USD' }: Props) {
               color: 'var(--card-foreground)',
               boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
             }}
-            formatter={(value: number) => [formatMoney(value), 'Revenue']}
+            formatter={(value: any) => [formatMoney(value), 'Revenue']}
             labelStyle={{ color: '#737373', marginBottom: '4px' }}
           />
           <Bar 
