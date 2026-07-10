@@ -194,13 +194,7 @@ RESEND_API_KEY=re_...
    ```
    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Database Seeding
-To populate your local database with dummy data (highly useful for testing the UI without manually clicking through flows):
-1. Ensure your Clerk user has created an Organization in the app (you can do this via the UI after signing in).
-2. Run the seed script:
-   ```bash
-   npm run seed
-   ```
+
 
 ### Deployment
 Cutline OS is optimized for zero-config deployment on Vercel.

@@ -218,9 +218,6 @@ npx prisma migrate dev
 
 # Or push schema directly
 npx prisma db push
-
-# (Optional) Seed with demo data
-npm run seed
 ```
 
 **Note**: Clerk webhooks are required to sync Business and User data. During local development, use [Svix CLI](https://docs.svix.com/cli) to forward webhooks:
@@ -239,24 +236,16 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📦 Database Seeding
+## ⚡ Performance & Optimization Note
 
-Quickly populate your database with realistic demo data:
+For the best possible performance and lowest latency, we highly recommend connecting the application to your own managed services and running it in an environment with robust computing power.
 
-```bash
-# Seed with demo data (4 clients, 4 projects, 5 invoices, etc.)
-npm run seed
-
-# Reset database and start fresh
-npm run reset-db
-
-# Reset and reseed
-npm run reset-db && npm run seed
-```
-
-See [scripts/SEED_README.md](scripts/SEED_README.md) for detailed seeding documentation.
+- **Optimal Setup**: Using your own [Aiven.io](https://aiven.io/) PostgreSQL database and a dedicated [Clerk](https://clerk.com/) application ID, combined with running the app natively on your own computer, will yield exceptional, real-time performance.
+- **Production Hosting**: If deploying to the cloud, hosting the application on a platform that offers better virtual CPU (vCPU) allocation will significantly accelerate Server Actions, database queries, and on-the-fly PDF generation. Since Cutline heavily utilizes Next.js Server Components, raw computational power directly translates to a much snappier user experience.
 
 ---
+
+
 
 ## 🔧 Available Scripts
 
@@ -269,7 +258,6 @@ npm run build        # Build for production
 npm start            # Run production build
 
 # Database
-npm run seed         # Seed database with demo data
 npm run reset-db     # Clear all data from database
 
 # Code Quality
