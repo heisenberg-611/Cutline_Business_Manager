@@ -1,4 +1,4 @@
-import { auth, currentUser } from '@clerk/nextjs/server'
+import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import prisma from '@/modules/core/db/prisma'
@@ -8,6 +8,7 @@ import { StageProgressPipeline } from '@/modules/projects/components/StageProgre
 import { RevenueTrendChart } from '@/modules/financials/components/RevenueTrendChart'
 import { UpcomingDeadlines } from '@/modules/projects/components/UpcomingDeadlines'
 import { RecentFeedback } from '@/modules/feedback/components/RecentFeedback'
+import { Greeting } from '@/components/Greeting'
 
 export const metadata = {
   title: 'Dashboard',
@@ -20,75 +21,76 @@ export default async function DashboardPage() {
     redirect('/dashboard/select-business')
   }
 
-  // Fetch metrics data
-  const studioHealth = await getStudioHealth(orgId)
-  const revenueTrend = await getRevenueTrend(orgId)
-
-  const activeProjects = await prisma.project.findMany({
-    where: { 
-      businessId: orgId,
-      isArchived: false,
-      NOT: {
-        statusStage: {
-          name: { contains: 'final', mode: 'insensitive' }
+  // Fetch metrics data and user concurrently
+  const [
+    studioHealth,
+    revenueTrend,
+    activeProjects,
+    recentFeedback,
+    pendingFeedbackCount,
+    pendingReviewCount
+  ] = await Promise.all([
+    getStudioHealth(orgId),
+    getRevenueTrend(orgId),
+    prisma.project.findMany({
+      where: { 
+        businessId: orgId,
+        isArchived: false,
+        NOT: {
+          statusStage: {
+            name: { contains: 'final', mode: 'insensitive' }
+          }
         }
-      }
-    },
-    include: { 
-      statusStage: {
-        include: {
-          template: {
-            include: {
-              stages: {
-                orderBy: { orderIndex: 'asc' }
+      },
+      include: { 
+        statusStage: {
+          include: {
+            template: {
+              include: {
+                stages: {
+                  orderBy: { orderIndex: 'asc' }
+                }
               }
             }
           }
-        }
-      }, 
-      stageHistory: {
-        orderBy: { enteredAt: 'desc' }
+        }, 
+        stageHistory: {
+          orderBy: { enteredAt: 'desc' }
+        },
+        client: true 
       },
-      client: true 
-    },
-    orderBy: { createdAt: 'desc' }
-  })
-  
-  const recentFeedback = await prisma.feedbackResponse.findMany({
-    where: { businessId: orgId },
-    include: {
-      request: {
-        include: {
-          project: true,
-          client: true
+      orderBy: { createdAt: 'desc' },
+      cacheStrategy: { ttl: 30, swr: 30 }
+    }),
+    prisma.feedbackResponse.findMany({
+      where: { businessId: orgId },
+      include: {
+        request: {
+          include: {
+            project: true,
+            client: true
+          }
         }
-      }
-    },
-    orderBy: { submittedAt: 'desc' },
-    take: 3
-  })
-
-  const pendingFeedbackCount = await prisma.feedbackRequest.count({
-    where: { 
-      businessId: orgId, 
-      status: 'COMPLETED',
-      response: { isNot: null }
-    }
-  })
-
-  const pendingReviewCount = await prisma.reviewRequest.count({
-    where: { businessId: orgId, status: 'REPLIED' }
-  })
-
-  const user = await currentUser()
-  const firstName = user?.firstName || 'there'
+      },
+      orderBy: { submittedAt: 'desc' },
+      take: 3,
+      cacheStrategy: { ttl: 30, swr: 30 }
+    }),
+    prisma.feedbackRequest.count({
+      where: { 
+        businessId: orgId, 
+        status: 'COMPLETED',
+        response: { isNot: null }
+      },
+      cacheStrategy: { ttl: 30, swr: 30 }
+    }),
+    prisma.reviewRequest.count({
+      where: { businessId: orgId, status: 'REPLIED' },
+      cacheStrategy: { ttl: 30, swr: 30 }
+    })
+  ])
   
   const today = new Date()
-  const hour = today.getHours()
-  let greeting = 'Good evening'
-  if (hour < 12) greeting = 'Good morning'
-  else if (hour < 18) greeting = 'Good afternoon'
-
   const dateString = new Intl.DateTimeFormat('en-US', {
     weekday: 'long',
     month: 'long',
@@ -100,7 +102,7 @@ export default async function DashboardPage() {
       <div className="border-b border-zinc-200 dark:border-white/10 pb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h3 className="text-2xl font-semibold leading-7 text-zinc-900 dark:text-zinc-100">
-            {greeting}, {firstName}
+            <Greeting />
           </h3>
           <p className="mt-2 text-sm text-zinc-500 flex items-center flex-wrap gap-2">
             <span>{dateString}</span>

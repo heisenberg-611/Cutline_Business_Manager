@@ -11,7 +11,8 @@ export async function getOutstandingInvoices(businessId: string) {
       dueDate: true,
       amountDueCents: true,
       currency: true
-    }
+    },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
 
   const now = new Date()
@@ -43,7 +44,8 @@ export async function getRevenueSummary(businessId: string, startDate: Date, end
     where: {
       businessId,
       createdAt: { gte: startDate, lte: endDate }
-    }
+    },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
   const cashRevenue = payments.reduce((sum, p) => sum + p.amountCents, 0)
 
@@ -53,7 +55,8 @@ export async function getRevenueSummary(businessId: string, startDate: Date, end
       businessId,
       issuedAt: { gte: startDate, lte: endDate },
       status: { notIn: ['DRAFT', 'VOID', 'CREDIT_NOTE'] }
-    }
+    },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
   const accrualRevenue = invoices.reduce((sum, inv) => sum + inv.totalCents, 0)
 
@@ -63,11 +66,13 @@ export async function getRevenueSummary(businessId: string, startDate: Date, end
 export async function getProfitByProject(businessId: string, projectId: string) {
   const invoices = await prisma.invoice.findMany({
     where: { businessId, projectId, status: { notIn: ['DRAFT', 'VOID', 'CREDIT_NOTE'] } },
-    include: { payments: true }
+    include: { payments: true },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
   
   const expenses = await prisma.expense.findMany({
-    where: { businessId, projectId }
+    where: { businessId, projectId },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
 
   const revenueCents = invoices.reduce((sum, inv) => 
@@ -104,7 +109,8 @@ export async function getStudioHealth(businessId: string) {
       businessId,
       status: { in: ['SENT', 'PARTIALLY_PAID', 'OVERDUE'] }
     },
-    select: { amountDueCents: true, status: true, dueDate: true }
+    select: { amountDueCents: true, status: true, dueDate: true },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
 
   const liveOutstanding = outstandingInvoices.reduce((sum, inv) => sum + inv.amountDueCents, 0)

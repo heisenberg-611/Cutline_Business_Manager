@@ -155,3 +155,14 @@
     @apply bg-background text-foreground font-sans antialiased selection:bg-primary/20 selection:text-primary;
   }
 }
+
+@keyframes shimmer-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--shimmer-from) 0%, var(--shimmer-to) 50%, var(--shimmer-from) 100%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.8s ease-in-out infinite;
+}

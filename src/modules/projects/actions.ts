@@ -129,10 +129,7 @@ export async function getArchivedProjects(orgId: string) {
       isArchived: true
     },
     include: {
-      client: true,
-      assets: {
-        include: { asset: true }
-      }
+      client: true
     },
     orderBy: {
       createdAt: 'desc'

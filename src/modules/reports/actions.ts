@@ -27,7 +27,8 @@ export async function getReportData(startDateStr: string, endDateStr: string) {
     },
     include: {
       client: true
-    }
+    },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
 
   let totalRevenueCents = 0
@@ -74,7 +75,8 @@ export async function getReportData(startDateStr: string, endDateStr: string) {
     },
     include: {
       project: true
-    }
+    },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
 
   let totalDurationMinutes = 0
@@ -101,7 +103,8 @@ export async function getReportData(startDateStr: string, endDateStr: string) {
         gte: startDate,
         lte: endDate
       }
-    }
+    },
+    cacheStrategy: { ttl: 60, swr: 60 }
   })
 
   return {

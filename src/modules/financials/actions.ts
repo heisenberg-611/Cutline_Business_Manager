@@ -27,10 +27,10 @@ async function withAudit<T>(
   fn: (tx: any) => Promise<T>
 ): Promise<T> {
   const { orgId, userId } = await requireBusiness()
-  
+
   return await prisma.$transaction(async (tx) => {
     const result = await fn(tx)
-    
+
     await tx.auditLog.create({
       data: {
         businessId: orgId,
@@ -41,7 +41,7 @@ async function withAudit<T>(
         metadataJson: JSON.stringify(metadata)
       }
     })
-    
+
     return result
   })
 }
@@ -85,7 +85,7 @@ const PaymentInputSchema = z.object({
 export async function createInvoice(input: InvoiceInput) {
   const { orgId } = await requireBusiness()
   const data = InvoiceInputSchema.parse(input)
-  
+
   // Calculate totals
   const subtotalCents = data.lineItems.reduce((sum, item) => sum + (item.amountCents * item.quantity), 0)
   const taxAmountCents = Math.round(subtotalCents * (data.taxRateBps / 10000))
@@ -149,7 +149,7 @@ export async function updateInvoice(id: string, input: InvoiceInput) {
   const { orgId } = await requireBusiness()
   const data = InvoiceInputSchema.parse(input)
 
-  return await withAudit('Invoice', id, 'UPDATE', { totalCents: data.lineItems.reduce((s,i)=>s+(i.amountCents*i.quantity),0) }, async (tx) => {
+  return await withAudit('Invoice', id, 'UPDATE', { totalCents: data.lineItems.reduce((s, i) => s + (i.amountCents * i.quantity), 0) }, async (tx) => {
     const existing = await tx.invoice.findFirst({ where: { id, businessId: orgId } })
     if (!existing) throw new Error('Invoice not found')
     if (existing.status !== 'DRAFT') throw new Error('Only DRAFT invoices can be updated')
@@ -195,15 +195,15 @@ export async function updateInvoice(id: string, input: InvoiceInput) {
 
 export async function deleteInvoice(id: string) {
   const { orgId } = await requireBusiness()
-  
+
   await prisma.$transaction(async (tx) => {
     const existing = await tx.invoice.findFirst({ where: { id, businessId: orgId } })
     if (!existing) throw new Error('Invoice not found')
-    
+
     await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id } })
     await tx.payment.deleteMany({ where: { invoiceId: id } })
     await tx.invoice.delete({ where: { id } })
-    
+
     await tx.auditLog.create({
       data: {
         businessId: orgId,
@@ -214,16 +214,16 @@ export async function deleteInvoice(id: string) {
       }
     })
   })
-  
+
   revalidatePath('/dashboard/financials')
   redirect('/dashboard/financials')
 }
 
 export async function voidInvoice(id: string) {
   const { orgId } = await requireBusiness()
-  
+
   return await withAudit('Invoice', id, 'VOID', {}, async (tx) => {
-    const existing = await tx.invoice.findFirst({ 
+    const existing = await tx.invoice.findFirst({
       where: { id, businessId: orgId },
       include: { payments: true }
     })
@@ -241,7 +241,7 @@ export async function sendInvoice(id: string) {
   const { orgId } = await requireBusiness()
 
   const result = await withAudit('Invoice', id, 'SENT', {}, async (tx) => {
-    const existing = await tx.invoice.findFirst({ 
+    const existing = await tx.invoice.findFirst({
       where: { id, businessId: orgId },
       include: { client: true, business: true }
     })
@@ -250,8 +250,8 @@ export async function sendInvoice(id: string) {
 
     await tx.invoice.update({
       where: { id },
-      data: { 
-        status: 'SENT', 
+      data: {
+        status: 'SENT',
         issuedAt: new Date(),
         emailSentAt: existing.client.email ? new Date() : null
       }
@@ -295,7 +295,7 @@ export async function recordPayment(invoiceId: string, input: z.infer<typeof Pay
     // Update invoice
     const newPaid = invoice.amountPaidCents + data.amountCents
     const newDue = Math.max(0, invoice.totalCents - newPaid)
-    
+
     let newStatus = invoice.status
     if (newDue === 0) newStatus = 'PAID'
     else if (newPaid > 0) newStatus = 'PARTIALLY_PAID'
@@ -310,7 +310,7 @@ export async function recordPayment(invoiceId: string, input: z.infer<typeof Pay
       }
     })
   })
-  
+
   revalidatePath(`/dashboard/financials/${invoiceId}`)
   revalidatePath('/dashboard/financials')
   return result
@@ -318,7 +318,7 @@ export async function recordPayment(invoiceId: string, input: z.infer<typeof Pay
 
 export async function createCreditNote(invoiceId: string, amountCents: number, reason: string) {
   const { orgId } = await requireBusiness()
-  
+
   return await withAudit('CreditNote', invoiceId, 'CREDIT_NOTE_CREATED', { amountCents, reason }, async (tx) => {
     const invoice = await tx.invoice.findFirst({ where: { id: invoiceId, businessId: orgId } })
     if (!invoice) throw new Error('Invoice not found')
@@ -375,8 +375,7 @@ export async function getInvoices(orgId: string) {
     where: { businessId: orgId },
     include: {
       client: true,
-      project: true,
-      lineItems: true
+      project: true
     },
     orderBy: {
       createdAt: 'desc'
