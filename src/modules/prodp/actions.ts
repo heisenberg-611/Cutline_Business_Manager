@@ -2,7 +2,7 @@
 
 import prisma from '@/modules/core/db/prisma'
 import { randomBytes } from 'crypto'
-import { createNotification } from '@/modules/notifications/actions'
+import { createNotification, broadcastNotification } from '@/modules/notifications/actions'
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 
@@ -110,20 +110,13 @@ export async function submitIntakeForm(businessId: string, data: {
 
   // Notify Business Members
   try {
-    const memberships = await prisma.businessMembership.findMany({
-      where: { businessId }
+    await broadcastNotification({
+      businessId,
+      title: "New Project Request",
+      message: `${client.displayName} submitted a new project: "${project.title}".`,
+      type: "project",
+      actionUrl: `/dashboard/pipeline`
     })
-    
-    for (const membership of memberships) {
-      await createNotification({
-        userId: membership.userId,
-        businessId,
-        title: "New Project Request",
-        message: `${client.displayName} submitted a new project: "${project.title}".`,
-        type: "project",
-        actionUrl: `/dashboard/pipeline`
-      })
-    }
   } catch (err) {
     console.error("Notification failed", err)
   }
@@ -190,20 +183,13 @@ export async function submitReviewNotes(token: string, notes: string, links: str
 
   // Notify Business Members
   try {
-    const memberships = await prisma.businessMembership.findMany({
-      where: { businessId: request.businessId }
+    await broadcastNotification({
+      businessId: request.businessId,
+      title: "Client Revision Notes",
+      message: `${request.client.displayName} added revisions for "${request.project.title}".`,
+      type: "project",
+      actionUrl: `/dashboard/prodp`
     })
-    
-    for (const membership of memberships) {
-      await createNotification({
-        userId: membership.userId,
-        businessId: request.businessId,
-        title: "Client Revision Notes",
-        message: `${request.client.displayName} added revisions for "${request.project.title}".`,
-        type: "project",
-        actionUrl: `/dashboard/prodp`
-      })
-    }
   } catch (err) {
     console.error("Notification failed", err)
   }
@@ -226,7 +212,7 @@ export async function deleteReviewRequest(id: string) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
 
-  await prisma.reviewRequest.delete({
+  await prisma.reviewRequest.deleteMany({
     where: { id, businessId: orgId }
   })
   
@@ -238,7 +224,7 @@ export async function resolveReviewRequest(id: string) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
 
-  await prisma.reviewRequest.update({
+  await prisma.reviewRequest.updateMany({
     where: { id, businessId: orgId },
     data: { status: 'RESOLVED' }
   })

@@ -137,7 +137,7 @@ export async function deleteWorkflowStage(stageId: string) {
     })
   }
 
-  await prisma.workflowStage.delete({ where: { id: stageId } })
+  await prisma.workflowStage.deleteMany({ where: { id: stageId } })
 
   revalidatePath('/dashboard/settings')
   revalidatePath('/dashboard/pipeline')

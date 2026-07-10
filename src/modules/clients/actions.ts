@@ -70,7 +70,7 @@ export async function deleteClient(clientId: string) {
   })
   if (!client) throw new Error('Client not found')
 
-  await prisma.client.delete({
+  await prisma.client.deleteMany({
     where: { id: clientId }
   })
 

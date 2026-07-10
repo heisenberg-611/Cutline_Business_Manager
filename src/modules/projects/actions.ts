@@ -73,7 +73,7 @@ export async function deleteProject(projectId: string) {
   })
   if (!project) throw new Error('Project not found')
 
-  await prisma.project.delete({
+  await prisma.project.deleteMany({
     where: { id: projectId }
   })
 

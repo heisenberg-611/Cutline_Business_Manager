@@ -44,7 +44,7 @@ export async function deleteAsset(assetId: string) {
   })
   if (!asset) throw new Error('Asset not found')
 
-  await prisma.asset.delete({
+  await prisma.asset.deleteMany({
     where: { id: assetId }
   })
 
@@ -94,7 +94,7 @@ export async function unlinkAssetFromProject(projectId: string, assetId: string)
   const project = await prisma.project.findFirst({ where: { id: projectId, businessId: orgId } })
   if (!project) throw new Error('Project not found')
 
-  await prisma.projectAsset.delete({
+  await prisma.projectAsset.deleteMany({
     where: {
       projectId_assetId: { projectId, assetId }
     }

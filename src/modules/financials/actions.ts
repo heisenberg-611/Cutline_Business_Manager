@@ -202,7 +202,7 @@ export async function deleteInvoice(id: string) {
 
     await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id } })
     await tx.payment.deleteMany({ where: { invoiceId: id } })
-    await tx.invoice.delete({ where: { id } })
+    await tx.invoice.deleteMany({ where: { id } })
 
     await tx.auditLog.create({
       data: {

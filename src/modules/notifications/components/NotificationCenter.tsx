@@ -22,6 +22,7 @@ export function NotificationCenter() {
   const [loading, setLoading] = React.useState(true)
   const [open, setOpen] = React.useState(false)
   const prevTopNotificationId = React.useRef<string | null>(null)
+  const isInitialFetch = React.useRef(true)
 
   const playNotificationSound = React.useCallback(() => {
     try {
@@ -61,14 +62,21 @@ export function NotificationCenter() {
       const data = await getNotifications()
       setNotifications(data)
       
-      // Check if there is a new unread notification at the top
-      if (data.length > 0 && !data[0].isRead) {
-        if (prevTopNotificationId.current && prevTopNotificationId.current !== data[0].id) {
-          playNotificationSound()
+      if (isInitialFetch.current) {
+        isInitialFetch.current = false
+        if (data.length > 0) {
+          prevTopNotificationId.current = data[0].id
         }
-        prevTopNotificationId.current = data[0].id
-      } else if (data.length > 0) {
-        prevTopNotificationId.current = data[0].id
+      } else {
+        // Check if there is a new unread notification at the top
+        if (data.length > 0 && !data[0].isRead) {
+          if (prevTopNotificationId.current !== data[0].id) {
+            playNotificationSound()
+          }
+        }
+        if (data.length > 0) {
+          prevTopNotificationId.current = data[0].id
+        }
       }
     } catch (e) {
       console.error(e)

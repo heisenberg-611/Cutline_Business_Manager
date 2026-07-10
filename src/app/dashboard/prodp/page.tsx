@@ -17,15 +17,13 @@ export default async function ProdPPage() {
   const activeProjects = await prisma.project.findMany({
     where: { businessId: orgId, isArchived: false },
     orderBy: { createdAt: 'desc' },
-    include: { client: true },
-    cacheStrategy: { ttl: 30, swr: 30 }
+    include: { client: true }
   })
 
   const reviewRequests = await prisma.reviewRequest.findMany({
     where: { businessId: orgId },
     orderBy: { createdAt: 'desc' },
-    include: { project: true, client: true },
-    cacheStrategy: { ttl: 30, swr: 30 }
+    include: { project: true, client: true }
   })
 
   return (

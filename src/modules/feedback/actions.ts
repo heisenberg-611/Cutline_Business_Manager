@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import prisma from '@/modules/core/db/prisma'
 import { randomBytes } from 'crypto'
 import { sendFeedbackEmail } from '@/lib/email/resend'
-import { createNotification } from '@/modules/notifications/actions'
+import { createNotification, broadcastNotification } from '@/modules/notifications/actions'
 import { getAppUrl } from '@/lib/utils'
 
 // -----------------------------------------------------------------------------
@@ -207,7 +207,7 @@ export async function deleteFeedbackResponse(responseId: string) {
   })
 
   if (response) {
-    await prisma.feedbackRequest.delete({
+    await prisma.feedbackRequest.deleteMany({
       where: { id: response.requestId }
     })
   }
@@ -287,20 +287,13 @@ export async function submitFeedbackResponse(
 
   // Notify all business members
   try {
-    const memberships = await prisma.businessMembership.findMany({
-      where: { businessId: request.businessId }
+    await broadcastNotification({
+      businessId: request.businessId,
+      title: "New Client Feedback",
+      message: `${request.client.displayName} just submitted feedback for "${request.project.title}" (Score: ${data.overallScore}/10).`,
+      type: "feedback",
+      actionUrl: "/dashboard/feedback"
     })
-    
-    for (const membership of memberships) {
-      await createNotification({
-        userId: membership.userId,
-        businessId: request.businessId,
-        title: "New Client Feedback",
-        message: `${request.client.displayName} just submitted feedback for "${request.project.title}" (Score: ${data.overallScore}/10).`,
-        type: "feedback",
-        actionUrl: "/dashboard/feedback"
-      })
-    }
   } catch (err) {
     console.error("Failed to send feedback notification:", err)
   }
