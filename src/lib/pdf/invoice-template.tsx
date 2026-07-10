@@ -223,10 +223,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.lineSoft,
   },
-  colDesc: { width: '50%' },
-  colQty: { width: '12%', textAlign: 'center' },
-  colRate: { width: '19%', textAlign: 'right' },
-  colAmount: { width: '19%', textAlign: 'right' },
+  colDesc: { width: '44%' },
+  colQty: { width: '10%', textAlign: 'center' },
+  colRate: { width: '21%', textAlign: 'right' },
+  colAmount: { width: '25%', textAlign: 'right' },
   headerText: {
     fontSize: 8,
     fontWeight: 700,
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   totalsArea: {
-    width: '45%',
+    width: '55%',
     backgroundColor: COLORS.surface,
     borderRadius: 6,
     padding: 16,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   grandTotalValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 700,
     color: COLORS.accent,
     fontVariant: ['tabular-nums'],

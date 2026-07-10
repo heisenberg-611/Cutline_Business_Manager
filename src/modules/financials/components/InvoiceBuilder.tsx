@@ -123,14 +123,16 @@ export default function InvoiceBuilder({
             setClientId(val || '')
             setProjectId('') // reset project when client changes
           }} required>
-            <SelectTrigger>
+            <SelectTrigger className="w-full !h-auto min-h-[38px] whitespace-normal text-left [&_[data-slot=select-value]]:line-clamp-none [&_[data-slot=select-value]]:whitespace-normal [&_[data-slot=select-value]]:break-words">
               <SelectValue placeholder="Select Client">
                 {clientId ? clients.find(c => c.id === clientId)?.displayName : ""}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {clients.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.displayName}</SelectItem>
+                <SelectItem key={c.id} value={c.id} className="whitespace-normal break-words [&_[data-slot=select-item]]:whitespace-normal">
+                  <span className="whitespace-normal break-words text-left block w-full">{c.displayName}</span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -159,14 +161,16 @@ export default function InvoiceBuilder({
               }
             }
           }} disabled={!clientId || availableProjects.length === 0}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full !h-auto min-h-[38px] whitespace-normal text-left [&_[data-slot=select-value]]:line-clamp-none [&_[data-slot=select-value]]:whitespace-normal [&_[data-slot=select-value]]:break-words">
               <SelectValue placeholder={!clientId ? "Select a client first" : "Select Project"}>
                  {projectId ? projects.find(p => p.id === projectId)?.title : ""}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {availableProjects.map(p => (
-                <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                <SelectItem key={p.id} value={p.id} className="whitespace-normal break-words [&_[data-slot=select-item]]:whitespace-normal">
+                  <span className="whitespace-normal break-words text-left block w-full">{p.title}</span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
