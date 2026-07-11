@@ -352,5 +352,4 @@ This project is [MIT](LICENSE) licensed. © 2026 Dhrubojyoti
 
 ## 📚 Documentation
 
-For a deep dive into the system architecture, database schema, API conventions, and contributing guidelines, please refer to our comprehensive documentation suite:
-- [Read the Cutline OS Documentation](DOCUMENTATION.md)
+For a deep dive into the system architecture, database schema, API conventions, and contributing guidelines go to the [Wiki section](https://github.com/heisenberg-611/Cutline_Business_manager/wiki)
