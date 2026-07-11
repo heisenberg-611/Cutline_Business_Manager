@@ -14,8 +14,6 @@ export default async function AnalyticsPage() {
   }
 
   return (
-    <div className="container py-8 w-full mx-auto h-[calc(100vh-4rem)] overflow-y-auto">
-      <AnalyticsDashboard />
-    </div>
+    <AnalyticsDashboard />
   )
 }

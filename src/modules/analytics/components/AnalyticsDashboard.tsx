@@ -55,7 +55,7 @@ export function AnalyticsDashboard() {
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">Analytics Overview</h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Track your workflow performance and financial growth.</p>
