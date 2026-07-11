@@ -47,77 +47,92 @@ export async function POST(req: Request) {
 
   const eventType = evt.type
 
-  if (eventType === 'organization.created' || eventType === 'organization.updated') {
-    const { id, name } = evt.data
-    
-    await prisma.business.upsert({
-      where: { id },
-      update: { name },
-      create: {
-        id,
-        name,
-        defaultCurrency: 'USD'
-      }
-    })
-  }
+  try {
+    if (eventType === 'organization.created' || eventType === 'organization.updated') {
+      const { id, name } = evt.data
+      
+      await prisma.business.upsert({
+        where: { id },
+        update: { name },
+        create: {
+          id,
+          name,
+          defaultCurrency: 'USD'
+        }
+      })
+    }
 
-  if (eventType === 'user.created' || eventType === 'user.updated') {
-    const { id, email_addresses, first_name, last_name, image_url } = evt.data
-    const primaryEmail = email_addresses.find(e => e.id === evt.data.primary_email_address_id)?.email_address || email_addresses[0]?.email_address || ''
-    
-    await prisma.user.upsert({
-      where: { id },
-      update: {
-        email: primaryEmail,
-        firstName: first_name,
-        lastName: last_name,
-        imageUrl: image_url
-      },
-      create: {
-        id,
-        email: primaryEmail,
-        firstName: first_name,
-        lastName: last_name,
-        imageUrl: image_url
+    if (eventType === 'user.created' || eventType === 'user.updated') {
+      const { id, email_addresses, first_name, last_name, image_url } = evt.data
+      
+      // Safety check: ensure email_addresses exists
+      let primaryEmail = ''
+      if (email_addresses && Array.isArray(email_addresses)) {
+        primaryEmail = email_addresses.find((e: any) => e.id === (evt.data as any).primary_email_address_id)?.email_address 
+          || email_addresses[0]?.email_address 
+          || ''
       }
-    })
-  }
+      
+      await prisma.user.upsert({
+        where: { id },
+        update: {
+          email: primaryEmail,
+          firstName: first_name || '',
+          lastName: last_name || '',
+          imageUrl: image_url || ''
+        },
+        create: {
+          id,
+          email: primaryEmail,
+          firstName: first_name || '',
+          lastName: last_name || '',
+          imageUrl: image_url || ''
+        }
+      })
+    }
 
-  if (eventType === 'organizationMembership.created' || eventType === 'organizationMembership.updated') {
-    const { organization, public_user_data, role } = evt.data
-    
-    if (public_user_data && public_user_data.user_id) {
-      await prisma.businessMembership.upsert({
-        where: {
-          businessId_userId: {
+    if (eventType === 'organizationMembership.created' || eventType === 'organizationMembership.updated') {
+      const { organization, public_user_data, role } = evt.data
+      
+      if (public_user_data && public_user_data.user_id) {
+        await prisma.businessMembership.upsert({
+          where: {
+            businessId_userId: {
+              businessId: organization.id,
+              userId: public_user_data.user_id
+            }
+          },
+          update: {
+            role
+          },
+          create: {
+            businessId: organization.id,
+            userId: public_user_data.user_id,
+            role
+          }
+        })
+      }
+    }
+
+    if (eventType === 'organizationMembership.deleted') {
+      const { organization, public_user_data } = evt.data
+      
+      if (public_user_data && public_user_data.user_id) {
+        await prisma.businessMembership.deleteMany({
+          where: {
             businessId: organization.id,
             userId: public_user_data.user_id
           }
-        },
-        update: {
-          role
-        },
-        create: {
-          businessId: organization.id,
-          userId: public_user_data.user_id,
-          role
-        }
-      })
+        })
+      }
     }
-  }
 
-  if (eventType === 'organizationMembership.deleted') {
-    const { organization, public_user_data } = evt.data
-    
-    if (public_user_data && public_user_data.user_id) {
-      await prisma.businessMembership.deleteMany({
-        where: {
-          businessId: organization.id,
-          userId: public_user_data.user_id
-        }
-      })
-    }
+    return new Response(JSON.stringify({ success: true }), { status: 200 })
+  } catch (error: any) {
+    console.error('Webhook Database Error:', error)
+    return new Response(JSON.stringify({ error: error.message || 'Unknown Database Error' }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    })
   }
-
-  return new Response('', { status: 200 })
 }
