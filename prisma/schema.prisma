@@ -52,13 +52,14 @@ model Business {
 }
 
 model User {
-  id        String   @id // Matches Clerk User ID
-  email     String   @unique
-  firstName String?
-  lastName  String?
-  imageUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id // Matches Clerk User ID
+  email          String   @unique
+  firstName      String?
+  lastName       String?
+  imageUrl       String?
+  navPreferences Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   memberships   BusinessMembership[]
   notifications Notification[]

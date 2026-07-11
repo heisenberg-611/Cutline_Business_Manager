@@ -6,21 +6,23 @@ import { CurrencySelector } from '@/modules/settings/components/CurrencySelector
 import { Building2, Workflow, DollarSign, Mail } from 'lucide-react'
 import Link from 'next/link'
 import { BusinessNameEditor } from '@/modules/settings/components/BusinessNameEditor'
+import { NavPreferencesEditor } from '@/modules/settings/components/NavPreferencesEditor'
+import { WorkflowPresetSelector } from '@/modules/settings/components/WorkflowPresetSelector'
+
+import { ensureDefaultTemplate } from '@/modules/workflow/actions'
 
 export const metadata = {
   title: 'Settings',
 }
 
 export default async function SettingsPage() {
-  const { orgId } = await auth()
-  if (!orgId) redirect('/dashboard/select-business')
+  const { orgId, userId } = await auth()
+  if (!orgId || !userId) redirect('/dashboard/select-business')
 
-  const [business, template] = await Promise.all([
+  const [business, template, user] = await Promise.all([
     prisma.business.findUnique({ where: { id: orgId } }),
-    prisma.workflowTemplate.findFirst({
-      where: { businessId: orgId },
-      include: { stages: { orderBy: { orderIndex: 'asc' } } },
-    }),
+    ensureDefaultTemplate(orgId),
+    prisma.user.findUnique({ where: { id: userId } }),
   ])
 
   if (!business) redirect('/dashboard/select-business')
@@ -36,6 +38,20 @@ export default async function SettingsPage() {
           Manage your studio configuration, pipeline stages, and preferences.
         </p>
       </div>
+
+      {/* Workflow Presets */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Workflow Presets</h4>
+            <p className="text-xs text-zinc-500">Quickly apply an industry-standard layout for your pipeline and navigation</p>
+          </div>
+        </div>
+        <WorkflowPresetSelector />
+      </section>
 
       {/* Business Info */}
       <section className="space-y-4">
@@ -112,6 +128,24 @@ export default async function SettingsPage() {
           ) : (
             <p className="text-sm text-zinc-500">No pipeline template found. Visit the Pipeline page to auto-create one.</p>
           )}
+        </div>
+      </section>
+
+      {/* Navigation Preferences */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Navigation Preferences</h4>
+            <p className="text-xs text-zinc-500">Customize your sidebar by reordering or hiding items</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-xl p-6">
+          <NavPreferencesEditor 
+            initialPreferences={user?.navPreferences as any} 
+          />
         </div>
       </section>
     </div>

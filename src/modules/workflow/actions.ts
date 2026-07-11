@@ -5,14 +5,14 @@ import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
 
 const DEFAULT_STAGES = [
-  { name: 'Raw Footage', orderIndex: 0 },
-  { name: 'Sync & Prep', orderIndex: 1 },
-  { name: 'Rough Cut', orderIndex: 2 },
-  { name: 'Fine Cut', orderIndex: 3 },
-  { name: 'Color & Sound', orderIndex: 4 },
-  { name: 'Client Review', orderIndex: 5 },
-  { name: 'Revisions', orderIndex: 6 },
-  { name: 'Final Delivery', orderIndex: 7 }
+  { name: 'Idea / Discovery', orderIndex: 0 },
+  { name: 'Planning & Prep', orderIndex: 1 },
+  { name: 'Drafting / Execution', orderIndex: 2 },
+  { name: 'Internal Review', orderIndex: 3 },
+  { name: 'Refinement', orderIndex: 4 },
+  { name: 'Client Feedback', orderIndex: 5 },
+  { name: 'Final Polish', orderIndex: 6 },
+  { name: 'Delivered', orderIndex: 7 }
 ]
 
 export async function ensureDefaultTemplate(orgId: string) {
@@ -49,7 +49,7 @@ export async function ensureDefaultTemplate(orgId: string) {
   const template = await prisma.workflowTemplate.create({
     data: {
       businessId: orgId,
-      name: 'Standard Editing Pipeline',
+      name: 'Standard Creative Workflow',
       projectType: 'General',
       stages: {
         create: DEFAULT_STAGES

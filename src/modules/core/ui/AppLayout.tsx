@@ -8,7 +8,7 @@ import { motion } from 'framer-motion'
 import dynamic from 'next/dynamic'
 
 const GlobalSearch = dynamic(
-  () => import('./GlobalSearch').then(mod => mod.GlobalSearch), 
+  () => import('./GlobalSearch').then(mod => mod.GlobalSearch),
   { ssr: false }
 )
 const CurrencyConverter = dynamic(
@@ -21,14 +21,15 @@ const NotificationCenter = dynamic(
 )
 import { ThemeToggle } from '@/components/theme-toggle'
 import DashboardLoading from '@/app/dashboard/loading'
+import { ALL_NAV_ITEMS } from './navigation'
 
-import { 
-  Briefcase, 
-  Users, 
-  FolderKanban, 
+import {
+  Briefcase,
+  Users,
+  FolderKanban,
   Kanban,
-  Wallet, 
-  Settings, 
+  Wallet,
+  Settings,
   Search,
   Command as CmdIcon,
   Box,
@@ -46,7 +47,7 @@ import {
   X
 } from 'lucide-react'
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout({ children, initialNavPreferences }: { children: React.ReactNode, initialNavPreferences?: { href: string; visible: boolean }[] }) {
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -93,18 +94,28 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener('keydown', down)
   }, [])
 
-  const navItems = [
-    { label: 'Dashboard', icon: Briefcase, href: '/dashboard' },
-    { label: 'Pipeline', icon: Kanban, href: '/dashboard/pipeline' },
-    { label: 'Projects', icon: FolderKanban, href: '/dashboard/projects' },
-    { label: 'ProdP', icon: Video, href: '/dashboard/prodp' },
-    { label: 'Clients', icon: Users, href: '/dashboard/clients' },
-    { label: 'Financials', icon: Wallet, href: '/dashboard/financials' },
-    { label: 'Reports', icon: BarChart3, href: '/dashboard/reports' },
-    { label: 'Assets', icon: Box, href: '/dashboard/assets' },
-    { label: 'Feedback', icon: MessageSquare, href: '/dashboard/feedback' },
-    { label: 'Archive', icon: Archive, href: '/dashboard/archive' },
-  ]
+  const navItems = React.useMemo(() => {
+    if (!initialNavPreferences || initialNavPreferences.length === 0) {
+      return ALL_NAV_ITEMS
+    }
+
+    const preferenceMap = new Map(initialNavPreferences.map(p => [p.href, p]))
+
+    const sorted = [...ALL_NAV_ITEMS].sort((a, b) => {
+      const indexA = initialNavPreferences.findIndex(p => p.href === a.href)
+      const indexB = initialNavPreferences.findIndex(p => p.href === b.href)
+
+      if (indexA === -1 && indexB === -1) return 0
+      if (indexA === -1) return 1
+      if (indexB === -1) return -1
+      return indexA - indexB
+    })
+
+    return sorted.filter(item => {
+      const pref = preferenceMap.get(item.href)
+      return pref ? pref.visible : true
+    })
+  }, [initialNavPreferences])
 
   // Contextual Topbar Logic
   const getContextualTitle = () => {
@@ -113,32 +124,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-[100dvh] w-full bg-zinc-50 dark:bg-[#0A0A0A] text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans">
-      
+
       {/* LEFT SIDEBAR */}
-      <aside 
+      <aside
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         className={`hidden md:flex border-r border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-[#0A0A0A] flex-col transition-all duration-300 ease-in-out-smooth z-20 ${isExpanded ? 'w-64' : 'w-16'}`}
       >
         {/* Business Switcher Top Header */}
-        <div className="h-14 flex items-center px-4 border-b border-zinc-200 dark:border-white/10 overflow-hidden">
-          <div className={`transition-opacity duration-200 ${isCollapsed ? 'opacity-0 w-0' : 'opacity-100 w-full'}`}>
-            <OrganizationSwitcher 
+        <div className={`h-14 flex items-center border-b border-zinc-200 dark:border-white/10 overflow-hidden shrink-0 transition-all ${isCollapsed ? 'px-0 justify-center' : 'px-4'}`}>
+          <div className={`transition-all duration-200 flex items-center ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-full'}`}>
+            <OrganizationSwitcher
               hidePersonal
               appearance={{
                 elements: {
-                  organizationSwitcherTrigger: "focus:shadow-none focus:outline-none w-full justify-start",
-                  organizationPreviewMainIdentifier: "font-semibold text-sm",
+                  organizationSwitcherTrigger: "focus:shadow-none focus:outline-none w-full justify-start py-2 px-0",
+                  organizationPreviewMainIdentifier: "font-semibold text-base",
+                  organizationPreviewAvatarContainer: "!w-8 !h-8 shrink-0",
+                  organizationPreviewAvatarBox: "!w-8 !h-8",
+                  avatarBox: "!w-8 !h-8",
+                  avatarImage: "!w-8 !h-8",
+                  organizationPreview: "gap-3 items-center"
                 }
               }}
             />
           </div>
           {isCollapsed && (
-            <div className="w-full flex justify-center text-zinc-900 dark:text-white font-bold">
+            <div className="flex justify-center items-center w-[32px] min-w-[32px] h-[32px] text-zinc-900 dark:text-white font-bold">
               {organization?.imageUrl ? (
-                <img src={organization.imageUrl} alt={organization.name} className="w-8 h-8 rounded-md object-cover" />
+                <img src={organization.imageUrl} alt={organization.name} className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-md object-cover shrink-0" />
               ) : (
-                "C"
+                <div className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-md bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center shrink-0 text-sm">C</div>
               )}
             </div>
           )}
@@ -150,13 +166,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             const currentPath = optimisticPathname || pathname
             const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href))
             return (
-              <motion.div 
+              <motion.div
                 key={item.href}
                 initial="initial"
                 whileHover="hover"
                 whileTap="tap"
               >
-                <Link 
+                <Link
                   href={item.href}
                   onClick={() => {
                     // Only trigger the instant skeleton if navigating to a different route
@@ -165,11 +181,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       setOptimisticPathname(item.href)
                     }
                   }}
-                  className={`group relative z-0 flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                    isActive 
-                    ? 'text-zinc-900 dark:text-white' 
-                    : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5'
-                  } ${isCollapsed ? 'justify-center' : ''}`}
+                  className={`group relative z-0 flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${isActive
+                      ? 'text-zinc-900 dark:text-white'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5'
+                    } ${isCollapsed ? 'justify-center' : ''}`}
                   title={isCollapsed ? item.label : undefined}
                 >
                   {isActive && (
@@ -189,7 +204,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   >
                     <item.icon className={`h-4 w-4 shrink-0 transition-colors ${isActive ? '' : 'group-hover:text-indigo-500 dark:group-hover:text-indigo-400'}`} />
                   </motion.div>
-                  {!isCollapsed && <span>{item.label}</span>}
+                  {!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
                 </Link>
               </motion.div>
             )
@@ -199,12 +214,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Bottom Actions */}
         <div className="p-3 border-t border-zinc-200 dark:border-white/10 space-y-1">
           <motion.div initial="initial" whileHover="hover" whileTap="tap">
-            <button 
+            <button
               onClick={() => setIsCommandOpen(true)}
               className={`group w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isCollapsed ? 'justify-center' : 'justify-between'}`}
               title={isCollapsed ? 'Search (Cmd+K)' : undefined}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 overflow-hidden">
                 <motion.div
                   variants={{
                     initial: { scale: 1 },
@@ -215,20 +230,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                 </motion.div>
-                {!isCollapsed && <span>Search...</span>}
+                {!isCollapsed && <span className="whitespace-nowrap">Search...</span>}
               </div>
               {!isCollapsed && (
-                <span className="flex items-center text-xs opacity-50 bg-zinc-200 dark:bg-white/10 px-1.5 py-0.5 rounded">
-                  <CmdIcon className="h-3 w-3 mr-0.5" /> K
+                <span className="flex items-center text-xs opacity-50 bg-zinc-200 dark:bg-white/10 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
+                  <CmdIcon className="h-3 w-3 mr-0.5 shrink-0" /> K
                 </span>
               )}
             </button>
           </motion.div>
-          
+
           <motion.div initial="initial" whileHover="hover" whileTap="tap">
             <button 
               onClick={() => setIsCurrencyConverterOpen(true)}
-              className={`group w-full flex items-center px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isCollapsed ? 'justify-center' : 'justify-start gap-3'}`}
+              className={`group w-full flex items-center gap-3 px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isCollapsed ? 'justify-center' : ''}`}
               title={isCollapsed ? 'Currency Converter' : undefined}
             >
               <motion.div
@@ -241,12 +256,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
               </motion.div>
-              {!isCollapsed && <span>Currency Converter</span>}
+              {!isCollapsed && <span className="whitespace-nowrap">Currency Converter</span>}
             </button>
           </motion.div>
-          
+
           <motion.div initial="initial" whileHover="hover" whileTap="tap">
-            <Link 
+            <Link
               href="/dashboard/settings"
               className={`group flex items-center gap-3 px-3 py-2 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isCollapsed ? 'justify-center' : ''}`}
               title={isCollapsed ? 'Settings' : undefined}
@@ -261,7 +276,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <Settings className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
               </motion.div>
-              {!isCollapsed && <span>Settings</span>}
+              {!isCollapsed && <span className="whitespace-nowrap">Settings</span>}
             </Link>
           </motion.div>
 
@@ -270,10 +285,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <motion.div initial="initial" whileHover="hover" whileTap="tap">
             <button 
               onClick={togglePin}
-              className={`group w-full flex items-center py-2 px-3 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isExpanded ? 'justify-between' : 'justify-center'}`}
+              className={`group w-full flex items-center gap-3 py-2 px-3 text-sm text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50 dark:hover:text-zinc-100 dark:hover:bg-white/5 rounded-md transition-colors ${isExpanded ? '' : 'justify-center'}`}
               title={isExpanded ? (isPinned ? 'Unpin Sidebar' : 'Pin Sidebar') : undefined}
             >
-              {isExpanded && <span>{isPinned ? 'Unpin' : 'Pin'}</span>}
               <motion.div
                 variants={{
                   initial: { scale: 1 },
@@ -288,6 +302,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <Pin className="h-4 w-4 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                 )}
               </motion.div>
+              {isExpanded && <span className="whitespace-nowrap">{isPinned ? 'Unpin' : 'Pin'}</span>}
             </button>
           </motion.div>
         </div>
@@ -298,9 +313,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Contextual Top bar */}
         <header className="h-14 flex items-center justify-between px-4 md:px-6 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-[#0A0A0A] shrink-0">
           <div className="flex items-center gap-3 md:gap-4">
-            <h1 className="hidden md:block text-sm font-medium text-zinc-900 dark:text-zinc-100">{getContextualTitle()}</h1>
+            <div className="hidden md:flex items-center gap-2">
+              <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0">
+                <img src="/icon.svg" alt="Cutline OS Logo" className="w-full h-full object-contain dark:invert" />
+              </div>
+              <h1 className="text-base font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{getContextualTitle()}</h1>
+            </div>
             <div className="md:hidden">
-              <OrganizationSwitcher 
+              <OrganizationSwitcher
                 hidePersonal
                 appearance={{
                   elements: {
@@ -315,7 +335,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="md:hidden">
               <ThemeToggle isCollapsed={true} />
             </div>
-            <button 
+            <button
               onClick={() => setIsQuickActionsOpen(true)}
               className="hidden md:flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm hover:opacity-90 transition-opacity"
             >
@@ -326,7 +346,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <UserButton />
           </div>
         </header>
-        
+
         <div className="flex-1 overflow-auto p-4 md:p-10 relative pb-24 md:pb-10">
           <div className="mx-auto w-full">
             {isNavigating ? <DashboardLoading /> : children}
@@ -336,8 +356,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* QUICK ACTIONS SLIDE-OUT PANEL */}
         {isQuickActionsOpen && (
           <>
-            <div 
-              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity" 
+            <div
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm transition-opacity"
               onClick={() => setIsQuickActionsOpen(false)}
             />
             <div className="fixed inset-y-0 right-0 z-50 w-full max-w-sm bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-white/10 shadow-2xl animate-in slide-in-from-right duration-200 ease-out-smooth">
@@ -380,11 +400,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   setOptimisticPathname(item.href)
                 }
               }}
-              className={`flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center transition-colors ${
-                isActive 
-                ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10' 
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-              }`}
+              className={`flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center transition-colors ${isActive
+                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10'
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                }`}
             >
               <item.icon className="w-5 h-5 shrink-0" />
               <span className="text-[10px] font-medium">{item.label}</span>
@@ -394,16 +413,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <div className="w-[1px] h-8 bg-zinc-200 dark:bg-white/10 shrink-0 mx-1" />
 
-        <button 
-          onClick={() => setIsCurrencyConverterOpen(true)} 
+        <button
+          onClick={() => setIsCurrencyConverterOpen(true)}
           className="flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
         >
           <Calculator className="w-5 h-5 shrink-0" />
           <span className="text-[10px] font-medium">Calculator</span>
         </button>
 
-        <Link 
-          href="/dashboard/settings" 
+        <Link
+          href="/dashboard/settings"
           className="flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
         >
           <Settings className="w-5 h-5 shrink-0" />

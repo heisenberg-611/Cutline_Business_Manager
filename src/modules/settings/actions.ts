@@ -3,6 +3,19 @@
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
+import { WORKFLOW_PRESETS } from './config/presets'
+import { ALL_NAV_ITEMS } from '@/modules/core/ui/navigation'
+
+const DEFAULT_STAGES = [
+  { name: 'Idea / Discovery', orderIndex: 0 },
+  { name: 'Planning & Prep', orderIndex: 1 },
+  { name: 'Drafting / Execution', orderIndex: 2 },
+  { name: 'Internal Review', orderIndex: 3 },
+  { name: 'Refinement', orderIndex: 4 },
+  { name: 'Client Feedback', orderIndex: 5 },
+  { name: 'Final Polish', orderIndex: 6 },
+  { name: 'Delivered', orderIndex: 7 }
+]
 
 /**
  * Update the business's default currency.
@@ -175,4 +188,137 @@ export async function reorderWorkflowStages(stageIds: string[]) {
 
   revalidatePath('/dashboard/settings')
   revalidatePath('/dashboard/pipeline')
+}
+
+/**
+ * Update the user's navigation preferences.
+ */
+export async function updateNavPreferences(preferences: { href: string; visible: boolean }[]) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { navPreferences: preferences },
+  })
+
+  revalidatePath('/dashboard', 'layout')
+}
+
+/**
+ * Apply a complete workflow preset (Navigation + Pipeline Stages).
+ */
+export async function applyWorkflowPreset(presetId: string) {
+  const { orgId, userId } = await auth()
+  if (!orgId || !userId) throw new Error('Unauthorized')
+
+  const preset = WORKFLOW_PRESETS.find(p => p.id === presetId)
+  if (!preset) throw new Error('Preset not found')
+
+  // 1. Update User Nav Preferences
+  await prisma.user.update({
+    where: { id: userId },
+    data: { navPreferences: preset.navPreferences },
+  })
+
+  // 2. Fetch Business Workflow Template
+  const template = await prisma.workflowTemplate.findFirst({
+    where: { businessId: orgId },
+    include: { stages: true },
+  })
+
+  if (!template) throw new Error('Workflow template not found')
+
+  // 3. Create new stages
+  const newStages = await Promise.all(
+    preset.pipelineStages.map((name, index) =>
+      prisma.workflowStage.create({
+        data: {
+          templateId: template.id,
+          name,
+          orderIndex: index,
+        },
+      })
+    )
+  )
+
+  const firstNewStage = newStages[0]
+
+  // 4. Update existing projects to the first new stage
+  const oldStageIds = template.stages.map(s => s.id)
+  
+  if (oldStageIds.length > 0) {
+    await prisma.project.updateMany({
+      where: {
+        statusStageId: { in: oldStageIds },
+      },
+      data: {
+        statusStageId: firstNewStage.id,
+      },
+    })
+
+    // 5. Delete old stages
+    await prisma.workflowStage.deleteMany({
+      where: {
+        id: { in: oldStageIds },
+      },
+    })
+  }
+
+  // 6. Revalidate UI
+  revalidatePath('/dashboard', 'layout')
+}
+
+/**
+ * Restore user navigation and business pipeline back to their defaults.
+ */
+export async function restoreDefaults() {
+  const { orgId, userId } = await auth()
+  if (!orgId || !userId) throw new Error('Unauthorized')
+
+  // 1. Reset Nav Preferences
+  const defaultNavPrefs = ALL_NAV_ITEMS.map(item => ({ href: item.href, visible: true }))
+  await prisma.user.update({
+    where: { id: userId },
+    data: { navPreferences: defaultNavPrefs },
+  })
+
+  // 2. Fetch Template
+  const template = await prisma.workflowTemplate.findFirst({
+    where: { businessId: orgId },
+    include: { stages: true },
+  })
+
+  if (!template) throw new Error('Workflow template not found')
+
+  // 3. Create Default Stages
+  const newStages = await Promise.all(
+    DEFAULT_STAGES.map((stage) =>
+      prisma.workflowStage.create({
+        data: {
+          templateId: template.id,
+          name: stage.name,
+          orderIndex: stage.orderIndex,
+        },
+      })
+    )
+  )
+
+  const firstNewStage = newStages[0]
+
+  // 4. Migrate projects and delete old stages
+  const oldStageIds = template.stages.map(s => s.id)
+  
+  if (oldStageIds.length > 0) {
+    await prisma.project.updateMany({
+      where: { statusStageId: { in: oldStageIds } },
+      data: { statusStageId: firstNewStage.id },
+    })
+
+    await prisma.workflowStage.deleteMany({
+      where: { id: { in: oldStageIds } },
+    })
+  }
+
+  revalidatePath('/dashboard', 'layout')
 }

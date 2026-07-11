@@ -35,7 +35,7 @@ export async function createClient(data: FormData) {
       phone: phone ? phone.toString() : null,
       industry: industry ? industry.toString() : null,
       preferredChannel: preferredChannel ? preferredChannel.toString() : null,
-      internalRating: 3 // Default 3 stars
+      internalRating: 5 // Default 5 stars
     }
   })
 

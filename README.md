@@ -59,7 +59,7 @@ Experience the elegant, professional interface of Cutline OS:
     </td>
     <td width="50%" align="center">
       <img src="public/SS6.JPG" width="100%" />
-      <br><b>Reports and Analytics</b>
+      <br><b>Visual Analytics Dashboard</b>
     </td>
   </tr>
   <tr>
@@ -81,7 +81,8 @@ Experience the elegant, professional interface of Cutline OS:
 
 ### 💼 **Professional Dashboard**
 - **Business Health Dashboard**: Real-time insights into MTD Revenue, Days Sales Outstanding (DSO), Overdue Invoices, and At-Risk Deadlines
-- **Data Export & Reporting**: 1-click comprehensive CSV exports for both Projects and Invoices
+- **Visual Analytics Dashboard**: Recharts-powered interactive charts tracking Revenue Over Time, Project Volume by Stage, and Pipeline Distribution
+- **Data Export**: 1-click comprehensive CSV exports for both Projects and Invoices
 - **Global Command Palette** (Cmd+K): Instantly search and navigate across projects, clients, invoices, and assets
 - **Calm, Professional UI**: Inspired by Linear and Stripe with a true-gray aesthetic
 
@@ -89,7 +90,7 @@ Experience the elegant, professional interface of Cutline OS:
 - Comprehensive client directory with full contact information
 - Track preferred communication channels (Email, Slack, WhatsApp)
 - **Sequential IDs**: Clean, human-readable tracking IDs (`PRJ-XXX`, `CL-XXX`) automatically generated for precise record keeping
-- **5-Star Rating System**: Rate clients for lifetime value analysis, with smart sorting bringing your top-rated clients to the top of the list instantly.
+- **5-Star Rating System**: Rate clients for lifetime value analysis (defaults to 5-stars for new clients). Smart sorting brings your top-rated clients to the top of the list instantly.
 - Client performance insights and project history
 
 ### 📊 **Advanced Financials Engine**
@@ -128,7 +129,8 @@ Experience the elegant, professional interface of Cutline OS:
 
 ### ⚙️ **Customizable Settings**
 - Set default currency for your business
-- Fully customize pipeline stages to match your workflow
+- Fully customize pipeline stages to match your workflow (with built-in 1-click presets for specific creative industries)
+- 1-click **Restore Defaults** option to safely reset your pipeline and dashboard UI
 - Configure team members and roles
 
 ---

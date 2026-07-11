@@ -14,13 +14,14 @@ Once inside the dashboard, your first stop should be the **Settings** gear (bott
 * **Team Management**: Invite your team members! Cutline OS uses **Role-Based Access Control (RBAC)**.
   * **Admins**: Have full access to financials, clients, settings, and pipeline management.
   * **Members**: Have restricted, read-only access limited entirely to the **Pipeline** to see project statuses, without seeing sensitive financial data.
+* **Workflow Presets**: Under Settings, you can fully customize your project pipeline stages or instantly load a preset (like a Video Editor or Software Agency workflow). You can also click **Restore Defaults** at any time.
 * **Invoicing Settings**: Set your Default Currency (e.g. $, ₹, ৳, £), Invoice Prefix, and add any specific **Payment Instructions** (like your Bank Details, PayPal, or Stripe links). This will automatically appear on all future invoices!
 
 ## 2. Managing Your Clients 🤝
 Everything starts with your clients. Head over to the **Clients** tab to add them.
 * Click **"New Client"**.
 * Fill in their Name, Company, Email, and Phone.
-* **Pro Tip**: Use the **5-Star Rating system**! If a client is a joy to work with, give them 5 stars. Cutline OS will **smartly sort** your client list, keeping your highest-rated, most valuable clients right at the top for quick access.
+* **Pro Tip**: Use the **5-Star Rating system**! A new client defaults to a perfect 5 stars. If a client is a joy to work with, keep them at 5 stars. Cutline OS will **smartly sort** your client list, keeping your highest-rated, most valuable clients right at the top for quick access.
 
 ## 3. Creating & Managing Projects 🚀
 Got a new gig? Awesome! Go to the **Projects** tab.
@@ -56,7 +57,13 @@ When the client pays you (via bank transfer, cash, etc.):
 3. Enter the amount paid, the method (Bank, Card, Cash), and the **exact date and time** the payment was received.
 4. The invoice will update to **"Partially Paid"** or **"Paid"** instantly. Furthermore, any **PDFs generated** will display the exact timestamp of that payment on the receipt!
 
-## 6. The Command Palette (Cmd+K) ⚡
+## 6. Visual Analytics 📊
+Want to see how your business is doing? Head over to the **Analytics** tab. 
+* See a visual **Revenue Over Time** chart powered by Recharts.
+* View your **Pipeline Distribution** via a clean Pie chart.
+* Export all your Project or Invoice data to CSV with just 1-click for external accounting tools.
+
+## 7. The Command Palette (Cmd+K) ⚡
 For power users: anywhere in the app, press `Cmd + K` (or `Ctrl + K` on Windows).
 This opens a global search bar. You can type a client's name, a project title, or an invoice number, and hit Enter to jump straight to it without touching your mouse!
 
