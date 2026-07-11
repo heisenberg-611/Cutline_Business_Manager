@@ -188,25 +188,29 @@ Create a `.env` file in the root directory:
 
 ```env
 # 🔒 Database
-DATABASE_URL="postgresql://username:password@host:port/dbname?sslmode=require"
+# For Prisma Accelerate (Connection Pooling & Caching)
+DATABASE_URL="prisma://accelerate.prisma-data.net/?api_key=..."
+# Direct connection to the database (Required for Prisma migrations)
+DIRECT_URL="postgresql://username:password@host:port/dbname?sslmode=require"
 
 # 🔑 Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
 CLERK_SECRET_KEY="sk_test_..."
-CLERK_WEBHOOK_SECRET="whsec_..."
 
 # 🔗 Clerk Redirect URLs
 NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
 NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL="/dashboard/select-business"
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/dashboard/select-business"
-
-# 🌐 Application
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL="/dashboard"
+NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL="/dashboard"
+NEXT_PUBLIC_CLERK_AFTER_SIGN_OUT_URL="/sign-in"
 
 # 📧 Resend Email Service
 RESEND_API_KEY="re_..."
 ```
+
+### Prisma Acceleration & Database Polling
+
+This project utilizes **Prisma Accelerate** for connection pooling and query caching to optimize performance. Ensure you configure both `DATABASE_URL` (accelerated endpoint) and `DIRECT_URL` (direct database connection for migrations).
 
 ### Step 3: Database Setup
 
