@@ -353,3 +353,9 @@ This project is [MIT](LICENSE) licensed. © 2026 Dhrubojyoti
 ## 📚 Documentation
 
 For a deep dive into the system architecture, database schema, API conventions, and contributing guidelines go to the [Wiki section](https://github.com/heisenberg-611/Cutline_Business_manager/wiki)
+
+---
+
+## 🌟 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=heisenberg-611/Cutline_Business_manager&type=Date)](https://star-history.com/#heisenberg-611/Cutline_Business_manager&Date)
