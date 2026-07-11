@@ -127,6 +127,24 @@ export async function POST(req: Request) {
       }
     }
 
+    if (eventType === 'user.deleted') {
+      const { id } = evt.data
+      if (id) {
+        await prisma.user.delete({
+          where: { id }
+        })
+      }
+    }
+
+    if (eventType === 'organization.deleted') {
+      const { id } = evt.data
+      if (id) {
+        await prisma.business.delete({
+          where: { id }
+        })
+      }
+    }
+
     return new Response(JSON.stringify({ success: true }), { status: 200 })
   } catch (error: any) {
     console.error('Webhook Database Error:', error)
