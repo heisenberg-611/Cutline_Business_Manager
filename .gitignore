@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# utility scripts & exports
+user-data-export.json
+reset-db.ts
+fetch-user-data.ts
+fetch-users-temp.ts
+check-projects.ts
+fetch-clerk-users.ts
+test-prisma-user.ts
+sync-clerk-db.ts
