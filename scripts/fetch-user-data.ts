@@ -36,7 +36,7 @@ async function exportUserData() {
     })
 
     // Because this data can be massive, we will save it to a JSON file instead of flooding the terminal
-    const outputPath = 'user-data-export.json';
+    const outputPath = 'scripts/user-data-export.json';
     fs.writeFileSync(outputPath, JSON.stringify(users, null, 2));
     
     console.log(`\n✅ Successfully fetched ${users.length} users!`)
