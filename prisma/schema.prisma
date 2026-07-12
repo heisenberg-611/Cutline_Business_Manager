@@ -56,10 +56,11 @@ model User {
   email          String   @unique
   firstName      String?
   lastName       String?
-  imageUrl       String?
-  navPreferences Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  imageUrl               String?
+  navPreferences         Json?
+  quickActionPreferences Json?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   memberships   BusinessMembership[]
   notifications Notification[]

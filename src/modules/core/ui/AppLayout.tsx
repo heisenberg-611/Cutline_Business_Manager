@@ -22,6 +22,7 @@ const NotificationCenter = dynamic(
 import { ThemeToggle } from '@/components/theme-toggle'
 import DashboardLoading from '@/app/dashboard/loading'
 import { ALL_NAV_ITEMS } from './navigation'
+import { ALL_QUICK_ACTIONS, QuickActionPreference } from './quick-actions'
 
 import {
   Briefcase,
@@ -47,7 +48,15 @@ import {
   X
 } from 'lucide-react'
 
-export function AppLayout({ children, initialNavPreferences }: { children: React.ReactNode, initialNavPreferences?: { href: string; visible: boolean }[] }) {
+export function AppLayout({ 
+  children, 
+  initialNavPreferences,
+  initialQuickActionPreferences
+}: { 
+  children: React.ReactNode
+  initialNavPreferences?: { href: string; visible: boolean }[]
+  initialQuickActionPreferences?: QuickActionPreference[]
+}) {
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
@@ -116,6 +125,29 @@ export function AppLayout({ children, initialNavPreferences }: { children: React
       return pref ? pref.visible : true
     })
   }, [initialNavPreferences])
+
+  const quickActions = React.useMemo(() => {
+    if (!initialQuickActionPreferences || initialQuickActionPreferences.length === 0) {
+      return ALL_QUICK_ACTIONS
+    }
+
+    const preferenceMap = new Map(initialQuickActionPreferences.map(p => [p.id, p]))
+
+    const sorted = [...ALL_QUICK_ACTIONS].sort((a, b) => {
+      const indexA = initialQuickActionPreferences.findIndex(p => p.id === a.id)
+      const indexB = initialQuickActionPreferences.findIndex(p => p.id === b.id)
+
+      if (indexA === -1 && indexB === -1) return 0
+      if (indexA === -1) return 1
+      if (indexB === -1) return -1
+      return indexA - indexB
+    })
+
+    return sorted.filter(item => {
+      const pref = preferenceMap.get(item.id)
+      return pref ? pref.visible : true
+    })
+  }, [initialQuickActionPreferences])
 
   // Contextual Topbar Logic
   const getContextualTitle = () => {
@@ -366,14 +398,21 @@ export function AppLayout({ children, initialNavPreferences }: { children: React
                   <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Quick Actions</h2>
                 </div>
                 <div className="space-y-2">
-                  <Link href="/dashboard/projects/new" onClick={() => setIsQuickActionsOpen(false)} className="block p-4 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-white/20 transition-colors">
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100 text-sm">New Project</div>
-                    <div className="text-xs text-zinc-500 mt-1">Start a new video editing project</div>
-                  </Link>
-                  <Link href="/dashboard/financials/new" onClick={() => setIsQuickActionsOpen(false)} className="block p-4 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-white/20 transition-colors">
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100 text-sm">Create Invoice</div>
-                    <div className="text-xs text-zinc-500 mt-1">Bill a client for completed work</div>
-                  </Link>
+                  {quickActions.length > 0 ? (
+                    quickActions.map(action => (
+                      <Link 
+                        key={action.id}
+                        href={action.href} 
+                        onClick={() => setIsQuickActionsOpen(false)} 
+                        className="block p-4 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-white/20 transition-colors"
+                      >
+                        <div className="font-medium text-zinc-900 dark:text-zinc-100 text-sm">{action.label}</div>
+                        <div className="text-xs text-zinc-500 mt-1">{action.description}</div>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="text-sm text-zinc-500 italic p-4 text-center">No quick actions enabled.</div>
+                  )}
                 </div>
               </div>
             </div>

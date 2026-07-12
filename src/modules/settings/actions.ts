@@ -207,6 +207,21 @@ export async function updateNavPreferences(preferences: { href: string; visible:
 }
 
 /**
+ * Update the user's quick action preferences.
+ */
+export async function updateQuickActionPreferences(preferences: { id: string; visible: boolean }[]) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { quickActionPreferences: preferences },
+  })
+
+  revalidatePath('/dashboard', 'layout')
+}
+
+/**
  * Apply a complete workflow preset (Navigation + Pipeline Stages).
  */
 export async function applyWorkflowPreset(presetId: string) {
