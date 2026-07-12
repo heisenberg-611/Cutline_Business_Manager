@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 import prisma from '@/modules/core/db/prisma'
+import { ensureDefaultTemplate } from '@/modules/workflow/actions'
 
 export async function createProject(data: FormData) {
   const { orgId } = await auth()
@@ -30,6 +31,9 @@ export async function createProject(data: FormData) {
   const projectCount = await prisma.project.count({ where: { businessId: orgId } })
   const displayId = `PRJ-${String(projectCount + 1).padStart(3, '0')}`
 
+  const template = await ensureDefaultTemplate(orgId)
+  const firstStageId = template?.stages[0]?.id || null
+
   const project = await prisma.project.create({
     data: {
       businessId: orgId,
@@ -38,11 +42,20 @@ export async function createProject(data: FormData) {
       title,
       type: type || null,
       priority: priority || null,
-      deadline
+      deadline,
+      statusStageId: firstStageId,
+      ...(firstStageId ? {
+        stageHistory: {
+          create: {
+            stageId: firstStageId
+          }
+        }
+      } : {})
     }
   })
 
   revalidatePath('/dashboard/projects')
+  revalidatePath('/dashboard/pipeline')
   return project
 }
 
