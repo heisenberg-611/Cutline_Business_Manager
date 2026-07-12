@@ -32,6 +32,7 @@ interface Props {
   expenses: Expense[]
   projects: { id: string, title: string }[]
   openNewExpense?: boolean
+  businessCurrency?: string
 }
 
 const formatMoney = (cents: number, currency = 'USD') => {
@@ -50,7 +51,7 @@ const formatDate = (date: Date) => {
   }).format(new Date(date))
 }
 
-export function ExpenseTable({ expenses, projects, openNewExpense = false }: Props) {
+export function ExpenseTable({ expenses, projects, openNewExpense = false, businessCurrency = 'USD' }: Props) {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [isCreating, setIsCreating] = useState(openNewExpense)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
@@ -156,6 +157,7 @@ export function ExpenseTable({ expenses, projects, openNewExpense = false }: Pro
         }}
         expense={editingExpense}
         projects={projects}
+        businessCurrency={businessCurrency}
       />
     </>
   )

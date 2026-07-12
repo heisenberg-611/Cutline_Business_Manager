@@ -8,6 +8,7 @@ import { sendDynamicInvoiceEmail } from '@/lib/emails/send-invoice'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { triggerPdfGeneration } from '@/lib/qstash/client'
+import { format, eachDayOfInterval } from 'date-fns'
 
 // -----------------------------------------------------------------------------
 // HELPERS
@@ -387,4 +388,81 @@ export async function getInvoices(orgId: string) {
       createdAt: 'desc'
     }
   })
+}
+
+export async function getFinancialOverviewByDateRange(startDateStr: string, endDateStr: string) {
+  const { orgId } = await requireBusiness()
+
+  const startDate = new Date(startDateStr)
+  startDate.setHours(0, 0, 0, 0)
+  
+  const endDate = new Date(endDateStr)
+  endDate.setHours(23, 59, 59, 999)
+
+  const daysInterval = eachDayOfInterval({ start: startDate, end: endDate })
+
+  // 1. Revenue
+  const invoices = await prisma.invoice.findMany({
+    where: {
+      businessId: orgId,
+      status: { in: ['PAID', 'PARTIALLY_PAID'] },
+      updatedAt: { gte: startDate, lte: endDate } // Using updatedAt as proxy for payment date
+    },
+    select: { updatedAt: true, amountPaidCents: true, totalCents: true, status: true }
+  })
+
+  const revenueMap: Record<string, number> = {}
+  daysInterval.forEach(day => {
+    revenueMap[format(day, 'MMM dd')] = 0
+  })
+
+  invoices.forEach(inv => {
+    const dateStr = format(inv.updatedAt, 'MMM dd')
+    if (revenueMap[dateStr] !== undefined) {
+      const amount = inv.status === 'PAID' ? inv.totalCents : inv.amountPaidCents
+      revenueMap[dateStr] += (amount / 100)
+    }
+  })
+
+  const revenueData = Object.entries(revenueMap).map(([date, amount]) => ({ date, amount }))
+  const totalRevenue = Object.values(revenueMap).reduce((a,b) => a+b, 0)
+
+  // 2. Expenses
+  const expenses = await prisma.expense.findMany({
+    where: {
+      businessId: orgId,
+      dateIncurred: { gte: startDate, lte: endDate }
+    },
+    select: { dateIncurred: true, amountCents: true }
+  })
+
+  const expenseMap: Record<string, number> = {}
+  daysInterval.forEach(day => {
+    expenseMap[format(day, 'MMM dd')] = 0
+  })
+
+  expenses.forEach(exp => {
+    const dateStr = format(exp.dateIncurred, 'MMM dd')
+    if (expenseMap[dateStr] !== undefined) {
+      expenseMap[dateStr] += (exp.amountCents / 100)
+    }
+  })
+
+  const expenseData = Object.entries(expenseMap).map(([date, amount]) => ({ date, amount }))
+  const totalExpenses = Object.values(expenseMap).reduce((a, b) => a + b, 0)
+
+  const business = await prisma.business.findUnique({
+    where: { id: orgId },
+    select: { defaultCurrency: true }
+  })
+
+  return {
+    revenueData,
+    expenseData,
+    metrics: {
+      totalRevenue,
+      totalExpenses,
+      currency: business?.defaultCurrency || 'USD'
+    }
+  }
 }

@@ -43,11 +43,12 @@ export function AnalyticsDashboard() {
     return () => { isMounted = false }
   }, [days])
 
-  const formatCurrency = (amount: number, currency: string) => {
+  const formatCurrency = (amount: number, currency: string, compact: boolean = false) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency || 'USD',
-      maximumFractionDigits: 0
+      maximumFractionDigits: 0,
+      ...(compact ? { notation: 'compact', compactDisplay: 'short' } : {})
     }).format(amount)
   }
 
@@ -170,7 +171,7 @@ export function AnalyticsDashboard() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.2} />
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} dy={10} minTickGap={30} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(val) => `$${val}`} />
+                      <YAxis width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(val) => formatCurrency(val, data.metrics.currency, true)} />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }}
                         itemStyle={{ color: '#10b981' }}
@@ -200,7 +201,7 @@ export function AnalyticsDashboard() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.2} />
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} dy={10} minTickGap={30} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(val) => `$${val}`} />
+                      <YAxis width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(val) => formatCurrency(val, data.metrics.currency, true)} />
                       <Tooltip
                         contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }}
                         itemStyle={{ color: '#ef4444' }}

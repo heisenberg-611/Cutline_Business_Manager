@@ -11,6 +11,7 @@ import { AgingBucketsCard } from '@/modules/financials/components/AgingBucketsCa
 import { InvoiceTable } from '@/modules/financials/components/InvoiceTable'
 import { ExpenseTable } from '@/modules/financials/components/ExpenseTable'
 import { ExportInvoicesButton } from '@/modules/financials/components/ExportInvoicesButton'
+import { FinancialsTimeframeOverview } from '@/modules/financials/components/FinancialsTimeframeOverview'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import prisma from '@/modules/core/db/prisma'
 
@@ -63,6 +64,8 @@ export default async function FinancialsPage({
 
       <StudioHealthFinanceStrip data={studioHealth} variant="finance" />
       
+      <FinancialsTimeframeOverview />
+
       <Tabs defaultValue={activeTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="invoices">Invoices & Revenue</TabsTrigger>
@@ -89,6 +92,7 @@ export default async function FinancialsPage({
               expenses={expenses as any}
               projects={projects}
               openNewExpense={shouldOpenNewExpense}
+              businessCurrency={studioHealth.currency || 'USD'}
             />
           </div>
         </TabsContent>

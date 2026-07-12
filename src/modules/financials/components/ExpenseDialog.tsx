@@ -14,9 +14,10 @@ interface Props {
   onOpenChange: (open: boolean) => void
   expense?: any | null
   projects: { id: string, title: string }[]
+  businessCurrency?: string
 }
 
-export function ExpenseDialog({ open, onOpenChange, expense, projects }: Props) {
+export function ExpenseDialog({ open, onOpenChange, expense, projects, businessCurrency = 'USD' }: Props) {
   const [loading, setLoading] = useState(false)
   const isEditing = !!expense
 
@@ -76,7 +77,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, projects }: Props) 
         amountCents: Math.round(amount * 100),
         dateIncurred: formData.dateIncurred,
         projectId: formData.projectId === 'none' ? null : formData.projectId,
-        currency: expense?.currency ?? 'USD'
+        currency: expense?.currency ?? businessCurrency
       }
 
       if (isEditing) {
@@ -126,7 +127,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, projects }: Props) 
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount (USD) <span className="text-red-500">*</span></Label>
+              <Label htmlFor="amount">Amount ({businessCurrency}) <span className="text-red-500">*</span></Label>
               <Input 
                 id="amount" 
                 type="number"

@@ -7,7 +7,7 @@ interface Props {
     revenueMTD: number
     revenueLastMonth: number
     revenueDelta: number
-    expenseMTD: number
+    expenseTotal: number
     outstanding: number
     overdue: number
     utilization: number
@@ -54,10 +54,10 @@ export function StudioHealthFinanceStrip({ data, variant = 'main' }: Props) {
         <div className="flex-1 p-5 group bg-red-50/70 dark:bg-red-950/20 hover:bg-red-100/70 dark:hover:bg-red-950/30 transition-colors cursor-pointer">
           <div className="flex items-center gap-2 text-red-500/80 mb-2">
             <TrendingDown className="w-4 h-4" />
-            <h3 className="text-xs font-medium uppercase tracking-wider">Expenses (MTD)</h3>
+            <h3 className="text-xs font-medium uppercase tracking-wider">Total Expenses</h3>
           </div>
           <p className="text-3xl font-mono text-zinc-900 dark:text-white tracking-tight">
-            {formatMoney(data.expenseMTD)}
+            {formatMoney(data.expenseTotal)}
           </p>
         </div>
       )}

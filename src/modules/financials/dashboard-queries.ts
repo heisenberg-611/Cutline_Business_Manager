@@ -105,7 +105,7 @@ export async function getStudioHealth(businessId: string) {
   })
 
   // 2. Live merge for intra-day sensitive data (Outstanding and Overdue)
-  const [outstandingInvoices, expenseTotal] = await Promise.all([
+  const [outstandingInvoices, expenseAgg] = await Promise.all([
     prisma.invoice.findMany({
       where: {
         businessId,
@@ -117,7 +117,6 @@ export async function getStudioHealth(businessId: string) {
     prisma.expense.aggregate({
       where: {
         businessId,
-        dateIncurred: { gte: startOfMonth, lte: now }
       },
       _sum: { amountCents: true },
       cacheStrategy: { ttl: 60, swr: 60 }
@@ -128,7 +127,7 @@ export async function getStudioHealth(businessId: string) {
   const liveOverdue = outstandingInvoices
     .filter(inv => inv.status === 'OVERDUE' || (inv.dueDate && inv.dueDate < now))
     .reduce((sum, inv) => sum + inv.amountDueCents, 0)
-  const expenseMTD = expenseTotal._sum.amountCents ?? 0
+  const expenseTotal = expenseAgg._sum.amountCents ?? 0
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
@@ -199,7 +198,7 @@ export async function getStudioHealth(businessId: string) {
       revenueMTD,
       revenueLastMonth: lastMonthRevenue,
       revenueDelta,
-      expenseMTD,
+      expenseTotal,
       outstanding: liveOutstanding,
       overdue: liveOverdue,
       utilization,
@@ -214,7 +213,7 @@ export async function getStudioHealth(businessId: string) {
     revenueMTD: snapshot.revenueMTDCents,
     revenueLastMonth: snapshot.revenueLastMonthCents,
     revenueDelta: snapshot.revenueDelta,
-    expenseMTD,
+    expenseTotal,
     outstanding: liveOutstanding, // Live merged
     overdue: liveOverdue,         // Live merged
     utilization: snapshot.utilization,
