@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { createProject } from '../actions'
+import { createProject, checkProjectDuplicate } from '../actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 
 type Client = {
@@ -18,14 +18,33 @@ type Client = {
 export function NewProjectForm({ clients }: { clients: Client[] }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
   const [clientId, setClientId] = useState('')
   const [priority, setPriority] = useState('')
+  const [title, setTitle] = useState('')
+
+  const checkForDuplicate = useCallback(async (newTitle: string, newClientId: string) => {
+    setDuplicateWarning(null)
+    if (!newTitle.trim() || !newClientId) return
+
+    try {
+      const result = await checkProjectDuplicate(newTitle, newClientId)
+      if (result.exists) {
+        const clientName = clients.find(c => c.id === newClientId)?.displayName || 'this client'
+        setDuplicateWarning(`A project named "${result.projectTitle}" already exists for ${clientName}. You can still create it if intended.`)
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [clients])
 
   async function handleSubmit(formData: FormData) {
     if (clientId) formData.set('clientId', clientId)
     if (priority) formData.set('priority', priority)
 
     setLoading(true)
+    setError(null)
     try {
       const newProject = await createProject(formData)
       // redirect to the new project
@@ -34,9 +53,8 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
       } else {
         router.push('/dashboard/projects')
       }
-    } catch (error) {
-      console.error("Failed to create project", error)
-      alert("Error creating project.")
+    } catch (err: any) {
+      setError(err?.message || "Error creating project.")
       setLoading(false)
     }
   }
@@ -61,14 +79,40 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
 
       <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm">
         <form action={handleSubmit} className="space-y-5">
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-300">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="title">Project Title *</Label>
-            <Input id="title" name="title" placeholder="e.g. Q3 Marketing Ad" required className="bg-zinc-50 dark:bg-zinc-900/50" />
+            <Input
+              id="title"
+              name="title"
+              placeholder="e.g. Q3 Marketing Ad"
+              required
+              className="bg-zinc-50 dark:bg-zinc-900/50"
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setDuplicateWarning(null); setError(null) }}
+              onBlur={() => checkForDuplicate(title, clientId)}
+            />
           </div>
 
           <div className="space-y-2">
             <Label>Client *</Label>
-            <Select value={clientId} onValueChange={(val) => setClientId(val || '')} required>
+            <Select
+              value={clientId}
+              onValueChange={(val) => {
+                setClientId(val || '')
+                setDuplicateWarning(null)
+                if (title.trim() && val) {
+                  checkForDuplicate(title, val)
+                }
+              }}
+              required
+            >
               <SelectTrigger className="bg-zinc-50 dark:bg-zinc-900/50">
                 <SelectValue placeholder="Select a client">
                   {clients.find(c => c.id === clientId)?.displayName}
@@ -84,6 +128,13 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
               </SelectContent>
             </Select>
           </div>
+
+          {duplicateWarning && (
+            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/50 dark:text-amber-300">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+              <span>{duplicateWarning}</span>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="type">Project Type</Label>

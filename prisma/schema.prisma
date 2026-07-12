@@ -113,6 +113,7 @@ model Client {
 
   @@index([businessId]) // Critical for tenant data isolation performance
   @@unique([businessId, displayId])
+  @@unique([businessId, email])  // Prevent duplicate client emails within a business
   @@map("clients")
 }
 
@@ -447,6 +448,7 @@ model Asset {
   projects ProjectAsset[]
 
   @@index([businessId])
+  @@unique([businessId, name, type]) // Prevent duplicate asset name+type within a business
   @@map("assets")
 }
 

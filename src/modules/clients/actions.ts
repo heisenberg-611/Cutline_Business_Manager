@@ -4,6 +4,30 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 import prisma from '@/modules/core/db/prisma'
 
+// -----------------------------------------------------------------------------
+// DUPLICATE CHECK QUERIES (for live form validation)
+// -----------------------------------------------------------------------------
+
+export async function checkClientEmailExists(email: string, excludeClientId?: string): Promise<{ exists: boolean; clientName?: string }> {
+  const { orgId } = await auth()
+  if (!orgId || !email || email.trim() === '') return { exists: false }
+
+  const existing = await prisma.client.findFirst({
+    where: {
+      businessId: orgId,
+      email: { equals: email.trim(), mode: 'insensitive' },
+      ...(excludeClientId ? { id: { not: excludeClientId } } : {})
+    },
+    select: { displayName: true }
+  })
+
+  return existing ? { exists: true, clientName: existing.displayName } : { exists: false }
+}
+
+// -----------------------------------------------------------------------------
+// MUTATIONS
+// -----------------------------------------------------------------------------
+
 export async function createClient(data: FormData) {
   const { orgId } = await auth()
   
@@ -22,6 +46,15 @@ export async function createClient(data: FormData) {
     throw new Error('Display Name is required')
   }
 
+  // Duplicate email check
+  const emailStr = email ? email.toString().trim() : ''
+  if (emailStr) {
+    const { exists, clientName } = await checkClientEmailExists(emailStr)
+    if (exists) {
+      throw new Error(`A client with email "${emailStr}" already exists (${clientName}). Please use a different email.`)
+    }
+  }
+
   const clientCount = await prisma.client.count({ where: { businessId: orgId } })
   const displayId = `CL-${String(clientCount + 1).padStart(3, '0')}`
 
@@ -31,7 +64,7 @@ export async function createClient(data: FormData) {
       displayId,
       displayName: displayName.toString(),
       companyName: companyName ? companyName.toString() : null,
-      email: email ? email.toString() : null,
+      email: emailStr || null,
       phone: phone ? phone.toString() : null,
       industry: industry ? industry.toString() : null,
       preferredChannel: preferredChannel ? preferredChannel.toString() : null,

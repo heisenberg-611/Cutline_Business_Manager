@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useState, useTransition } from 'react'
-import { MoreHorizontal, Edit, Trash } from 'lucide-react'
+import React, { useState, useTransition, useCallback } from 'react'
+import { MoreHorizontal, Edit, Trash, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { updateClient, deleteClient, updateClientRating } from '../actions'
+import { updateClient, deleteClient, updateClientRating, checkClientEmailExists } from '../actions'
 import { Star } from 'lucide-react'
 
 type Client = {
@@ -24,6 +24,9 @@ type Client = {
 export function ClientActions({ client }: { client: Client }) {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [emailWarning, setEmailWarning] = useState<string | null>(null)
+  const [checkingEmail, setCheckingEmail] = useState(false)
   
   const [formData, setFormData] = useState({
     ...client,
@@ -32,8 +35,27 @@ export function ClientActions({ client }: { client: Client }) {
   })
   const [rating, setRating] = useState(client.internalRating || 3)
 
+  const handleEmailBlur = useCallback(async (e: React.FocusEvent<HTMLInputElement>) => {
+    const email = e.target.value.trim()
+    setEmailWarning(null)
+    if (!email || email === client.email) return // Skip if unchanged
+
+    setCheckingEmail(true)
+    try {
+      const result = await checkClientEmailExists(email, client.id)
+      if (result.exists) {
+        setEmailWarning(`A client with this email already exists: "${result.clientName}"`)
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setCheckingEmail(false)
+    }
+  }, [client.email, client.id])
+
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault()
+    setError(null)
     startTransition(async () => {
       try {
         await updateClient(client.id, formData)
@@ -42,8 +64,9 @@ export function ClientActions({ client }: { client: Client }) {
           await updateClientRating(client.id, rating)
         }
         setIsEditOpen(false)
-      } catch (err) {
-        alert("Failed to update client")
+        setEmailWarning(null)
+      } catch (err: any) {
+        setError(err?.message || "Failed to update client")
       }
     })
   }
@@ -57,6 +80,14 @@ export function ClientActions({ client }: { client: Client }) {
           alert("Failed to delete client")
         }
       })
+    }
+  }
+
+  function handleEditOpenChange(isOpen: boolean) {
+    setIsEditOpen(isOpen)
+    if (!isOpen) {
+      setError(null)
+      setEmailWarning(null)
     }
   }
 
@@ -76,12 +107,18 @@ export function ClientActions({ client }: { client: Client }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+      <Dialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Edit Client</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdate} className="space-y-4 pt-4">
+            {error && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/50 dark:text-red-300">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="displayName">Display Name</Label>
               <Input
@@ -106,8 +143,19 @@ export function ClientActions({ client }: { client: Client }) {
                 type="email"
                 placeholder="Required for Invoicing"
                 value={formData.email || ''}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                onChange={e => { setFormData({ ...formData, email: e.target.value }); setEmailWarning(null); setError(null) }}
+                onBlur={handleEmailBlur}
+                className={emailWarning ? 'border-amber-400 focus-visible:ring-amber-400' : ''}
               />
+              {checkingEmail && (
+                <p className="text-xs text-zinc-400">Checking...</p>
+              )}
+              {emailWarning && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/50 dark:text-amber-300">
+                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                  <span>{emailWarning}</span>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Mobile Number</Label>
@@ -160,7 +208,7 @@ export function ClientActions({ client }: { client: Client }) {
               <p className="text-xs text-zinc-500">{rating} out of 5 stars</p>
             </div>
             <div className="flex justify-end pt-2">
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || !!emailWarning}>
                 {isPending ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>

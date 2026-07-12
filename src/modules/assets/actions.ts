@@ -4,9 +4,40 @@ import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
 
+// -----------------------------------------------------------------------------
+// DUPLICATE CHECK QUERIES (for live form validation)
+// -----------------------------------------------------------------------------
+
+export async function checkAssetDuplicate(name: string, type: string, excludeAssetId?: string): Promise<{ exists: boolean; assetName?: string }> {
+  const { orgId } = await auth()
+  if (!orgId || !name || !type) return { exists: false }
+
+  const existing = await prisma.asset.findFirst({
+    where: {
+      businessId: orgId,
+      name: { equals: name.trim(), mode: 'insensitive' },
+      type,
+      ...(excludeAssetId ? { id: { not: excludeAssetId } } : {})
+    },
+    select: { name: true }
+  })
+
+  return existing ? { exists: true, assetName: existing.name } : { exists: false }
+}
+
+// -----------------------------------------------------------------------------
+// MUTATIONS
+// -----------------------------------------------------------------------------
+
 export async function createAsset(data: { type: string, name: string, vendor: string | null, licenseType: string | null, expiresAt: Date | null, cost: number }) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
+
+  // Duplicate check
+  const { exists } = await checkAssetDuplicate(data.name, data.type)
+  if (exists) {
+    throw new Error(`An asset named "${data.name}" of type "${data.type}" already exists. Please use a different name.`)
+  }
 
   await prisma.asset.create({
     data: {

@@ -5,6 +5,31 @@ import { revalidatePath } from 'next/cache'
 import prisma from '@/modules/core/db/prisma'
 import { ensureDefaultTemplate } from '@/modules/workflow/actions'
 
+// -----------------------------------------------------------------------------
+// DUPLICATE CHECK QUERIES (for live form validation)
+// -----------------------------------------------------------------------------
+
+export async function checkProjectDuplicate(title: string, clientId: string): Promise<{ exists: boolean; projectTitle?: string }> {
+  const { orgId } = await auth()
+  if (!orgId || !title || !clientId) return { exists: false }
+
+  const existing = await prisma.project.findFirst({
+    where: {
+      businessId: orgId,
+      clientId,
+      title: { equals: title.trim(), mode: 'insensitive' },
+      isArchived: false
+    },
+    select: { title: true }
+  })
+
+  return existing ? { exists: true, projectTitle: existing.title } : { exists: false }
+}
+
+// -----------------------------------------------------------------------------
+// MUTATIONS
+// -----------------------------------------------------------------------------
+
 export async function createProject(data: FormData) {
   const { orgId } = await auth()
   
