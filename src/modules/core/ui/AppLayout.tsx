@@ -364,7 +364,6 @@ export function AppLayout({ children, initialNavPreferences }: { children: React
               <div className="p-6">
                 <div className="flex items-center justify-between mb-8">
                   <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Quick Actions</h2>
-                  <button onClick={() => setIsQuickActionsOpen(false)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-xs">esc to close</button>
                 </div>
                 <div className="space-y-2">
                   <Link href="/dashboard/projects/new" onClick={() => setIsQuickActionsOpen(false)} className="block p-4 rounded-xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-white/20 transition-colors">
