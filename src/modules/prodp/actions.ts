@@ -3,7 +3,7 @@
 import prisma from '@/modules/core/db/prisma'
 import { randomBytes } from 'crypto'
 import { withUniqueToken } from '@/lib/utils/unique-token'
-import { createNotification, broadcastNotification } from '@/modules/notifications/actions'
+import { createNotification, broadcastNotification } from '@/modules/notifications/services'
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 

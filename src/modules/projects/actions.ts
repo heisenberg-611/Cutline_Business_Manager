@@ -124,9 +124,8 @@ export async function deleteProject(projectId: string) {
 }
 
 export async function getProjects(orgId: string) {
-  if (!orgId) {
-    return []
-  }
+  const { orgId: userOrgId } = await auth()
+  if (!userOrgId || userOrgId !== orgId) throw new Error('Unauthorized')
 
   return await prisma.project.findMany({
     where: {
@@ -158,9 +157,8 @@ export async function getProjects(orgId: string) {
 }
 
 export async function getArchivedProjects(orgId: string) {
-  if (!orgId) {
-    return []
-  }
+  const { orgId: userOrgId } = await auth()
+  if (!userOrgId || userOrgId !== orgId) throw new Error('Unauthorized')
 
   return await prisma.project.findMany({
     where: {

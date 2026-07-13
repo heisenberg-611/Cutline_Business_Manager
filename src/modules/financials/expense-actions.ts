@@ -23,7 +23,8 @@ async function requireBusiness() {
 }
 
 export async function getExpenses(orgId: string) {
-  if (!orgId) return []
+  const { orgId: userOrgId } = await auth()
+  if (!userOrgId || userOrgId !== orgId) throw new Error('Unauthorized')
 
   return await prisma.expense.findMany({
     where: { businessId: orgId },

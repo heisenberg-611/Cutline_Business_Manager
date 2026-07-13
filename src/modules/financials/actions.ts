@@ -376,7 +376,8 @@ export async function sendReminder(invoiceId: string, tone: 'gentle' | 'firm' | 
 }
 
 export async function getInvoices(orgId: string) {
-  if (!orgId) return []
+  const { orgId: userOrgId } = await auth()
+  if (!userOrgId || userOrgId !== orgId) throw new Error('Unauthorized')
 
   return await prisma.invoice.findMany({
     where: { businessId: orgId },

@@ -16,6 +16,8 @@ const DEFAULT_STAGES = [
 ]
 
 export async function ensureDefaultTemplate(orgId: string) {
+  const { orgId: userOrgId } = await auth()
+  if (!userOrgId || userOrgId !== orgId) throw new Error('Unauthorized')
   if (!orgId) return null
 
   // Check if business exists

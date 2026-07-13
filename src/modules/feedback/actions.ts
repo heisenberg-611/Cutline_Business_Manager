@@ -6,7 +6,7 @@ import prisma from '@/modules/core/db/prisma'
 import { randomBytes } from 'crypto'
 import { sendFeedbackEmail } from '@/lib/email/resend'
 import { withUniqueToken } from '@/lib/utils/unique-token'
-import { createNotification, broadcastNotification } from '@/modules/notifications/actions'
+import { createNotification, broadcastNotification } from '@/modules/notifications/services'
 import { getAppUrl } from '@/lib/utils'
 
 // -----------------------------------------------------------------------------

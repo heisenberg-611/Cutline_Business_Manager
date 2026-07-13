@@ -155,9 +155,8 @@ export async function updateClientRating(clientId: string, rating: number) {
 }
 
 export async function getClients(orgId: string) {
-  if (!orgId) {
-    return []
-  }
+  const { orgId: userOrgId } = await auth()
+  if (!userOrgId || userOrgId !== orgId) throw new Error('Unauthorized')
 
   return await prisma.client.findMany({
     where: {

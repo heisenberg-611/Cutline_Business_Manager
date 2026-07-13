@@ -99,7 +99,8 @@ export async function deleteAsset(assetId: string) {
 }
 
 export async function getAssets(orgId: string) {
-  if (!orgId) return []
+  const { orgId: userOrgId } = await auth()
+  if (!userOrgId || userOrgId !== orgId) throw new Error('Unauthorized')
 
   return await prisma.asset.findMany({
     where: { businessId: orgId },
