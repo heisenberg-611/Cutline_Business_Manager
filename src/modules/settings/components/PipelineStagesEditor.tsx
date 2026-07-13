@@ -23,7 +23,7 @@ type Stage = {
 
 const IconSelector = ({ value, onChange }: { value: string, onChange: (v: string) => void }) => {
   return (
-    <Select value={value || undefined} onValueChange={(val) => { if (val) onChange(val) }}>
+    <Select value={value} onValueChange={(val) => { if (val) onChange(val) }}>
       <SelectTrigger className="w-[140px] h-8 text-xs shrink-0">
         <SelectValue placeholder="Select icon..." />
       </SelectTrigger>

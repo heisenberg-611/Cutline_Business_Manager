@@ -51,11 +51,13 @@ import {
 export function AppLayout({ 
   children, 
   initialNavPreferences,
-  initialQuickActionPreferences
+  initialQuickActionPreferences,
+  initialNotificationPreferences
 }: { 
   children: React.ReactNode
   initialNavPreferences?: { href: string; visible: boolean }[]
   initialQuickActionPreferences?: QuickActionPreference[]
+  initialNotificationPreferences?: { tone: string; dnd: boolean }
 }) {
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
@@ -374,7 +376,7 @@ export function AppLayout({
               <Plus className="h-3.5 w-3.5" />
               New
             </button>
-            <NotificationCenter />
+            <NotificationCenter initialPrefs={initialNotificationPreferences} />
             <UserButton />
           </div>
         </header>

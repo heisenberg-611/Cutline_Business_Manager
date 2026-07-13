@@ -340,3 +340,19 @@ export async function restoreDefaults() {
 
   revalidatePath('/dashboard', 'layout')
 }
+
+/**
+ * Update the user's notification preferences.
+ */
+export async function updateNotificationPreferences(preferences: { tone: string; dnd: boolean }) {
+  const { userId } = await auth()
+  if (!userId) throw new Error('Unauthorized')
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { notificationPreferences: preferences },
+  })
+
+  // We don't necessarily need to revalidate the whole layout, but doing so keeps the UI in sync
+  revalidatePath('/dashboard', 'layout')
+}

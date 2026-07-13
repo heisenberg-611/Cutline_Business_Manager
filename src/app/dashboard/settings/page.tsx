@@ -3,11 +3,12 @@ import { redirect } from 'next/navigation'
 import prisma from '@/modules/core/db/prisma'
 import { PipelineStagesEditor } from '@/modules/settings/components/PipelineStagesEditor'
 import { CurrencySelector } from '@/modules/settings/components/CurrencySelector'
-import { Building2, Workflow, DollarSign, Mail, Layout, Zap } from 'lucide-react'
+import { Building2, Workflow, DollarSign, Mail, Layout, Zap, BellRing } from 'lucide-react'
 import Link from 'next/link'
 import { BusinessNameEditor } from '@/modules/settings/components/BusinessNameEditor'
 import { NavPreferencesEditor } from '@/modules/settings/components/NavPreferencesEditor'
 import { QuickActionsEditor } from '@/modules/settings/components/QuickActionsEditor'
+import { NotificationPreferencesEditor } from '@/modules/settings/components/NotificationPreferencesEditor'
 import { WorkflowPresetSelector } from '@/modules/settings/components/WorkflowPresetSelector'
 
 import { ensureDefaultTemplate } from '@/modules/workflow/actions'
@@ -121,8 +122,8 @@ export default async function SettingsPage() {
 
       <hr className="border-zinc-200 dark:border-white/10" />
 
-      {/* ROW 3: Customization Editors (3 Columns) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+      {/* ROW 3: Customization Editors (2x2 Grid) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
         
         {/* Pipeline Stages */}
         <section className="space-y-4">
@@ -177,6 +178,22 @@ export default async function SettingsPage() {
             <QuickActionsEditor 
               initialPreferences={user?.quickActionPreferences as any} 
             />
+          </div>
+        </section>
+
+        {/* Notification Preferences */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900">
+              <BellRing className="w-4 h-4 text-zinc-500" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Notifications & Sound</h4>
+              <p className="text-xs text-zinc-500">Configure tones and Do Not Disturb</p>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-white/10 rounded-xl p-6">
+            <NotificationPreferencesEditor initialPreferences={user?.notificationPreferences as any} />
           </div>
         </section>
 

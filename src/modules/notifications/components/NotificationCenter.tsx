@@ -17,7 +17,7 @@ type Notification = {
   createdAt: Date
 }
 
-export function NotificationCenter() {
+export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: string; dnd: boolean } }) {
   const [notifications, setNotifications] = React.useState<Notification[]>([])
   const [loading, setLoading] = React.useState(true)
   const [open, setOpen] = React.useState(false)
@@ -26,31 +26,76 @@ export function NotificationCenter() {
 
   const playNotificationSound = React.useCallback(() => {
     try {
+      // Get preferences from local storage or fallback to DB initial prefs
+      const stored = localStorage.getItem('cutline_notification_prefs')
+      let prefs = initialPrefs || { tone: 'chime', dnd: false }
+      if (stored) {
+        try {
+          prefs = JSON.parse(stored)
+        } catch (e) {}
+      }
+      
+      // Respect DND mode or none tone
+      if (prefs.dnd || prefs.tone === 'none') return
+
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
       const ctx = new AudioContext();
       
-      const playChime = (freq: number, startTime: number) => {
+      const playNote = (freq: number, startTime: number, type: OscillatorType = 'triangle', duration = 0.4) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         
-        osc.type = 'triangle'; // Clearer tone than sine
+        osc.type = type;
         osc.frequency.setValueAtTime(freq, startTime);
         
-        // Louder (0.3) and longer fade-out for a clearer ring
         gain.gain.setValueAtTime(0.3, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
         
         osc.connect(gain);
         gain.connect(ctx.destination);
         
         osc.start(startTime);
-        osc.stop(startTime + 0.5);
+        osc.stop(startTime + duration + 0.1);
       }
       
-      // Pleasant double ascending chime
-      playChime(1046.50, ctx.currentTime);        // C6
-      playChime(1318.51, ctx.currentTime + 0.15); // E6
+      if (prefs.tone === 'chime') {
+        playNote(1046.50, ctx.currentTime);        // C6
+        playNote(1318.51, ctx.currentTime + 0.15); // E6
+      } else if (prefs.tone === 'beep') {
+        playNote(880.00, ctx.currentTime, 'sine', 0.2); // A5 short beep
+      } else if (prefs.tone === 'bell') {
+        playNote(1567.98, ctx.currentTime, 'sine', 0.6); // G6 longer
+        playNote(1174.66, ctx.currentTime, 'triangle', 0.6); // D6 mixed
+      } else if (prefs.tone === 'bird') {
+        const playChirp = (startFreq: number, endFreq: number, timeOff: number) => {
+          const osc = ctx.createOscillator()
+          const gain = ctx.createGain()
+          osc.type = 'sine'
+          osc.frequency.setValueAtTime(startFreq, ctx.currentTime + timeOff)
+          osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + timeOff + 0.1)
+          gain.gain.setValueAtTime(0.2, ctx.currentTime + timeOff)
+          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + timeOff + 0.15)
+          osc.connect(gain)
+          gain.connect(ctx.destination)
+          osc.start(ctx.currentTime + timeOff)
+          osc.stop(ctx.currentTime + timeOff + 0.2)
+        }
+        playChirp(2000, 3000, 0)
+        playChirp(2200, 3200, 0.15)
+      } else if (prefs.tone === 'raindrop') {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(800, ctx.currentTime)
+        osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.08)
+        gain.gain.setValueAtTime(0.3, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.15)
+      }
       
     } catch (e) {
       console.log("Audio playback failed or blocked", e);
@@ -94,18 +139,21 @@ export function NotificationCenter() {
   const unreadCount = notifications.filter(n => !n.isRead).length
 
   React.useEffect(() => {
-    let originalTitle = document.title.replace(/^\(\d+\)\s/, '')
-
     const updateTitle = () => {
-      const currentTitle = document.title
-      if (!/^\(\d+\)\s/.test(currentTitle)) {
-        originalTitle = currentTitle
-      }
+      const titleEl = document.querySelector('title')
+      if (!titleEl) return
 
-      if (unreadCount > 0) {
-        document.title = `(${unreadCount}) ${originalTitle}`
-      } else {
-        document.title = originalTitle
+      const currentText = titleEl.textContent || document.title || ''
+      if (!currentText) return
+
+      const cleanTitle = currentText.replace(/^\(\d+\)\s*/, '')
+      const newTitle = unreadCount > 0 ? `(${unreadCount}) ${cleanTitle}` : cleanTitle
+
+      if (titleEl.textContent !== newTitle) {
+        titleEl.textContent = newTitle
+      }
+      if (document.title !== newTitle) {
+        document.title = newTitle
       }
     }
 
@@ -115,15 +163,15 @@ export function NotificationCenter() {
     if (!headElement) return
 
     const observer = new MutationObserver(() => {
-      const currentTitle = document.title
-      if (currentTitle !== `(${unreadCount}) ${originalTitle}` && currentTitle !== originalTitle) {
-        observer.disconnect()
-        updateTitle()
-        observer.observe(headElement, { childList: true, subtree: true })
-      }
+      updateTitle()
     })
 
-    observer.observe(headElement, { childList: true, subtree: true })
+    // Observe head for any title changes Next.js might make
+    observer.observe(headElement, { 
+      childList: true, 
+      subtree: true, 
+      characterData: true 
+    })
 
     return () => observer.disconnect()
   }, [unreadCount])

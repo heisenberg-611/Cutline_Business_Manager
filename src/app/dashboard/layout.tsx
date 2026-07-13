@@ -10,11 +10,12 @@ export default async function DashboardLayout({
   const { userId } = await auth()
   let initialNavPreferences: { href: string; visible: boolean }[] | undefined = undefined
   let initialQuickActionPreferences: { id: string; visible: boolean }[] | undefined = undefined
+  let initialNotificationPreferences: { tone: string; dnd: boolean } | undefined = undefined
 
   if (userId) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { navPreferences: true, quickActionPreferences: true }
+      select: { navPreferences: true, quickActionPreferences: true, notificationPreferences: true }
     })
     
     if (user?.navPreferences) {
@@ -23,7 +24,10 @@ export default async function DashboardLayout({
     if (user?.quickActionPreferences) {
       initialQuickActionPreferences = user.quickActionPreferences as { id: string; visible: boolean }[]
     }
+    if (user?.notificationPreferences) {
+      initialNotificationPreferences = user.notificationPreferences as { tone: string; dnd: boolean }
+    }
   }
 
-  return <AppLayout initialNavPreferences={initialNavPreferences} initialQuickActionPreferences={initialQuickActionPreferences}>{children}</AppLayout>
+  return <AppLayout initialNavPreferences={initialNavPreferences} initialQuickActionPreferences={initialQuickActionPreferences} initialNotificationPreferences={initialNotificationPreferences}>{children}</AppLayout>
 }

@@ -62,6 +62,7 @@ model User {
   imageUrl               String?
   navPreferences         Json?
   quickActionPreferences Json?
+  notificationPreferences Json?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
