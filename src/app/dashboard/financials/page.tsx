@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { getInvoices } from '@/modules/financials/actions'
 import { getExpenses } from '@/modules/financials/expense-actions'
+import { getClients } from '@/modules/clients/actions'
+import { NewInvoiceButton } from '@/modules/financials/components/NewInvoiceButton'
 import { getAgingReport, getStudioHealth } from '@/modules/financials/dashboard-queries'
 import { StudioHealthFinanceStrip } from '@/modules/financials/components/StudioHealthFinanceStrip'
 import { AgingBucketsCard } from '@/modules/financials/components/AgingBucketsCard'
@@ -33,14 +35,24 @@ export default async function FinancialsPage({
     redirect('/dashboard/select-business')
   }
 
-  const [invoices, expenses, studioHealth, agingBuckets, projects] = await Promise.all([
+  const [invoices, expenses, studioHealth, agingBuckets, clients, projects] = await Promise.all([
     getInvoices(orgId),
     getExpenses(orgId),
     getStudioHealth(orgId),
     getAgingReport(orgId),
+    getClients(orgId),
     prisma.project.findMany({
       where: { businessId: orgId, isArchived: false },
-      select: { id: true, title: true }
+      select: { 
+        id: true, 
+        title: true,
+        clientId: true,
+        assets: {
+          select: {
+            asset: { select: { id: true, name: true, cost: true, type: true } }
+          }
+        }
+      }
     })
   ])
 
@@ -53,12 +65,11 @@ export default async function FinancialsPage({
         </div>
         <div className="flex items-center gap-3">
           <ExportInvoicesButton invoices={invoices} />
-          <Link href="/dashboard/financials/new">
-            <Button className="bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-50/90">
-              <Plus className="mr-2 h-4 w-4" />
-              New Invoice
-            </Button>
-          </Link>
+          <NewInvoiceButton 
+            clients={clients} 
+            projects={projects} 
+            businessCurrency={studioHealth.currency || 'USD'} 
+          />
         </div>
       </div>
 

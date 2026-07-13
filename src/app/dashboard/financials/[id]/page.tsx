@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Mail, Ban, Edit, Check, ExternalLink } from 'lucide-react'
 import { RecordPaymentDialog } from '@/modules/financials/components/RecordPaymentDialog'
 import { sendInvoice, deleteInvoice } from '@/modules/financials/actions'
+import { getClients } from '@/modules/clients/actions'
+import { EditInvoiceButton } from '@/modules/financials/components/EditInvoiceButton'
 import { Badge } from '@/components/ui/badge'
 import { getInvoiceDataForPdf } from '@/lib/invoices/pdf-data'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadInvoiceButton'
@@ -40,7 +42,25 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   //   1. The detail page needs the raw invoice for its own UI.
   //   2. The DownloadInvoiceButton (client component) needs the mapped InvoiceData.
   // Both queries filter by businessId — no IDOR possible.
+  // Both queries filter by businessId — no IDOR possible.
   const invoiceDataForPdf = await getInvoiceDataForPdf(id, orgId)
+
+  const [clients, projects] = await Promise.all([
+    getClients(orgId),
+    prisma.project.findMany({
+      where: { businessId: orgId, isArchived: false },
+      select: { 
+        id: true, 
+        title: true,
+        clientId: true,
+        assets: {
+          select: {
+            asset: { select: { id: true, name: true, cost: true, type: true } }
+          }
+        }
+      }
+    })
+  ])
 
   return (
     <div className="w-full mx-auto space-y-6">
@@ -62,11 +82,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         
         <div className="flex items-center gap-2">
           {invoice.status === 'DRAFT' && (
-            <Link href={`/dashboard/financials/${invoice.id}/edit`}>
-              <Button variant="outline" className="text-zinc-500">
-                <Edit className="h-4 w-4 mr-2" /> Edit
-              </Button>
-            </Link>
+            <EditInvoiceButton 
+              invoice={invoice} 
+              clients={clients} 
+              projects={projects} 
+              businessCurrency={invoice.currency} 
+            />
           )}
           
           {invoice.status === 'DRAFT' && (

@@ -1,30 +1,35 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createInvoice, updateInvoice } from '../actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 type Client = { id: string, displayName: string }
 type Project = { id: string, title: string, clientId: string, assets?: { asset: { id: string, name: string, cost: number, type: string } }[] }
 
-export default function InvoiceBuilder({ 
+export function InvoiceDialog({ 
   clients, 
   projects,
   invoiceId,
   initialData,
-  currency
+  currency,
+  open,
+  onOpenChange
 }: { 
   clients: Client[], 
   projects: Project[],
   invoiceId?: string,
   initialData?: any,
-  currency?: string
+  currency?: string,
+  open: boolean,
+  onOpenChange: (open: boolean) => void
 }) {
   const currencySymbol = (0).toLocaleString('en-US', { style: 'currency', currency: currency || 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).replace(/\d/g, '').trim()
   const router = useRouter()
@@ -45,6 +50,28 @@ export default function InvoiceBuilder({
     : [{ id: 1, description: '', quantity: '1', amount: '' }]
   )
   const [loading, setLoading] = useState(false)
+
+  // Reset form when opened with new initialData
+  useEffect(() => {
+    if (open) {
+      setClientId(initialData?.clientId || '')
+      setProjectId(initialData?.projectId || '')
+      setDueDate(initialData?.dueDate ? new Date(initialData.dueDate).toISOString().split('T')[0] : '')
+      setNotes(initialData?.notes || '')
+      setTaxRatePct(initialData?.taxRateBps ? (initialData.taxRateBps / 100).toString() : '0')
+      
+      if (initialData?.lineItems?.length > 0) {
+        setLineItems(initialData.lineItems.map((li: any) => ({
+          id: li.id,
+          description: li.description,
+          quantity: li.quantity.toString(),
+          amount: (li.amountCents / 100).toString()
+        })))
+      } else {
+        setLineItems([{ id: Date.now(), description: '', quantity: '1', amount: '' }])
+      }
+    }
+  }, [open, initialData])
 
   // Filter projects by selected client
   const availableProjects = projectId && !clientId 
@@ -102,21 +129,32 @@ export default function InvoiceBuilder({
       let invoice
       if (invoiceId) {
         invoice = await updateInvoice(invoiceId, payload)
+        onOpenChange(false)
+        router.refresh()
       } else {
         invoice = await createInvoice(payload)
+        onOpenChange(false)
+        router.push(`/dashboard/financials/${invoice.id}`)
       }
-
-      router.push(`/dashboard/financials/${invoice.id}`)
     } catch (err: any) {
-      alert(err.message || 'Failed to create invoice')
+      alert(err.message || 'Failed to save invoice')
+    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Header Info */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{invoiceId ? 'Edit Invoice' : 'Create Invoice'}</DialogTitle>
+          <DialogDescription>
+            {invoiceId ? 'Update invoice details and line items.' : 'Generate a new invoice for a client.'}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-8 pt-4">
+          {/* Header Info */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-2">
           <Label>Client *</Label>
           <Select value={clientId} onValueChange={(val) => {
@@ -290,11 +328,17 @@ export default function InvoiceBuilder({
         </div>
       </div>
 
-      <div className="flex justify-end pt-4">
+      <div className="flex justify-end pt-4 gap-2">
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Cancel
+        </Button>
         <Button type="submit" disabled={loading} className="w-40 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {loading ? "Saving..." : invoiceId ? "Save Changes" : "Create Invoice"}
         </Button>
       </div>
     </form>
+      </DialogContent>
+    </Dialog>
   )
 }
