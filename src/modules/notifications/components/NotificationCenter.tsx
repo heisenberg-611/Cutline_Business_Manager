@@ -93,6 +93,41 @@ export function NotificationCenter() {
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 
+  React.useEffect(() => {
+    let originalTitle = document.title.replace(/^\(\d+\)\s/, '')
+
+    const updateTitle = () => {
+      const currentTitle = document.title
+      if (!/^\(\d+\)\s/.test(currentTitle)) {
+        originalTitle = currentTitle
+      }
+
+      if (unreadCount > 0) {
+        document.title = `(${unreadCount}) ${originalTitle}`
+      } else {
+        document.title = originalTitle
+      }
+    }
+
+    updateTitle()
+
+    const headElement = document.querySelector('head')
+    if (!headElement) return
+
+    const observer = new MutationObserver(() => {
+      const currentTitle = document.title
+      if (currentTitle !== `(${unreadCount}) ${originalTitle}` && currentTitle !== originalTitle) {
+        observer.disconnect()
+        updateTitle()
+        observer.observe(headElement, { childList: true, subtree: true })
+      }
+    })
+
+    observer.observe(headElement, { childList: true, subtree: true })
+
+    return () => observer.disconnect()
+  }, [unreadCount])
+
   const handleMarkAsRead = async (id: string) => {
     // Optimistic UI update
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
