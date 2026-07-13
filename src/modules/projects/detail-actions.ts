@@ -113,7 +113,7 @@ export async function deleteLink(linkId: string, projectId: string) {
   if (!project) throw new Error('Project not found')
 
   await prisma.projectLink.deleteMany({
-    where: { id: linkId, projectId }
+    where: { id: linkId, projectId, project: { businessId: orgId } }
   })
 
   revalidatePath(`/dashboard/projects/${projectId}`)

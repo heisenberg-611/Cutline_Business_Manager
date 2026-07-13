@@ -98,7 +98,7 @@ export async function updateProject(projectId: string, data: { title: string, de
   if (!project) throw new Error('Project not found')
 
   await prisma.project.update({
-    where: { id: projectId },
+    where: { id: projectId, businessId: orgId },
     data
   })
 
@@ -116,7 +116,7 @@ export async function deleteProject(projectId: string) {
   if (!project) throw new Error('Project not found')
 
   await prisma.project.deleteMany({
-    where: { id: projectId }
+    where: { id: projectId, businessId: orgId }
   })
 
   revalidatePath('/dashboard/projects')
@@ -186,7 +186,7 @@ export async function archiveProject(projectId: string) {
   if (!project) throw new Error('Project not found')
 
   await prisma.project.update({
-    where: { id: projectId },
+    where: { id: projectId, businessId: orgId },
     data: { isArchived: true }
   })
 
@@ -206,7 +206,7 @@ export async function unarchiveProject(projectId: string) {
   if (!project) throw new Error('Project not found')
 
   await prisma.project.update({
-    where: { id: projectId },
+    where: { id: projectId, businessId: orgId },
     data: { isArchived: false }
   })
 

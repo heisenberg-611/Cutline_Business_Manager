@@ -151,7 +151,7 @@ export async function deleteWorkflowStage(stageId: string) {
     })
   }
 
-  await prisma.workflowStage.deleteMany({ where: { id: stageId } })
+  await prisma.workflowStage.deleteMany({ where: { id: stageId, template: { businessId: orgId } } })
 
   revalidatePath('/dashboard/settings')
   revalidatePath('/dashboard/pipeline')
@@ -181,7 +181,7 @@ export async function reorderWorkflowStages(stageIds: string[]) {
   await prisma.$transaction(
     stageIds.map((id, index) => 
       prisma.workflowStage.update({
-        where: { id },
+        where: { id, template: { businessId: orgId } },
         data: { orderIndex: index },
       })
     )

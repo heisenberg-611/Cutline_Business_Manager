@@ -78,7 +78,7 @@ export async function updateExpense(id: string, input: ExpenseInput) {
     if (!existing) throw new Error('Expense not found')
 
     const updated = await tx.expense.update({
-      where: { id },
+      where: { id, businessId: orgId },
       data: {
         description: data.description,
         category: data.category,
@@ -114,7 +114,7 @@ export async function deleteExpense(id: string) {
     const existing = await tx.expense.findFirst({ where: { id, businessId: orgId } })
     if (!existing) throw new Error('Expense not found')
 
-    await tx.expense.delete({ where: { id } })
+    await tx.expense.delete({ where: { id, businessId: orgId } })
 
     await tx.auditLog.create({
       data: {

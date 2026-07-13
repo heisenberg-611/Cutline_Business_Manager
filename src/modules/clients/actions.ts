@@ -100,7 +100,7 @@ export async function updateClient(clientId: string, data: { displayName: string
 
   try {
     await prisma.client.update({
-      where: { id: clientId },
+      where: { id: clientId, businessId: orgId },
       data
     })
   } catch (err: any) {
@@ -125,7 +125,7 @@ export async function deleteClient(clientId: string) {
   if (!client) throw new Error('Client not found')
 
   await prisma.client.deleteMany({
-    where: { id: clientId }
+    where: { id: clientId, businessId: orgId }
   })
 
   revalidatePath('/dashboard/clients')
@@ -147,7 +147,7 @@ export async function updateClientRating(clientId: string, rating: number) {
   if (!client) throw new Error('Client not found')
 
   await prisma.client.update({
-    where: { id: clientId },
+    where: { id: clientId, businessId: orgId },
     data: { internalRating: rating }
   })
 

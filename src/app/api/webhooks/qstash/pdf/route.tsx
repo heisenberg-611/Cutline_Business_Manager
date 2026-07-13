@@ -49,8 +49,8 @@ async function handler(req: NextRequest) {
     })
 
     // Update the invoice record with the new PDF URL
-    await prisma.invoice.update({
-      where: { id: invoiceId },
+    await prisma.invoice.updateMany({
+      where: { id: invoiceId, businessId: orgId },
       data: { pdfUrl: blob.url }
     })
 

@@ -68,7 +68,7 @@ export async function updateAsset(assetId: string, data: { type: string, name: s
 
   try {
     await prisma.asset.update({
-      where: { id: assetId },
+      where: { id: assetId, businessId: orgId },
       data
     })
   } catch (err: any) {
@@ -92,7 +92,7 @@ export async function deleteAsset(assetId: string) {
   if (!asset) throw new Error('Asset not found')
 
   await prisma.asset.deleteMany({
-    where: { id: assetId }
+    where: { id: assetId, businessId: orgId }
   })
 
   revalidatePath('/dashboard/assets')

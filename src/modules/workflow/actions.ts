@@ -86,8 +86,8 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
     throw new Error('Unauthorized')
   }
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId }
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, businessId: orgId }
   })
 
   if (!project || project.businessId !== orgId) {
@@ -114,7 +114,7 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
       ] : []),
       // Update project
       prisma.project.update({
-        where: { id: projectId },
+        where: { id: projectId, businessId: orgId },
         data: { statusStageId: newStageId }
       }),
       // Create new history record

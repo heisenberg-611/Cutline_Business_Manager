@@ -160,10 +160,10 @@ export async function updateInvoice(id: string, input: InvoiceInput) {
     const totalCents = subtotalCents + taxAmountCents
 
     // Delete existing line items
-    await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id } })
+    await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id, invoice: { businessId: orgId } } })
 
     const updated = await tx.invoice.update({
-      where: { id },
+      where: { id, businessId: orgId },
       data: {
         clientId: data.clientId,
         projectId: data.projectId || null,
@@ -201,9 +201,9 @@ export async function deleteInvoice(id: string) {
     const existing = await tx.invoice.findFirst({ where: { id, businessId: orgId } })
     if (!existing) throw new Error('Invoice not found')
 
-    await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id } })
-    await tx.payment.deleteMany({ where: { invoiceId: id } })
-    await tx.invoice.deleteMany({ where: { id } })
+    await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id, invoice: { businessId: orgId } } })
+    await tx.payment.deleteMany({ where: { invoiceId: id, invoice: { businessId: orgId } } })
+    await tx.invoice.deleteMany({ where: { id, businessId: orgId } })
 
     await tx.auditLog.create({
       data: {
@@ -232,7 +232,7 @@ export async function voidInvoice(id: string) {
     if (existing.payments.length > 0) throw new Error('Cannot void invoice with existing payments. Create a Credit Note instead.')
 
     await tx.invoice.update({
-      where: { id },
+      where: { id, businessId: orgId },
       data: { status: 'VOID', amountDueCents: 0 }
     })
   })
@@ -250,7 +250,7 @@ export async function sendInvoice(id: string) {
     if (existing.status !== 'DRAFT') throw new Error('Can only send DRAFT invoices')
 
     await tx.invoice.update({
-      where: { id },
+      where: { id, businessId: orgId },
       data: {
         status: 'SENT',
         issuedAt: new Date(),
@@ -308,7 +308,7 @@ export async function recordPayment(invoiceId: string, input: z.infer<typeof Pay
     else if (newPaid > 0) newStatus = 'PARTIALLY_PAID'
 
     await tx.invoice.update({
-      where: { id: invoiceId },
+      where: { id: invoiceId, businessId: orgId },
       data: {
         amountPaidCents: newPaid,
         amountDueCents: newDue,
@@ -342,7 +342,7 @@ export async function createCreditNote(invoiceId: string, amountCents: number, r
     // Adjust invoice balance
     const newDue = Math.max(0, invoice.amountDueCents - amountCents)
     await tx.invoice.update({
-      where: { id: invoiceId },
+      where: { id: invoiceId, businessId: orgId },
       data: {
         amountDueCents: newDue,
         status: newDue === 0 && invoice.amountPaidCents > 0 ? 'PAID' : (newDue === 0 ? 'VOID' : invoice.status)
@@ -367,7 +367,7 @@ export async function sendReminder(invoiceId: string, tone: 'gentle' | 'firm' | 
     })
 
     await tx.invoice.update({
-      where: { id: invoiceId },
+      where: { id: invoiceId, businessId: orgId },
       data: {
         reminderCount: { increment: 1 }
       }
