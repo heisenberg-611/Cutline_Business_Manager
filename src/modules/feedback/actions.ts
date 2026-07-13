@@ -8,6 +8,16 @@ import { sendFeedbackEmail } from '@/lib/email/resend'
 import { withUniqueToken } from '@/lib/utils/unique-token'
 import { createNotification, broadcastNotification } from '@/modules/notifications/services'
 import { getAppUrl } from '@/lib/utils'
+import { z } from 'zod'
+import { checkRateLimit } from '@/lib/utils/rate-limit'
+
+const FeedbackSchema = z.object({
+  overallScore: z.number().int().min(1).max(10),
+  dimensionScores: z.any().optional(),
+  commentText: z.string().max(10000).optional(),
+  videoUrl: z.string().url().max(500).optional().or(z.literal('')),
+  consentToPublish: z.boolean()
+})
 
 // -----------------------------------------------------------------------------
 // EDITOR/ADMIN ACTIONS (Requires Auth)
@@ -261,6 +271,7 @@ export async function deleteFeedbackRequest(requestId: string) {
 // -----------------------------------------------------------------------------
 
 export async function getFeedbackRequestByToken(token: string) {
+  await checkRateLimit()
   return await prisma.feedbackRequest.findUnique({
     where: { token },
     include: {
@@ -280,6 +291,9 @@ export async function submitFeedbackResponse(
     consentToPublish: boolean
   }
 ) {
+  await checkRateLimit()
+  const validatedData = FeedbackSchema.parse(data)
+
   const request = await prisma.feedbackRequest.findUnique({
     where: { token },
     include: {
@@ -298,11 +312,11 @@ export async function submitFeedbackResponse(
         data: {
           businessId: request.businessId,
           requestId: request.id,
-          overallScore: data.overallScore,
-          dimensionScores: data.dimensionScores,
-          commentText: data.commentText,
-          videoUrl: data.videoUrl,
-          consentToPublish: data.consentToPublish
+          overallScore: validatedData.overallScore,
+          dimensionScores: validatedData.dimensionScores,
+          commentText: validatedData.commentText,
+          videoUrl: validatedData.videoUrl || undefined,
+          consentToPublish: validatedData.consentToPublish
         }
       })
 
@@ -326,7 +340,7 @@ export async function submitFeedbackResponse(
     await broadcastNotification({
       businessId: request.businessId,
       title: "New Client Feedback",
-      message: `${request.client.displayName} just submitted feedback for "${request.project.title}" (Score: ${data.overallScore}/10).`,
+      message: `${request.client.displayName} just submitted feedback for "${request.project.title}" (Score: ${validatedData.overallScore}/10).`,
       type: "feedback",
       actionUrl: "/dashboard/feedback"
     })

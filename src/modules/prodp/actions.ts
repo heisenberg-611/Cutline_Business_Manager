@@ -6,6 +6,27 @@ import { withUniqueToken } from '@/lib/utils/unique-token'
 import { createNotification, broadcastNotification } from '@/modules/notifications/services'
 import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
+import { checkRateLimit } from '@/lib/utils/rate-limit'
+
+const IntakeFormSchema = z.object({
+  clientName: z.string().min(1, 'Client name is required').max(100),
+  clientEmail: z.string().email('Invalid email address').max(100),
+  companyName: z.string().max(100).optional(),
+  phone: z.string().max(50).optional(),
+  industry: z.string().max(100).optional(),
+  preferredChannel: z.string().max(50).optional(),
+  projectTitle: z.string().min(1, 'Project title is required').max(100),
+  projectType: z.string().max(50).optional(),
+  scriptText: z.string().max(10000).optional(),
+  scriptLink: z.string().max(500).optional(),
+  rawFootageLink: z.string().max(500).optional()
+})
+
+const ReviewNotesSchema = z.object({
+  notes: z.string().max(10000),
+  links: z.string().max(1000)
+})
 
 export async function submitIntakeForm(businessId: string, data: {
   clientName: string,
@@ -20,21 +41,24 @@ export async function submitIntakeForm(businessId: string, data: {
   scriptLink: string,
   rawFootageLink: string
 }) {
+  await checkRateLimit()
+  const validatedData = IntakeFormSchema.parse(data)
+
   // Create a ProjectRequest instead of directly creating a Client/Project
   const request = await prisma.projectRequest.create({
     data: {
       businessId,
-      clientName: data.clientName,
-      clientEmail: data.clientEmail.toLowerCase(),
-      companyName: data.companyName || null,
-      phone: data.phone || null,
-      industry: data.industry || null,
-      preferredChannel: data.preferredChannel || null,
-      projectTitle: data.projectTitle,
-      projectType: data.projectType || null,
-      scriptText: data.scriptText || null,
-      scriptLink: data.scriptLink || null,
-      rawFootageLink: data.rawFootageLink || null,
+      clientName: validatedData.clientName,
+      clientEmail: validatedData.clientEmail.toLowerCase(),
+      companyName: validatedData.companyName || null,
+      phone: validatedData.phone || null,
+      industry: validatedData.industry || null,
+      preferredChannel: validatedData.preferredChannel || null,
+      projectTitle: validatedData.projectTitle,
+      projectType: validatedData.projectType || null,
+      scriptText: validatedData.scriptText || null,
+      scriptLink: validatedData.scriptLink || null,
+      rawFootageLink: validatedData.rawFootageLink || null,
     }
   })
 
@@ -43,7 +67,7 @@ export async function submitIntakeForm(businessId: string, data: {
     await broadcastNotification({
       businessId,
       title: "New Project Request",
-      message: `${data.clientName} submitted a new project request: "${data.projectTitle}". Awaiting your approval.`,
+      message: `${validatedData.clientName} submitted a new project request: "${validatedData.projectTitle}". Awaiting your approval.`,
       type: "project",
       actionUrl: `/dashboard/pipeline?view=board`
     })
@@ -241,6 +265,9 @@ export async function getReviewRequestByToken(token: string) {
 }
 
 export async function submitReviewNotes(token: string, notes: string, links: string) {
+  await checkRateLimit()
+  const validatedData = ReviewNotesSchema.parse({ notes, links })
+
   const request = await prisma.reviewRequest.findUnique({
     where: { token },
     include: { project: true, client: true }
@@ -252,8 +279,8 @@ export async function submitReviewNotes(token: string, notes: string, links: str
   await prisma.reviewRequest.update({
     where: { id: request.id },
     data: {
-      clientNotes: notes,
-      clientLinks: links,
+      clientNotes: validatedData.notes,
+      clientLinks: validatedData.links,
       status: 'REPLIED'
     }
   })
