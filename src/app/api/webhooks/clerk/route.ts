@@ -152,7 +152,7 @@ export async function POST(req: Request) {
     if (eventType === 'user.deleted') {
       const { id } = evt.data
       if (id) {
-        await prisma.user.delete({
+        await prisma.user.deleteMany({
           where: { id }
         })
       }
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
     if (eventType === 'organization.deleted') {
       const { id } = evt.data
       if (id) {
-        await prisma.business.delete({
+        await prisma.business.deleteMany({
           where: { id }
         })
       }

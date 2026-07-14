@@ -97,7 +97,7 @@ export function AppLayout({
         e.preventDefault()
         setIsCommandOpen((open) => !open)
       }
-      if (e.key.toLowerCase() === 'q' && (e.metaKey || e.ctrlKey)) {
+      if (e.key?.toLowerCase() === 'q' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         setIsQuickActionsOpen((open) => !open)
       }
@@ -128,6 +128,13 @@ export function AppLayout({
     if (orgRole !== 'org:admin') {
       const restricted = ['/dashboard/financials', '/dashboard/analytics', '/dashboard/settings', '/dashboard/archive', '/dashboard/clients']
       items = items.filter(item => !restricted.some(r => item.href.startsWith(r)))
+      
+      // Ensure Messages is the last option for members
+      const messagesItem = items.find(item => item.href === '/dashboard/messages')
+      if (messagesItem) {
+        items = items.filter(item => item.href !== '/dashboard/messages')
+        items.push(messagesItem)
+      }
     }
 
     return items

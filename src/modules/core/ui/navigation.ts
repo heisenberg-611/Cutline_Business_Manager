@@ -8,11 +8,13 @@ import {
   Box,
   Archive,
   MessageSquare,
+  MessageCircle,
   Video
 } from 'lucide-react'
 
 export const ALL_NAV_ITEMS = [
   { label: 'Dashboard', icon: Briefcase, href: '/dashboard' },
+  { label: 'Messages', icon: MessageCircle, href: '/dashboard/messages' },
   { label: 'Pipeline', icon: Kanban, href: '/dashboard/pipeline' },
   { label: 'Projects', icon: FolderKanban, href: '/dashboard/projects' },
   { label: 'ProdP', icon: Video, href: '/dashboard/prodp' },

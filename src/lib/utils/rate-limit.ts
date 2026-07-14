@@ -33,3 +33,30 @@ export async function checkRateLimit() {
     throw new Error("Too many requests. Please try again later.");
   }
 }
+
+// -----------------------------------------------------------------------------
+// USER MESSAGING RATE LIMITER
+// -----------------------------------------------------------------------------
+let messageActionLimiter: Ratelimit | null = null;
+
+try {
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    messageActionLimiter = new Ratelimit({
+      redis: Redis.fromEnv(),
+      // Max 30 messages per 1 minute per user
+      limiter: Ratelimit.slidingWindow(30, "1 m"),
+      analytics: true,
+    });
+  }
+} catch (error) {
+  console.warn("Failed to initialize Upstash Redis for messaging:", error);
+}
+
+export async function checkMessageRateLimit(userId: string) {
+  if (!messageActionLimiter) return;
+  
+  const { success } = await messageActionLimiter.limit(`msg_ratelimit_${userId}`);
+  if (!success) {
+    throw new Error("You are sending messages too quickly. Please wait a moment.");
+  }
+}

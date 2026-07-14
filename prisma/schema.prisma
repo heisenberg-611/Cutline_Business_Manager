@@ -19,9 +19,9 @@ enum WorkspaceType {
 }
 
 model Business {
-  id              String @id // Matches Clerk Organization ID
+  id              String        @id // Matches Clerk Organization ID
   name            String
-  defaultCurrency String @default("USD")
+  defaultCurrency String        @default("USD")
   workspaceType   WorkspaceType @default(CREATIVE)
 
   // Invoice & Email Settings
@@ -39,43 +39,46 @@ model Business {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships       BusinessMembership[]
-  clients           Client[]
-  projects          Project[]
-  workflowTemplates WorkflowTemplate[]
-  invoices          Invoice[]
-  assets            Asset[]
-  payments          Payment[]
-  expenses          Expense[]
-  creditNotes       CreditNote[]
-  invoiceReminders  InvoiceReminder[]
-  auditLogs         AuditLog[]
-  notifications     Notification[]
-  feedbackRequests  FeedbackRequest[]
-  feedbackResponses     FeedbackResponse[]
-  testimonials          Testimonial[]
-  reviewRequests        ReviewRequest[]
-  analyticsSnapshots    AnalyticsSnapshot[]
-  projectRequests       ProjectRequest[]
+  memberships        BusinessMembership[]
+  clients            Client[]
+  projects           Project[]
+  workflowTemplates  WorkflowTemplate[]
+  invoices           Invoice[]
+  assets             Asset[]
+  payments           Payment[]
+  expenses           Expense[]
+  creditNotes        CreditNote[]
+  invoiceReminders   InvoiceReminder[]
+  auditLogs          AuditLog[]
+  notifications      Notification[]
+  feedbackRequests   FeedbackRequest[]
+  feedbackResponses  FeedbackResponse[]
+  testimonials       Testimonial[]
+  reviewRequests     ReviewRequest[]
+  analyticsSnapshots AnalyticsSnapshot[]
+  projectRequests    ProjectRequest[]
+  Conversation       Conversation[]
 
   @@map("businesses")
 }
 
 model User {
-  id             String   @id // Matches Clerk User ID
-  email          String   @unique
-  firstName      String?
-  lastName       String?
-  imageUrl               String?
-  navPreferences         Json?
-  quickActionPreferences Json?
+  id                      String   @id // Matches Clerk User ID
+  email                   String   @unique
+  firstName               String?
+  lastName                String?
+  imageUrl                String?
+  navPreferences          Json?
+  quickActionPreferences  Json?
   notificationPreferences Json?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  memberships      BusinessMembership[]
-  notifications    Notification[]
-  assignedProjects Project[]
+  memberships             BusinessMembership[]
+  notifications           Notification[]
+  assignedProjects        Project[]
+  ConversationParticipant ConversationParticipant[]
+  Message                 Message[]
 
   @@map("users")
 }
@@ -123,9 +126,9 @@ model Client {
   testimonials     Testimonial[]
   reviewRequests   ReviewRequest[]
 
-  @@index([businessId]) // Critical for tenant data isolation performance
   @@unique([businessId, displayId])
-  @@unique([businessId, email])  // Prevent duplicate client emails within a business
+  @@unique([businessId, email]) // Prevent duplicate client emails within a business
+  @@index([businessId]) // Critical for tenant data isolation performance
   @@map("clients")
 }
 
@@ -160,10 +163,10 @@ model Project {
   testimonials     Testimonial[]
   reviewRequests   ReviewRequest[]
 
+  @@unique([businessId, displayId])
   @@index([businessId])
   @@index([clientId])
   @@index([statusStageId])
-  @@unique([businessId, displayId])
   @@map("projects")
 }
 
@@ -193,7 +196,7 @@ model ProjectRequest {
   // Project info
   projectTitle   String
   projectType    String?
-  scriptText     String?  @db.Text
+  scriptText     String? @db.Text
   scriptLink     String?
   rawFootageLink String?
 
@@ -435,7 +438,7 @@ model AuditLog {
   id           String  @id @default(cuid())
   businessId   String
   entityType   String // 'Invoice', 'Payment'
-  entityId     String  // Polymorphic reference — intentionally no FK (can reference Invoice, Payment, etc.)
+  entityId     String // Polymorphic reference — intentionally no FK (can reference Invoice, Payment, etc.)
   action       String // 'CREATE', 'UPDATE', 'VOID', 'PAYMENT_RECORDED'
   actorUserId  String? // Intentionally not FK-constrained: audit logs must survive user deletion
   metadataJson String? @db.Text
@@ -470,7 +473,7 @@ model Note {
 model TimeEntry {
   id              String    @id @default(cuid())
   projectId       String
-  userId          String?   // TODO: Add @relation to User with onDelete: SetNull in a future migration
+  userId          String? // TODO: Add @relation to User with onDelete: SetNull in a future migration
   startedAt       DateTime?
   endedAt         DateTime?
   durationMinutes Int       @default(0)
@@ -504,8 +507,8 @@ model Asset {
   business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   projects ProjectAsset[]
 
-  @@index([businessId])
   @@unique([businessId, name, type]) // Prevent duplicate asset name+type within a business
+  @@index([businessId])
   @@map("assets")
 }
 
@@ -633,17 +636,17 @@ model Testimonial {
 // -----------------------------------------------------------------------------
 
 model ReviewRequest {
-  id             String    @id @default(cuid())
-  businessId     String
-  projectId      String
-  clientId       String
-  token          String    @unique
-  draftLink      String?   
-  status         String    @default("PENDING") // PENDING, REPLIED
-  clientNotes    String?   @db.Text
-  clientLinks    String?   @db.Text
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id          String   @id @default(cuid())
+  businessId  String
+  projectId   String
+  clientId    String
+  token       String   @unique
+  draftLink   String?
+  status      String   @default("PENDING") // PENDING, REPLIED
+  clientNotes String?  @db.Text
+  clientLinks String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -661,10 +664,10 @@ model ReviewRequest {
 // -----------------------------------------------------------------------------
 
 model AnalyticsSnapshot {
-  id                    String   @id @default(cuid())
-  businessId            String
-  date                  DateTime @db.Date // The date this snapshot represents
-  
+  id         String   @id @default(cuid())
+  businessId String
+  date       DateTime @db.Date // The date this snapshot represents
+
   revenueMTDCents       Int
   revenueLastMonthCents Int
   revenueDelta          Float
@@ -674,14 +677,73 @@ model AnalyticsSnapshot {
   atRiskCount           Int
   avgFeedback           Float
   dso                   Float
-  
-  historicalTrendJson   Json? 
 
-  createdAt             DateTime @default(now())
+  historicalTrendJson Json?
 
-  business              Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([businessId, date])
   @@index([businessId, date(sort: Desc)])
   @@map("analytics_snapshots")
+}
+
+// -----------------------------------------------------------------------------
+// MESSAGING & BROADCASTS
+// -----------------------------------------------------------------------------
+
+enum ConversationType {
+  DIRECT
+  BROADCAST
+  GROUP
+}
+
+model Conversation {
+  id         String           @id @default(cuid())
+  businessId String
+  type       ConversationType
+  title      String?
+  createdBy  String
+  createdAt  DateTime         @default(now())
+
+  business     Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([businessId])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String    @id @default(cuid())
+  conversationId String
+  userId         String
+  isMuted        Boolean   @default(false)
+  lastReadAt     DateTime?
+  deletedAt      DateTime?
+  joinedAt       DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String?
+  content        String    @db.Text
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?        @relation(fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@map("messages")
 }
