@@ -155,7 +155,7 @@ classDiagram
 This diagram outlines specific, high-level business processes executed by our primary actors: Admin/Workspace Members, External Clients, and Automated System triggers. Subgraph backgrounds have been made transparent so they don't clash with your environment theme.
 
 ```mermaid
-flowchart LR
+flowchart TB
     %% Themes and Styling
     classDef actor fill:#0f172a,stroke:#94a3b8,stroke-width:2px,color:#ffffff,font-weight:bold
     classDef system fill:#082f49,stroke:#38bdf8,stroke-width:2px,color:#ffffff,font-weight:bold
