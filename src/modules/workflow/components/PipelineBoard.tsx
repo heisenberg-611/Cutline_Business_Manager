@@ -278,7 +278,7 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
           <SelectTrigger className="w-[140px] h-9 text-sm bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
             <SelectValue placeholder="Height" />
           </SelectTrigger>
-          <SelectContent align="end" alignItemWithTrigger={false}>
+          <SelectContent align="start" alignItemWithTrigger={false}>
             <SelectItem value="50vh" className="text-sm">Height: 50%</SelectItem>
             <SelectItem value="65vh" className="text-sm">Height: 65%</SelectItem>
             <SelectItem value="80vh" className="text-sm">Height: 80%</SelectItem>
@@ -290,7 +290,7 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
           <SelectTrigger className="w-[180px] h-9 text-sm bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
             <SelectValue placeholder="Sort by..." />
           </SelectTrigger>
-          <SelectContent align="end" alignItemWithTrigger={false}>
+          <SelectContent align="start" alignItemWithTrigger={false}>
             <SelectItem value="custom" className="text-sm">Custom Order</SelectItem>
             <SelectItem value="deadline" className="text-sm">Due Date</SelectItem>
             <SelectItem value="priority" className="text-sm">Priority</SelectItem>
@@ -420,7 +420,7 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
                                   <SelectTrigger className="h-7 text-xs bg-transparent border-dashed">
                                     <SelectValue>{stage.name}</SelectValue>
                                   </SelectTrigger>
-                                  <SelectContent align="end" alignItemWithTrigger={false}>
+                                  <SelectContent align="start" alignItemWithTrigger={false}>
                                     {stages.map(s => (
                                       <SelectItem key={s.id} value={s.id} className="text-xs">{s.name}</SelectItem>
                                     ))}

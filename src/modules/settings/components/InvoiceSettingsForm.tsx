@@ -106,7 +106,7 @@ export function InvoiceSettingsForm({ business }: { business: any }) {
                     <SelectTrigger className="w-[180px] h-8 text-xs">
                       <SelectValue placeholder="Insert Placeholder" />
                     </SelectTrigger>
-                    <SelectContent align="end" alignItemWithTrigger={false}>
+                    <SelectContent align="start" alignItemWithTrigger={false}>
                       <SelectItem value="{{client_name}}">Client Name</SelectItem>
                       <SelectItem value="{{invoice_number}}">Invoice Number</SelectItem>
                       <SelectItem value="{{due_date}}">Due Date</SelectItem>
@@ -180,7 +180,7 @@ export function InvoiceSettingsForm({ business }: { business: any }) {
                     <SelectTrigger className="w-[180px] h-8 text-xs">
                       <SelectValue placeholder="Insert Placeholder" />
                     </SelectTrigger>
-                    <SelectContent align="end" alignItemWithTrigger={false}>
+                    <SelectContent align="start" alignItemWithTrigger={false}>
                       <SelectItem value="{{client_name}}">Client Name</SelectItem>
                       <SelectItem value="{{project_name}}">Project Name</SelectItem>
                       <SelectItem value="{{business_name}}">Business Name</SelectItem>

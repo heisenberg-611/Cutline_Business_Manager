@@ -140,7 +140,7 @@ export function ProjectActions({ project, members = [] }: { project: Project, me
       )}
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Project</DialogTitle>
           </DialogHeader>
@@ -163,7 +163,7 @@ export function ProjectActions({ project, members = [] }: { project: Project, me
                 <SelectTrigger>
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
-                <SelectContent align="end" alignItemWithTrigger={false}>
+                <SelectContent align="start" alignItemWithTrigger={false}>
                   <SelectItem value="High">High</SelectItem>
                   <SelectItem value="Medium">Medium</SelectItem>
                   <SelectItem value="Low">Low</SelectItem>
@@ -187,7 +187,7 @@ export function ProjectActions({ project, members = [] }: { project: Project, me
                   value={formData.assigneeId} 
                   onValueChange={val => setFormData({ ...formData, assigneeId: val || 'unassigned' })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-auto py-2">
                     <SelectValue placeholder="Unassigned">
                       {formData.assigneeId && formData.assigneeId !== 'unassigned'
                         ? (() => {
@@ -195,19 +195,45 @@ export function ProjectActions({ project, members = [] }: { project: Project, me
                             if (!user) return 'Unassigned';
                             const rawName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
                             const name = rawName || user.email.split('@')[0] || 'Unknown User';
-                            return `${name} (${user.email})`;
+                            return (
+                              <span className="flex items-center gap-2 text-left">
+                                {user.imageUrl ? (
+                                  <img src={user.imageUrl} alt={name} className="h-6 w-6 rounded-full object-cover shrink-0" />
+                                ) : (
+                                  <span className="h-6 w-6 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium shrink-0">
+                                    {name.charAt(0).toUpperCase()}
+                                  </span>
+                                )}
+                                <span className="flex flex-col truncate">
+                                  <span className="text-sm font-medium truncate leading-none">{name}</span>
+                                  <span className="text-[10px] text-zinc-500 truncate mt-1 leading-none">{user.email}</span>
+                                </span>
+                              </span>
+                            );
                           })()
                         : 'Unassigned'}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent align="end" alignItemWithTrigger={false}>
+                  <SelectContent align="start" alignItemWithTrigger={false} className="w-max min-w-[var(--anchor-width)]">
                     <SelectItem value="unassigned">Unassigned</SelectItem>
                     {members.map(m => {
                       const rawName = `${m.user.firstName || ''} ${m.user.lastName || ''}`.trim();
                       const name = rawName || m.user.email.split('@')[0] || 'Unknown User';
                       return (
                         <SelectItem key={m.user.id} value={m.user.id}>
-                          {name} ({m.user.email})
+                          <span className="flex items-center gap-2 py-1 w-full min-w-0">
+                          {m.user.imageUrl ? (
+                            <img src={m.user.imageUrl} alt={name} className="h-8 w-8 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <span className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium shrink-0">
+                              {name.charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                          <span className="flex flex-col min-w-0">
+                            <span className="text-sm font-medium leading-tight">{name}</span>
+                            <span className="text-xs text-zinc-500 leading-tight">{m.user.email}</span>
+                          </span>
+                        </span>
                         </SelectItem>
                       )
                     })}

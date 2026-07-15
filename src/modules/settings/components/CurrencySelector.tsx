@@ -34,7 +34,7 @@ export function CurrencySelector({ currentCurrency }: { currentCurrency: string 
         <SelectTrigger className="w-[240px]">
           <SelectValue placeholder="Select currency" />
         </SelectTrigger>
-        <SelectContent align="end" alignItemWithTrigger={false}>
+        <SelectContent align="start" alignItemWithTrigger={false}>
           {CURRENCIES.map((c) => (
             <SelectItem key={c.code} value={c.code}>
               <span className="font-mono mr-2">{c.symbol}</span>

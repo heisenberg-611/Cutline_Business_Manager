@@ -82,7 +82,7 @@ export function AssetPanel({ projectId, currentAssets, availableAssets }: { proj
                       })() : undefined}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent align="end" alignItemWithTrigger={false}>
+                  <SelectContent align="start" alignItemWithTrigger={false}>
                     {unlinkedAssets.map(asset => (
                       <SelectItem key={asset.id} value={asset.id}>
                         {asset.name} ({asset.type})

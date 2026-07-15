@@ -27,7 +27,7 @@ const IconSelector = ({ value, onChange }: { value: string, onChange: (v: string
       <SelectTrigger className="w-[140px] h-8 text-xs shrink-0">
         <SelectValue placeholder="Select icon..." />
       </SelectTrigger>
-      <SelectContent align="end" alignItemWithTrigger={false}>
+      <SelectContent align="start" alignItemWithTrigger={false}>
         {Object.keys(PIPELINE_ICONS).map((iconName) => {
           const IconComp = PIPELINE_ICONS[iconName as PipelineIconName]
           return (
