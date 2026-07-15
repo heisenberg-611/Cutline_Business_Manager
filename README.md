@@ -16,7 +16,8 @@
   <p>
     <a href="https://www.cutlin.tech"><b>View Live Demo</b></a> &nbsp;·&nbsp;
     <a href="https://github.com/heisenberg-611/Cutline_Business_manager/wiki"><b>Documentation</b></a> &nbsp;·&nbsp;
-    <a href="CUTLINE_FOR_DUMMIES.md"><b>User Guide</b></a>
+    <a href="CUTLINE_FOR_DUMMIES.md"><b>User Guide</b></a> &nbsp;·&nbsp;
+    <a href="system_diagrams.md"><b>System Diagrams</b></a>
   </p>
 </div>
 
