@@ -24,12 +24,7 @@ export function UpcomingDeadlines({ projects }: { projects: Project[] }) {
   const threeDaysFromNow = new Date()
   threeDaysFromNow.setDate(now.getDate() + 3)
 
-  const upcoming = projects
-    .filter(p => p.deadline && p.deadline.getTime() >= now.getTime())
-    .sort((a, b) => a.deadline!.getTime() - b.deadline!.getTime())
-    .slice(0, 5)
-
-  if (upcoming.length === 0) {
+  if (projects.length === 0) {
     return (
       <div className="p-8 text-center text-zinc-500 text-sm">
         No upcoming deadlines.
@@ -39,7 +34,7 @@ export function UpcomingDeadlines({ projects }: { projects: Project[] }) {
 
   return (
     <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-      {upcoming.map(project => {
+      {projects.map(project => {
         let status = 'on-track'
         let hoursInStage = 0
         

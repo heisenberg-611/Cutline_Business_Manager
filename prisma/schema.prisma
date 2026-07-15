@@ -25,16 +25,16 @@ model Business {
   workspaceType   WorkspaceType @default(CREATIVE)
 
   // Invoice & Email Settings
-  invoicePrefix                String @default("INV")
-  invoiceSeparator             String @default("-")
-  invoiceSequence              Int    @default(0)
-  clientSequence               Int    @default(0)
-  projectSequence              Int    @default(0)
-  emailSubjectTemplate         String @default("Invoice {{invoice_number}} from {{business_name}}")
-  emailBodyTemplate            String @default("Hi {{client_name}},\n\nHere is your invoice for {{total_amount}}.\n\nDue Date: {{due_date}}\n\nThank you!")
-  paymentInstructions          String @default("Please send payment via bank transfer to:\nBank: \nAccount Number: \nRouting Number: ")
-  feedbackEmailSubjectTemplate String @default("We'd love your feedback on {{project_name}}")
-  feedbackEmailBodyTemplate    String @default("Hi {{client_name}},\n\nYour project \"{{project_name}}\" has just been delivered by {{business_name}}.\nWe hope you love the final result!\n\nCould you take 2 minutes to let us know how we did? Your feedback helps us improve and serve you better.\n\nThanks for trusting us with your project.\n- The {{business_name}} Team")
+  invoicePrefix                String  @default("INV")
+  invoiceSeparator             String  @default("-")
+  invoiceSequence              Int     @default(0)
+  clientSequence               Int     @default(0)
+  projectSequence              Int     @default(0)
+  emailSubjectTemplate         String  @default("Invoice {{invoice_number}} from {{business_name}}")
+  emailBodyTemplate            String  @default("Hi {{client_name}},\n\nHere is your invoice for {{total_amount}}.\n\nDue Date: {{due_date}}\n\nThank you!")
+  paymentInstructions          String  @default("Please send payment via bank transfer to:\nBank: \nAccount Number: \nRouting Number: ")
+  feedbackEmailSubjectTemplate String  @default("We'd love your feedback on {{project_name}}")
+  feedbackEmailBodyTemplate    String  @default("Hi {{client_name}},\n\nYour project \"{{project_name}}\" has just been delivered by {{business_name}}.\nWe hope you love the final result!\n\nCould you take 2 minutes to let us know how we did? Your feedback helps us improve and serve you better.\n\nThanks for trusting us with your project.\n- The {{business_name}} Team")
   // Messaging Settings
   realtimeMessagesEnabled      Boolean @default(false)
 
@@ -81,6 +81,7 @@ model User {
   assignedProjects        Project[]
   ConversationParticipant ConversationParticipant[]
   Message                 Message[]
+  timeEntries             TimeEntry[]
 
   @@map("users")
 }
@@ -475,7 +476,7 @@ model Note {
 model TimeEntry {
   id              String    @id @default(cuid())
   projectId       String
-  userId          String? // TODO: Add @relation to User with onDelete: SetNull in a future migration
+  userId          String?
   startedAt       DateTime?
   endedAt         DateTime?
   durationMinutes Int       @default(0)
@@ -485,8 +486,10 @@ model TimeEntry {
   updatedAt       DateTime  @updatedAt
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([projectId])
+  @@index([userId])
   @@map("time_entries")
 }
 

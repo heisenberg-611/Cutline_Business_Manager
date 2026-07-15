@@ -23,39 +23,75 @@ export default async function DashboardPage() {
     redirect('/dashboard/select-business')
   }
 
-  // Fetch active projects first (filtered for members)
-  const activeProjects = await prisma.project.findMany({
-    where: { 
-      businessId: orgId,
-      isArchived: false,
-      ...(isAdmin ? {} : { assigneeId: userId }),
-      NOT: {
-        statusStage: {
-          name: { contains: 'final', mode: 'insensitive' }
-        }
-      }
-    },
-    include: { 
+  const activeProjectWhere = { 
+    businessId: orgId,
+    isArchived: false,
+    ...(isAdmin ? {} : { assigneeId: userId }),
+    NOT: {
       statusStage: {
-        include: {
-          template: {
-            include: {
-              stages: {
-                orderBy: { orderIndex: 'asc' }
+        name: { contains: 'final', mode: 'insensitive' }
+      }
+    }
+  }
+
+  // Fetch targeted data concurrently
+  const [activeProjectsCount, pipelineProjects, upcomingDeadlineProjects] = await Promise.all([
+    prisma.project.count({
+      where: activeProjectWhere,
+      cacheStrategy: { ttl: 30, swr: 30 }
+    }),
+    prisma.project.findMany({
+      where: activeProjectWhere,
+      include: { 
+        statusStage: {
+          include: {
+            template: {
+              include: {
+                stages: {
+                  orderBy: { orderIndex: 'asc' }
+                }
               }
             }
           }
-        }
-      }, 
-      stageHistory: {
-        orderBy: { enteredAt: 'desc' },
-        take: 1
+        }, 
+        stageHistory: {
+          orderBy: { enteredAt: 'desc' },
+          take: 1
+        },
+        client: true 
       },
-      client: true 
-    },
-    orderBy: { createdAt: 'desc' },
-    cacheStrategy: { ttl: 30, swr: 30 }
-  })
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      cacheStrategy: { ttl: 30, swr: 30 }
+    }),
+    prisma.project.findMany({
+      where: {
+        ...activeProjectWhere,
+        deadline: { gte: new Date() }
+      },
+      include: { 
+        statusStage: {
+          include: {
+            template: {
+              include: {
+                stages: {
+                  orderBy: { orderIndex: 'asc' }
+                }
+              }
+            }
+          }
+        }, 
+        stageHistory: {
+          orderBy: { enteredAt: 'desc' },
+          take: 1
+        },
+        client: true 
+      },
+      orderBy: { deadline: 'asc' },
+      take: 5,
+      cacheStrategy: { ttl: 30, swr: 30 }
+    })
+  ])
 
   // Admin-only fetches
   let studioHealth: any = null
@@ -129,7 +165,7 @@ export default async function DashboardPage() {
           <p className="mt-2 text-sm text-zinc-500 flex items-center flex-wrap gap-2">
             <span>{dateString}</span>
             <span className="hidden sm:inline text-zinc-300 dark:text-zinc-700">·</span>
-            <span>{activeProjects.length} active project{activeProjects.length === 1 ? '' : 's'}{!isAdmin && ' assigned to you'}</span>
+            <span>{activeProjectsCount} active project{activeProjectsCount === 1 ? '' : 's'}{!isAdmin && ' assigned to you'}</span>
             
             {isAdmin && (
               <>
@@ -190,13 +226,13 @@ export default async function DashboardPage() {
                 {isAdmin ? 'Active Pipeline' : 'Your Assigned Projects'}
               </h3>
             </div>
-            {activeProjects.length === 0 ? (
+            {activeProjectsCount === 0 ? (
               <div className="p-8 text-center text-zinc-500 text-sm">
                 {isAdmin ? 'No active projects.' : 'You have no active projects assigned to you.'}
               </div>
             ) : (
               <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                {activeProjects.slice(0, 5).map(project => (
+                {pipelineProjects.map(project => (
                   <li key={project.id} className="p-5">
                     <Link href={`/dashboard/projects/${project.id}`} className="block group">
                       <div className="flex justify-between items-start">
@@ -211,10 +247,10 @@ export default async function DashboardPage() {
                 ))}
               </ul>
             )}
-            {activeProjects.length > 5 && (
+            {activeProjectsCount > 5 && (
               <div className="px-6 py-3 border-t border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-950/50 text-center">
                 <Link href="/dashboard/projects" className="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
-                  View all {activeProjects.length} active projects
+                  View all {activeProjectsCount} active projects
                 </Link>
               </div>
             )}
@@ -244,7 +280,7 @@ export default async function DashboardPage() {
                 Upcoming Deadlines
               </h3>
             </div>
-            <UpcomingDeadlines projects={activeProjects} />
+            <UpcomingDeadlines projects={upcomingDeadlineProjects} />
           </div>
 
           {/* Aging Outstanding Invoices */}

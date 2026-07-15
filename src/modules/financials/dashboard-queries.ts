@@ -39,26 +39,30 @@ export async function getOutstandingInvoices(businessId: string) {
 }
 
 export async function getRevenueSummary(businessId: string, startDate: Date, endDate: Date) {
-  // Cash-basis (Payments received)
-  const payments = await prisma.payment.findMany({
-    where: {
-      businessId,
-      createdAt: { gte: startDate, lte: endDate }
-    },
-    cacheStrategy: { ttl: 60, swr: 60 }
-  })
-  const cashRevenue = payments.reduce((sum, p) => sum + p.amountCents, 0)
+  const [paymentsAgg, invoicesAgg] = await Promise.all([
+    // Cash-basis (Payments received)
+    prisma.payment.aggregate({
+      where: {
+        businessId,
+        createdAt: { gte: startDate, lte: endDate }
+      },
+      _sum: { amountCents: true },
+      cacheStrategy: { ttl: 60, swr: 60 }
+    }),
+    // Accrual-basis (Invoices issued)
+    prisma.invoice.aggregate({
+      where: {
+        businessId,
+        issuedAt: { gte: startDate, lte: endDate },
+        status: { notIn: ['DRAFT', 'VOID', 'CREDIT_NOTE'] }
+      },
+      _sum: { totalCents: true },
+      cacheStrategy: { ttl: 60, swr: 60 }
+    })
+  ])
 
-  // Accrual-basis (Invoices issued)
-  const invoices = await prisma.invoice.findMany({
-    where: {
-      businessId,
-      issuedAt: { gte: startDate, lte: endDate },
-      status: { notIn: ['DRAFT', 'VOID', 'CREDIT_NOTE'] }
-    },
-    cacheStrategy: { ttl: 60, swr: 60 }
-  })
-  const accrualRevenue = invoices.reduce((sum, inv) => sum + inv.totalCents, 0)
+  const cashRevenue = paymentsAgg._sum.amountCents || 0
+  const accrualRevenue = invoicesAgg._sum.totalCents || 0
 
   return { cashRevenue, accrualRevenue }
 }
