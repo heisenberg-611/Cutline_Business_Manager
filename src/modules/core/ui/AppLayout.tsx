@@ -274,7 +274,20 @@ export function AppLayout({
                   >
                     <item.icon className={`h-4 w-4 shrink-0 transition-colors ${isActive ? '' : 'group-hover:text-indigo-500 dark:group-hover:text-indigo-400'}`} />
                   </motion.div>
-                  {!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
+                  <AnimatePresence mode="wait">
+                    {!isCollapsed && (
+                      <motion.span
+                        key="nav-label"
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: 'auto' }}
+                        exit={{ opacity: 0, width: 0 }}
+                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        className="whitespace-nowrap overflow-hidden"
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </Link>
               </motion.div>
             )
@@ -300,13 +313,35 @@ export function AppLayout({
                 >
                   <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                 </motion.div>
-                {!isCollapsed && <span className="whitespace-nowrap">Search...</span>}
+                <AnimatePresence mode="wait">
+                  {!isCollapsed && (
+                    <motion.span 
+                      key="search-text"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto' }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      className="whitespace-nowrap overflow-hidden"
+                    >
+                      Search...
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </div>
-              {!isCollapsed && (
-                <span className="flex items-center text-xs opacity-50 bg-zinc-200 dark:bg-white/10 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 font-normal">
-                  <CmdIcon className="h-3 w-3 mr-0.5 shrink-0" /> K
-                </span>
-              )}
+              <AnimatePresence mode="wait">
+                {!isCollapsed && (
+                  <motion.span 
+                    key="search-badge"
+                    initial={{ opacity: 0, scale: 0.8, x: -10 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, x: -10 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="flex items-center text-xs opacity-50 bg-zinc-200 dark:bg-white/10 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 font-normal"
+                  >
+                    <CmdIcon className="h-3 w-3 mr-0.5 shrink-0" /> K
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </button>
           </motion.div>
 
@@ -326,7 +361,20 @@ export function AppLayout({
               >
                 <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
               </motion.div>
-              {!isCollapsed && <span className="whitespace-nowrap">Currency Converter</span>}
+              <AnimatePresence mode="wait">
+                {!isCollapsed && (
+                  <motion.span
+                    key="currency-label"
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="whitespace-nowrap overflow-hidden"
+                  >
+                    Currency Converter
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </button>
           </motion.div>
 
@@ -358,7 +406,20 @@ export function AppLayout({
                 >
                   <Settings className={`h-4 w-4 shrink-0 transition-colors ${(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? '' : 'group-hover:text-indigo-500 dark:group-hover:text-indigo-400'}`} />
                 </motion.div>
-                {!isCollapsed && <span className="whitespace-nowrap">Settings</span>}
+                <AnimatePresence mode="wait">
+                  {!isCollapsed && (
+                    <motion.span
+                      key="settings-label"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto' }}
+                      exit={{ opacity: 0, width: 0 }}
+                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      className="whitespace-nowrap overflow-hidden"
+                    >
+                      Settings
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </Link>
             </motion.div>
           )}
@@ -385,7 +446,20 @@ export function AppLayout({
                   <Pin className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                 )}
               </motion.div>
-              {isExpanded && <span className="whitespace-nowrap">{isPinned ? 'Unpin' : 'Pin'}</span>}
+              <AnimatePresence mode="wait">
+                {isExpanded && (
+                  <motion.span
+                    key="pin-label"
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="whitespace-nowrap overflow-hidden"
+                  >
+                    {isPinned ? 'Unpin' : 'Pin'}
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </button>
           </motion.div>
         </div>
