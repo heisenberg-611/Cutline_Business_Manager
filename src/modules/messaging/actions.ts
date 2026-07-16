@@ -89,7 +89,25 @@ export async function sendMessage(conversationId: string, content: string) {
   }
 
   // Group 2 Authorization logic inside here
-  const { userId, orgId, conversation } = await authorizeConversationWrite(conversationId)
+  const { userId, orgId, orgRole, conversation } = await authorizeConversationWrite(conversationId)
+
+  // Verify Admin Status
+  const isAdmin = orgRole === 'org:admin'
+
+  // Enforce Slow Mode for non-admins in group chats
+  if (conversation.type === 'GROUP' && conversation.slowModeEnabled && !isAdmin) {
+    const lastMessage = await prisma.message.findFirst({
+      where: { conversationId, senderId: userId },
+      orderBy: { createdAt: 'desc' }
+    })
+    
+    if (lastMessage) {
+      const timeSinceLastMessage = (Date.now() - lastMessage.createdAt.getTime()) / 1000
+      if (timeSinceLastMessage < conversation.slowModeCooldown) {
+        throw new Error(`Slow mode is active. Please wait ${Math.ceil(conversation.slowModeCooldown - timeSinceLastMessage)} seconds before sending another message.`)
+      }
+    }
+  }
 
   await checkMessageRateLimit(userId)
 
@@ -120,6 +138,27 @@ export async function sendMessage(conversationId: string, content: string) {
   }
 
   return message
+}
+
+/**
+ * Updates the slow mode settings for a conversation (Admins only)
+ */
+export async function updateSlowMode(conversationId: string, enabled: boolean, cooldown: number) {
+  const { userId, orgRole, conversation } = await authorizeConversationWrite(conversationId)
+  
+  const isAdmin = orgRole === 'org:admin'
+  
+  if (!isAdmin) {
+    throw new Error('Only administrators can update slow mode settings')
+  }
+
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: {
+      slowModeEnabled: enabled,
+      slowModeCooldown: cooldown
+    }
+  })
 }
 
 /**
@@ -176,7 +215,15 @@ export async function getConversations() {
       conversation: {
         include: {
           participants: {
-            include: { user: true }
+            include: { 
+              user: {
+                include: {
+                  memberships: {
+                    where: { businessId: orgId }
+                  }
+                }
+              }
+            }
           },
           // Get the very latest message to use for sorting & preview
           messages: {
@@ -226,7 +273,7 @@ function calculateUnreadCount(lastReadAt: Date | null, latestMessage: { createdA
 export async function getMessages(conversationId: string, cursor?: string, take = 50) {
   const safeTake = Math.min(Math.max(Number(take) || 50, 1), 200)
 
-  const { userId, conversation } = await authorizeConversationRead(conversationId)
+  const { userId, orgId, conversation } = await authorizeConversationRead(conversationId)
   
   const participant = conversation.participants.find(p => p.userId === userId)
   const deletedAt = participant?.deletedAt
@@ -244,7 +291,13 @@ export async function getMessages(conversationId: string, cursor?: string, take 
     }),
     orderBy: { createdAt: 'desc' },
     include: {
-      sender: true
+      sender: {
+        include: {
+          memberships: {
+            where: { businessId: orgId }
+          }
+        }
+      }
     }
   })
 

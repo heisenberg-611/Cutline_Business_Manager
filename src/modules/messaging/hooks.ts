@@ -1,12 +1,14 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
 import { 
   getConversations, 
   getMessages, 
   getNewMessages,
   sendMessage, 
-  markConversationRead 
+  markConversationRead,
+  updateSlowMode
 } from './actions'
 import { useMessagingConfig } from './components/QueryProvider'
 
@@ -35,40 +37,53 @@ export function useConversationMessages(conversationId: string | null, currentUs
   const queryClient = useQueryClient()
   const { realtimeEnabled } = useMessagingConfig()
   
-  const query = useQuery({
+  const query = useInfiniteQuery({
     queryKey: ['messages', conversationId],
-    queryFn: async () => {
-      if (!conversationId) return null
-      
-      const currentData = queryClient.getQueryData<{messages: any[], nextCursor?: string}>(['messages', conversationId])
-      
-      // If we have cached messages, only fetch the new ones
-      if (currentData && currentData.messages && currentData.messages.length > 0) {
-        const realMessages = currentData.messages.filter((m: any) => !m.isOptimistic)
-        if (realMessages.length > 0) {
-          const latestMessage = realMessages[realMessages.length - 1]
-          try {
-            const newMessages = await getNewMessages(conversationId, latestMessage.createdAt)
-            if (newMessages.length > 0) {
-              return {
-                messages: [...realMessages, ...newMessages],
-                nextCursor: currentData.nextCursor
-              }
-            }
-            return currentData
-          } catch (e) {
-            // If delta fetch fails, fallback to standard fetch
-            return getMessages(conversationId)
-          }
-        }
-      }
-      
-      // No cache, fetch initial page
-      return getMessages(conversationId)
+    queryFn: async ({ pageParam }) => {
+      if (!conversationId) return { messages: [], nextCursor: undefined }
+      return getMessages(conversationId, pageParam as string | undefined)
     },
-    refetchInterval: realtimeEnabled ? 5000 : false, // 5 seconds or manual
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor || undefined,
     enabled: !!conversationId
   })
+
+  // Real-time polling
+  useEffect(() => {
+    if (!realtimeEnabled || !conversationId) return
+    
+    const interval = setInterval(async () => {
+      const currentData = queryClient.getQueryData<any>(['messages', conversationId])
+      if (!currentData || !currentData.pages || currentData.pages.length === 0) return
+      
+      // Page 0 contains the newest messages
+      const firstPage = currentData.pages[0]
+      if (!firstPage.messages || firstPage.messages.length === 0) return
+      
+      const realMessages = firstPage.messages.filter((m: any) => !m.isOptimistic)
+      if (realMessages.length === 0) return
+      
+      const latestMessage = realMessages[realMessages.length - 1]
+      try {
+        const newMessages = await getNewMessages(conversationId, latestMessage.createdAt)
+        if (newMessages.length > 0) {
+          queryClient.setQueryData(['messages', conversationId], (old: any) => {
+            if (!old || !old.pages) return old
+            const newPages = [...old.pages]
+            newPages[0] = {
+              ...newPages[0],
+              messages: [...newPages[0].messages, ...newMessages.filter((m: any) => !m.isOptimistic)]
+            }
+            return { ...old, pages: newPages }
+          })
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, 5000)
+    
+    return () => clearInterval(interval)
+  }, [realtimeEnabled, conversationId, queryClient])
 
   // Mutation to send a message optimistically or invalidate
   const sendMutation = useMutation({
@@ -82,11 +97,11 @@ export function useConversationMessages(conversationId: string | null, currentUs
       await queryClient.cancelQueries({ queryKey: ['messages', conversationId] })
       await queryClient.cancelQueries({ queryKey: ['conversations'] })
 
-      const previousMessages = queryClient.getQueryData<{messages: any[], nextCursor?: string}>(['messages', conversationId])
+      const previousMessages = queryClient.getQueryData<any>(['messages', conversationId])
       const previousConversations = queryClient.getQueryData<any[]>(['conversations'])
 
       // Optimistically update messages
-      if (previousMessages) {
+      if (previousMessages && previousMessages.pages && previousMessages.pages.length > 0) {
         const optimisticMessage = {
           id: `temp-${Date.now()}`,
           conversationId,
@@ -97,9 +112,14 @@ export function useConversationMessages(conversationId: string | null, currentUs
           isOptimistic: true
         }
         
-        queryClient.setQueryData(['messages', conversationId], {
-          ...previousMessages,
-          messages: [...previousMessages.messages, optimisticMessage]
+        queryClient.setQueryData(['messages', conversationId], (old: any) => {
+          if (!old) return old
+          const newPages = [...old.pages]
+          newPages[0] = {
+            ...newPages[0],
+            messages: [...newPages[0].messages, optimisticMessage]
+          }
+          return { ...old, pages: newPages }
         })
       }
 
@@ -152,15 +172,37 @@ export function useConversationMessages(conversationId: string | null, currentUs
     }
   })
 
+  const updateSlowModeMutation = useMutation({
+    mutationFn: ({ enabled, cooldown }: { enabled: boolean, cooldown: number }) => {
+      if (!conversationId) throw new Error('No active conversation')
+      return updateSlowMode(conversationId, enabled, cooldown)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    }
+  })
+
+  // Flatten pages but in reverse order so oldest pages come first
+  const flatMessages = useMemo(() => {
+    return query.data?.pages 
+      ? [...query.data.pages].reverse().flatMap(page => page.messages || []) 
+      : []
+  }, [query.data?.pages])
+
   return {
-    messages: query.data?.messages || [],
+    messages: flatMessages,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,
     isFetching: query.isFetching,
+    fetchNextPage: query.fetchNextPage,
+    hasNextPage: query.hasNextPage,
+    isFetchingNextPage: query.isFetchingNextPage,
     sendMessage: sendMutation.mutateAsync,
     isSending: sendMutation.isPending,
-    markAsRead: markReadMutation.mutate
+    markAsRead: markReadMutation.mutate,
+    updateSlowMode: updateSlowModeMutation.mutate,
+    isUpdatingSlowMode: updateSlowModeMutation.isPending
   }
 }

@@ -708,9 +708,11 @@ model Conversation {
   id         String           @id @default(cuid())
   businessId String
   type       ConversationType
-  title      String?
-  createdBy  String
-  createdAt  DateTime         @default(now())
+  title            String?
+  slowModeEnabled  Boolean          @default(false)
+  slowModeCooldown Int              @default(10)
+  createdBy        String
+  createdAt        DateTime         @default(now())
 
   business     Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   participants ConversationParticipant[]

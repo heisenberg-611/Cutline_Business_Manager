@@ -4,7 +4,7 @@ import { useConversationMessages, useConversations } from '../hooks'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Ghost, Send, Megaphone, Loader2, Users, MessageSquare, Bell, BellOff, Trash2, RefreshCcw, SmilePlus, ChevronLeft } from 'lucide-react'
+import { Ghost, Send, Megaphone, Loader2, Users, MessageSquare, Bell, BellOff, Trash2, RefreshCcw, SmilePlus, ChevronLeft, Timer, Check, Shield } from 'lucide-react'
 import { MemeFinder } from './MemeFinder'
 import EmojiPicker, { Theme } from 'emoji-picker-react'
 import { useTheme } from 'next-themes'
@@ -16,6 +16,7 @@ import React from 'react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu'
 import { useRouter } from 'next/navigation'
 import { useMessagingConfig } from './QueryProvider'
+import { Virtuoso } from 'react-virtuoso'
 
 const AnimatedMeme = ({ src }: { src: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -43,7 +44,8 @@ const AnimatedMeme = ({ src }: { src: string }) => {
       playsInline
       onEnded={handleEnded}
       onMouseEnter={handleMouseEnter}
-      className="max-w-[250px] max-h-[250px] rounded-lg object-contain cursor-pointer"
+      style={{ width: '250px', height: '250px' }}
+      className="rounded-lg object-contain cursor-pointer bg-muted/50"
     />
   )
 }
@@ -82,13 +84,13 @@ function formatMessageContent(text: string) {
       if (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(part) || part.includes('media.tenor.com/')) {
         return (
           <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="block my-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img 
               src={part} 
               alt="Attachment" 
               loading="lazy"
               decoding="async"
-              className="max-w-[250px] max-h-[250px] rounded-lg object-contain" 
+              style={{ width: '250px', height: '250px' }}
+              className="rounded-lg object-contain bg-muted/50" 
             />
           </a>
         );
@@ -107,11 +109,10 @@ function formatMessageContent(text: string) {
 }
 
 export function ThreadView({ conversationId, currentUserId, isAdmin }: { conversationId: string, currentUserId: string, isAdmin: boolean }) {
-  const { messages, isLoading, sendMessage, isSending, markAsRead, refetch, isFetching } = useConversationMessages(conversationId, currentUserId)
+  const { messages, isLoading, sendMessage, isSending, markAsRead, refetch, isFetching, hasNextPage, fetchNextPage, isFetchingNextPage, updateSlowMode, isUpdatingSlowMode } = useConversationMessages(conversationId, currentUserId)
   const { data: conversations } = useConversations()
   const [content, setContent] = useState('')
   const [isMuting, setIsMuting] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
   const router = useRouter()
   const [isDeletingChat, setIsDeletingChat] = useState(false)
@@ -120,6 +121,7 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
   const { resolvedTheme } = useTheme()
+  const [cooldownRemaining, setCooldownRemaining] = useState(0)
 
   const conversation = conversations?.find(c => c.id === conversationId)
   const isBroadcast = conversation?.type === 'BROADCAST'
@@ -144,19 +146,39 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
     headerSubtitle = `${conversation.participants?.length || 0} members`
   }
 
+  const latestMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
+
   // Mark read on load and when new messages arrive
   useEffect(() => {
-    if (messages.length > 0) {
+    if (latestMessageId) {
       markAsRead()
     }
-  }, [messages, markAsRead])
+  }, [latestMessageId, markAsRead])
 
-  // Auto-scroll to bottom
+  // Slow Mode Cooldown Logic
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    if (!conversation?.slowModeEnabled || isAdmin || !isGroup) {
+      setCooldownRemaining(0)
+      return
     }
-  }, [messages])
+
+    // Find my most recent REAL message (ignore optimistic temp IDs for accurate cooldown)
+    const myLastMessage = [...messages].reverse().find((m: any) => m.senderId === currentUserId && !m.isOptimistic)
+    if (!myLastMessage) {
+      setCooldownRemaining(0)
+      return
+    }
+
+    const updateCooldown = () => {
+      const timeSince = (Date.now() - new Date(myLastMessage.createdAt).getTime()) / 1000
+      const remaining = Math.ceil(conversation.slowModeCooldown - timeSince)
+      setCooldownRemaining(Math.max(0, remaining))
+    }
+
+    updateCooldown()
+    const int = setInterval(updateCooldown, 1000)
+    return () => clearInterval(int)
+  }, [messages, conversation?.slowModeEnabled, conversation?.slowModeCooldown, isAdmin, currentUserId, isGroup])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -280,12 +302,18 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
                     <DropdownMenuGroup>
                       <DropdownMenuLabel>Group Members ({conversation.participants?.length || 0})</DropdownMenuLabel>
                       <DropdownMenuSeparator />
-                      {conversation.participants?.map((p: any) => (
-                        <DropdownMenuItem key={p.userId} className="flex flex-col items-start gap-0.5">
-                          <span className="font-medium text-sm truncate w-full text-left">{p.user?.firstName || 'Unknown'} {p.user?.lastName || ''} {p.userId === currentUserId && '(You)'}</span>
-                          <span className="text-xs text-muted-foreground truncate w-full text-left">{p.user?.email}</span>
-                        </DropdownMenuItem>
-                      ))}
+                      {conversation.participants?.map((p: any) => {
+                        const isMemberAdmin = p.user?.memberships?.[0]?.role === 'org:admin'
+                        return (
+                          <DropdownMenuItem key={p.userId} className="flex flex-col items-start gap-0.5">
+                            <div className="flex items-center gap-1 w-full">
+                              <span className="font-medium text-sm truncate">{p.user?.firstName || 'Unknown'} {p.user?.lastName || ''} {p.userId === currentUserId && '(You)'}</span>
+                              {isMemberAdmin && <Shield className="w-3 h-3 text-primary shrink-0 ml-auto" />}
+                            </div>
+                            <span className="text-xs text-muted-foreground truncate w-full text-left">{p.user?.email}</span>
+                          </DropdownMenuItem>
+                        )
+                      })}
                     </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -297,10 +325,51 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
                   &bull; <BellOff className="w-3 h-3" /> Muted
                 </span>
               )}
+              {conversation.slowModeEnabled && (
+                <span className="flex items-center gap-1 text-blue-500 ml-1">
+                  &bull; <Timer className="w-3 h-3" /> Slow Mode ({conversation.slowModeCooldown}s)
+                </span>
+              )}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isAdmin && isGroup && (
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  disabled={isUpdatingSlowMode}
+                  className={cn(conversation.slowModeEnabled && "text-blue-500 hover:text-blue-600")}
+                  title={conversation.slowModeEnabled ? `Slow Mode (${conversation.slowModeCooldown}s)` : "Enable Slow Mode"}
+                />
+              }>
+                <Timer className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Slow Mode</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => updateSlowMode({ enabled: false, cooldown: 0 })}>
+                    Off {!conversation.slowModeEnabled && <Check className="w-4 h-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateSlowMode({ enabled: true, cooldown: 5 })}>
+                    5 seconds {(conversation.slowModeEnabled && conversation.slowModeCooldown === 5) && <Check className="w-4 h-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateSlowMode({ enabled: true, cooldown: 10 })}>
+                    10 seconds {(conversation.slowModeEnabled && conversation.slowModeCooldown === 10) && <Check className="w-4 h-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateSlowMode({ enabled: true, cooldown: 30 })}>
+                    30 seconds {(conversation.slowModeEnabled && conversation.slowModeCooldown === 30) && <Check className="w-4 h-4 ml-auto" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => updateSlowMode({ enabled: true, cooldown: 60 })}>
+                    1 minute {(conversation.slowModeEnabled && conversation.slowModeCooldown === 60) && <Check className="w-4 h-4 ml-auto" />}
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
           {isGroup && (
             <Button 
               variant="ghost" 
@@ -359,49 +428,78 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
-        {messages.map((msg: { id: string, senderId: string | null, content: string, createdAt: Date, sender: { firstName: string | null, lastName: string | null } | null }) => {
-          const isMine = msg.senderId === currentUserId
-          const senderName = msg.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : 'Former Member'
-          const onlyEmojis = isOnlyEmojis(msg.content)
-
-          return (
-            <div key={msg.id} className={cn("flex flex-col max-w-[90%] md:max-w-[80%]", isMine ? "ml-auto items-end" : "mr-auto items-start")}>
-              {(!isMine && (isGroup || isBroadcast)) && <span className="text-xs text-muted-foreground mb-1 ml-1">{senderName}</span>}
-              <div className={cn(
-                "rounded-2xl whitespace-pre-wrap break-words relative group/msg",
-                onlyEmojis 
-                  ? "bg-transparent p-0 text-5xl leading-tight" 
-                  : cn(
-                      "px-4 py-2.5 text-sm",
-                      isMine ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"
-                    ),
-                (msg as any).isOptimistic && "opacity-70"
-              )}>
-                {formatMessageContent(msg.content)}
-                {isBroadcast && isAdmin && (
-                  <div className={cn(
-                    "absolute top-0 bottom-0 flex items-center opacity-0 group-hover/msg:opacity-100 transition-opacity",
-                    isMine ? "-left-8" : "-right-8"
-                  )}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:text-red-600 h-6 w-6 rounded-full"
-                      onClick={() => handleDeleteMessage(msg.id)}
-                      title="Delete Message"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                )}
+      <div className="flex-1 min-h-0">
+        <Virtuoso
+          className="h-full w-full"
+          data={messages}
+          initialTopMostItemIndex={messages.length - 1}
+          computeItemKey={(index, item) => item.id}
+          alignToBottom
+          increaseViewportBy={200}
+          followOutput={(isAtBottom) => isAtBottom ? 'smooth' : false}
+          startReached={() => {
+            if (hasNextPage && !isFetchingNextPage) {
+              fetchNextPage()
+            }
+          }}
+          components={{
+            Header: () => (
+              <div className="h-12 flex justify-center items-center">
+                {isFetchingNextPage ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /> : null}
               </div>
-              <span className="text-[10px] text-muted-foreground mt-1 mx-1">
-                {format(new Date(msg.createdAt), 'MMM d, h:mm a')}
-              </span>
-            </div>
-          )
-        })}
+            )
+          }}
+          itemContent={(index, msg: any) => {
+            const isMine = msg.senderId === currentUserId
+            const senderName = msg.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : 'Former Member'
+            const isSenderAdmin = msg.sender?.memberships?.[0]?.role === 'org:admin'
+            const onlyEmojis = isOnlyEmojis(msg.content)
+
+            return (
+              <div className="py-2 px-4">
+                <div key={msg.id} className={cn("flex flex-col max-w-[90%] md:max-w-[80%]", isMine ? "ml-auto items-end" : "mr-auto items-start")}>
+                  {(!isMine && (isGroup || isBroadcast)) && (
+                    <span className="text-xs text-muted-foreground mb-1 ml-1 flex items-center gap-1">
+                      {senderName}
+                      {isSenderAdmin && <Shield className="w-3 h-3 text-primary/70" />}
+                    </span>
+                  )}
+                  <div className={cn(
+                    "rounded-2xl whitespace-pre-wrap break-words relative group/msg",
+                    onlyEmojis 
+                      ? "bg-transparent p-0 text-5xl leading-tight" 
+                      : cn(
+                          "px-4 py-2.5 text-sm",
+                          isMine ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"
+                        ),
+                    msg.isOptimistic && "opacity-70"
+                  )}>
+                    {formatMessageContent(msg.content)}
+                    {isBroadcast && isAdmin && (
+                      <div className={cn(
+                        "absolute top-0 bottom-0 flex items-center opacity-0 group-hover/msg:opacity-100 transition-opacity",
+                        isMine ? "-left-8" : "-right-8"
+                      )}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-red-500 hover:text-red-600 h-6 w-6 rounded-full"
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          title="Delete Message"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground mt-1 mx-1">
+                    {format(new Date(msg.createdAt), 'MMM d, h:mm a')}
+                  </span>
+                </div>
+              </div>
+            )
+          }}
+        />
       </div>
 
       {/* Composer (Hidden for members in a broadcast) */}
@@ -442,17 +540,22 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
             <Textarea 
               value={content}
               onChange={e => setContent(e.target.value)}
-              placeholder="Type your message..."
-              className="resize-none max-h-32 min-h-[44px] text-base py-2.5"
+              placeholder={cooldownRemaining > 0 ? `Slow mode active. Wait ${cooldownRemaining}s...` : "Type your message..."}
+              disabled={cooldownRemaining > 0}
+              className={cn("resize-none max-h-32 min-h-[44px] text-base py-2.5", cooldownRemaining > 0 && "opacity-50 cursor-not-allowed")}
               rows={1}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  handleSend()
+                  if (cooldownRemaining === 0) handleSend()
                 }
               }}
             />
-            <Button size="icon" onClick={handleSend} disabled={!content.trim()} className="shrink-0 h-[44px] w-[44px]">
+            <Button 
+              onClick={handleSend} 
+              disabled={!content.trim() || isSending || cooldownRemaining > 0} 
+              className="shrink-0 h-[44px] px-6"
+            >
               <Send className="w-4 h-4" />
             </Button>
           </div>
