@@ -29,6 +29,7 @@ type Project = {
   statusStageId: string | null
   orderIndex: number
   client?: { displayName: string }
+  assignee?: { firstName: string | null; lastName: string | null; imageUrl: string | null; email: string | null } | null
 }
 
 type SortMode = 'custom' | 'deadline' | 'priority'
@@ -387,6 +388,40 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
                                     </span>
                                   )}
                                 </div>
+                                {project.assignee && (
+                                  <div className="relative group flex items-center shrink-0">
+                                    {project.assignee.imageUrl ? (
+                                      <img src={project.assignee.imageUrl} alt="Assignee" className="w-5 h-5 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 cursor-pointer" />
+                                    ) : (
+                                      <div className="w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[9px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase cursor-pointer">
+                                        {(project.assignee.firstName?.[0] || '')}{(project.assignee.lastName?.[0] || '')}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Hover Card */}
+                                    <div className="absolute bottom-full right-0 mb-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl p-3 pointer-events-none transform translate-y-1 group-hover:translate-y-0">
+                                      <div className="flex items-center gap-3">
+                                        {project.assignee.imageUrl ? (
+                                          <img src={project.assignee.imageUrl} alt="Assignee" className="w-8 h-8 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
+                                        ) : (
+                                          <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase">
+                                            {(project.assignee.firstName?.[0] || '')}{(project.assignee.lastName?.[0] || '')}
+                                          </div>
+                                        )}
+                                        <div className="overflow-hidden">
+                                          <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                                            {[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || 'Assignee'}
+                                          </div>
+                                          {project.assignee.email && (
+                                            <div className="text-xs text-zinc-500 truncate">
+                                              {project.assignee.email}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
 
                               <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800">

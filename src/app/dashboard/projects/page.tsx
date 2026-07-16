@@ -121,9 +121,47 @@ export default async function ProjectsPage({
                     {project.client?.displayName || '-'}
                   </TableCell>
                   {isAdmin && (
-                    <TableCell className="text-zinc-500">
+                    <TableCell>
                       {/* @ts-ignore */}
-                      {project.assignee ? (project.assignee.firstName ? `${project.assignee.firstName} ${project.assignee.lastName || ''}`.trim() : project.assignee.email) : <span className="italic text-zinc-400">Unassigned</span>}
+                      {project.assignee ? (
+                        <div className="relative group flex items-center gap-2 w-max cursor-pointer">
+                          {project.assignee.imageUrl ? (
+                            <img src={project.assignee.imageUrl} alt="Assignee" className="w-6 h-6 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
+                          ) : (
+                            <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase">
+                              {(project.assignee.firstName?.[0] || '')}{(project.assignee.lastName?.[0] || '')}
+                            </div>
+                          )}
+                          <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                            {[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || project.assignee.email.split('@')[0]}
+                          </span>
+                          
+                          {/* Hover Card */}
+                          <div className="absolute bottom-full left-0 mb-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl p-3 pointer-events-none transform translate-y-1 group-hover:translate-y-0">
+                            <div className="flex items-center gap-3">
+                              {project.assignee.imageUrl ? (
+                                <img src={project.assignee.imageUrl} alt="Assignee" className="w-8 h-8 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase">
+                                  {(project.assignee.firstName?.[0] || '')}{(project.assignee.lastName?.[0] || '')}
+                                </div>
+                              )}
+                              <div className="overflow-hidden">
+                                <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
+                                  {[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || project.assignee.email.split('@')[0]}
+                                </div>
+                                {project.assignee.email && (
+                                  <div className="text-xs text-zinc-500 truncate mt-0.5">
+                                    {project.assignee.email}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="italic text-zinc-400">Unassigned</span>
+                      )}
                     </TableCell>
                   )}
                   <TableCell>{project.type || '-'}</TableCell>
