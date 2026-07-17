@@ -70,6 +70,8 @@ export default function RootLayout({
                   notifyButton: {
                     enable: true,
                   },
+                  serviceWorkerPath: "sw.js",
+                  serviceWorkerParam: { scope: "/" }
                 });
               });
             `}
