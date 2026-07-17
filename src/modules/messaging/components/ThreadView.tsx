@@ -67,10 +67,21 @@ function formatMessageContent(text: string) {
     if (!part) return null;
     
     if (/(https?:\/\/[^\s]+)/.test(part)) {
-      if (/\.(mp4)(\?.*)?$/i.test(part) || part.includes('media.giphy.com/media/')) {
+      let hostname = '';
+      let pathname = '';
+      try {
+        const parsedUrl = new URL(part);
+        hostname = parsedUrl.hostname;
+        pathname = parsedUrl.pathname;
+      } catch (e) {
+        // Not a valid URL
+      }
+
+      const isGiphy = hostname === 'media.giphy.com' && pathname.startsWith('/media/');
+      if (/\.(mp4)(\?.*)?$/i.test(part) || isGiphy) {
         let mediaSrc = part;
         // Upgrade legacy giphy links to mp4 for controlled playback
-        if (part.includes('giphy.com/media/') && !part.includes('.mp4')) {
+        if (isGiphy && !part.includes('.mp4')) {
           mediaSrc = part.replace(/\.(webp|gif)(\?.*)?$/, '.mp4');
         }
         
@@ -81,7 +92,8 @@ function formatMessageContent(text: string) {
         );
       }
 
-      if (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(part) || part.includes('media.tenor.com/')) {
+      const isTenor = hostname === 'media.tenor.com';
+      if (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(part) || isTenor) {
         return (
           <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="block my-2">
             <img 
