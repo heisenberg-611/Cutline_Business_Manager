@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { authorizeConversationRead, authorizeConversationWrite } from './auth'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
+import { sendPushNotification } from '@/lib/onesignal'
 
 /**
  * Gets or creates a DIRECT conversation between the current user and a target user.
@@ -134,6 +135,13 @@ export async function sendMessage(conversationId: string, content: string) {
           actionUrl: `/dashboard/messages/${conversationId}`
         }))
       })
+
+      await sendPushNotification(
+        conversation.type === 'GROUP' ? `New Message in ${conversation.title || 'Group'}` : 'New Direct Message',
+        'You have received a new message.',
+        recipients.map(r => r.userId),
+        `/dashboard/messages/${conversationId}`
+      ).catch(console.error)
     }
   }
 
@@ -486,6 +494,14 @@ export async function createBroadcast(content: string) {
         actionUrl: `/dashboard/messages/${conversation.id}`
       }))
     })
+
+    // Group 7 (Push)
+    await sendPushNotification(
+      'New Broadcast Announcement',
+      'A new announcement has been posted.',
+      members.map(m => m.userId),
+      `/dashboard/messages/${conversation.id}`
+    ).catch(console.error)
 
     return { conversation, message }
   })

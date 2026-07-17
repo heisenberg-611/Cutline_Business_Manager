@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import prisma from '@/modules/core/db/prisma'
 import { ensureDefaultTemplate } from '@/modules/workflow/actions'
+import { sendPushNotification } from '@/lib/onesignal'
 
 // -----------------------------------------------------------------------------
 // DUPLICATE CHECK QUERIES (for live form validation)
@@ -113,6 +114,13 @@ export async function createProject(data: FormData) {
         actionUrl: `/dashboard/projects/${project.id}`
       }
     })
+
+    await sendPushNotification(
+      'New Project Assignment',
+      `You have been assigned to project "${project.title}".`,
+      [assigneeId],
+      `/dashboard/projects/${project.id}`
+    ).catch(console.error)
   }
 
   revalidatePath('/dashboard/projects')
@@ -163,6 +171,13 @@ export async function updateProject(projectId: string, data: { title?: string, d
           actionUrl: `/dashboard/projects/${project.id}`
         }
       })
+
+      await sendPushNotification(
+        'Project Assignment',
+        `You have been assigned to project "${project.title}".`,
+        [data.assigneeId],
+        `/dashboard/projects/${project.id}`
+      ).catch(console.error)
     }
   }
 

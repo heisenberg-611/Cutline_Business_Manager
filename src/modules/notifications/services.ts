@@ -1,4 +1,5 @@
 import prisma from "@/modules/core/db/prisma"
+import { sendPushNotification } from "@/lib/onesignal"
 
 export async function createNotification(data: {
   userId: string
@@ -20,6 +21,16 @@ export async function createNotification(data: {
     }
   })
 
+  // Send push notification synchronously alongside DB creation
+  await sendPushNotification(
+    data.title,
+    data.message,
+    [data.userId],
+    data.actionUrl
+  ).catch((err) => {
+    console.error("Failed to push notification:", err)
+  })
+
   return notification
 }
 
@@ -36,6 +47,8 @@ export async function broadcastNotification(data: {
   const members = await client.organizations.getOrganizationMembershipList({
     organizationId: data.businessId,
   })
+
+  const targetUserIds: string[] = []
 
   for (const member of members.data) {
     if (member.role !== 'org:admin') continue
@@ -114,8 +127,21 @@ export async function broadcastNotification(data: {
           isRead: false
         }
       })
+      
+      targetUserIds.push(userId)
     } catch (err) {
       console.error(`Failed to create notification for user ${userId}:`, err)
     }
+  }
+
+  if (targetUserIds.length > 0) {
+    await sendPushNotification(
+      data.title,
+      data.message,
+      targetUserIds,
+      data.actionUrl
+    ).catch((err) => {
+      console.error("Failed to broadcast push notifications:", err)
+    })
   }
 }
