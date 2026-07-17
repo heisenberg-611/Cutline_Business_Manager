@@ -197,7 +197,7 @@ export function AnalyticsDashboard() {
             <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-white/10 shadow-sm min-w-0 overflow-hidden lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-lg">Net Profit Trend</CardTitle>
-                <CardDescription>Daily net profit (revenue minus expenses) over the selected period.</CardDescription>
+                <CardDescription>Cumulative net profit (revenue minus expenses) over the selected period.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] w-full">
@@ -228,7 +228,7 @@ export function AnalyticsDashboard() {
             <Card className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-white/10 shadow-sm min-w-0 overflow-hidden lg:col-span-2">
               <CardHeader>
                 <CardTitle className="text-lg">Revenue & Expenses</CardTitle>
-                <CardDescription>Combined overview of money coming in and going out.</CardDescription>
+                <CardDescription>Cumulative overview of money coming in and going out.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] w-full">

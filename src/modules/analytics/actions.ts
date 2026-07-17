@@ -132,20 +132,26 @@ export async function getAnalyticsData(startDateStr: string, endDateStr: string)
   const totalExpenses = Object.values(expenseMap).reduce((a, b) => a + b, 0)
 
   // 5. Net Profit Trend
+  let cumulativeProfit = 0;
   const netProfitData = daysInterval.map(day => {
     const dateStr = format(day, 'MMM dd')
     const rev = revenueMap[dateStr] || 0
     const exp = expenseMap[dateStr] || 0
-    return { date: dateStr, amount: rev - exp }
+    cumulativeProfit += (rev - exp);
+    return { date: dateStr, amount: cumulativeProfit }
   })
   const totalNetProfit = totalRevenue - totalExpenses
 
   // 6. Combined Finance Data
+  let cumulativeRevenue = 0;
+  let cumulativeExpenses = 0;
   const combinedFinanceData = daysInterval.map(day => {
     const dateStr = format(day, 'MMM dd')
     const rev = revenueMap[dateStr] || 0
     const exp = expenseMap[dateStr] || 0
-    return { date: dateStr, revenue: rev, expenses: exp }
+    cumulativeRevenue += rev;
+    cumulativeExpenses += exp;
+    return { date: dateStr, revenue: cumulativeRevenue, expenses: cumulativeExpenses }
   })
 
   return {
