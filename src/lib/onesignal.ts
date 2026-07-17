@@ -1,8 +1,10 @@
 type OneSignalNotification = {
   app_id: string;
   included_segments?: string[];
-  include_player_ids?: string[];
-  include_external_user_ids?: string[];
+  include_aliases?: {
+    external_id: string[];
+  };
+  target_channel?: string;
   headings?: { [key: string]: string };
   contents: { [key: string]: string };
   url?: string;
@@ -38,7 +40,10 @@ export async function sendPushNotification(
   };
 
   if (targetUserIds && targetUserIds.length > 0) {
-    payload.include_external_user_ids = targetUserIds;
+    payload.include_aliases = {
+      external_id: targetUserIds
+    };
+    payload.target_channel = "push";
   } else {
     payload.included_segments = ["Active Users"];
   }
