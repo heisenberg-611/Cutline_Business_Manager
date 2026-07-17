@@ -4,6 +4,8 @@ import { Outfit, JetBrains_Mono } from "next/font/google";
 import { ClerkProvider } from '@clerk/nextjs'
 import { ThemeProvider } from "@/components/theme-provider"
 import { PWARegister } from "@/components/pwa-register"
+import { OneSignalInit } from "@/components/onesignal-init"
+import Script from "next/script";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -57,6 +59,22 @@ export default function RootLayout({
         className={`${outfit.variable} ${jetbrainsMono.variable} h-full antialiased font-sans`}
       >
         <body className="min-h-full flex flex-col">
+          <Script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" strategy="afterInteractive" />
+          <Script id="onesignal-init" strategy="afterInteractive">
+            {`
+              window.OneSignalDeferred = window.OneSignalDeferred || [];
+              OneSignalDeferred.push(async function(OneSignal) {
+                await OneSignal.init({
+                  appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "16fa8c06-2ba4-49e4-aa97-27a784494e33",
+                  safari_web_id: "web.onesignal.auto.5e2915a8-1095-4900-b2af-7b25bf2970dd",
+                  notifyButton: {
+                    enable: true,
+                  },
+                });
+              });
+            `}
+          </Script>
+          <OneSignalInit />
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
