@@ -16,7 +16,7 @@ import React from 'react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu'
 import { useRouter } from 'next/navigation'
 import { useMessagingConfig } from './QueryProvider'
-import { Virtuoso } from 'react-virtuoso'
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso'
 
 const AnimatedMeme = ({ src }: { src: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -120,6 +120,7 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
   const [isMemeFinderOpen, setIsMemeFinderOpen] = useState(false)
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
+  const virtuosoRef = useRef<VirtuosoHandle>(null)
   const { resolvedTheme } = useTheme()
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
 
@@ -190,10 +191,18 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const scrollToBottom = () => {
+    // Wait for the optimistic update to append the message to the list
+    setTimeout(() => {
+      virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'smooth' })
+    }, 50)
+  }
+
   const handleSend = async () => {
     const text = content.trim()
     if (!text) return
     setContent('')
+    scrollToBottom()
     try {
       await sendMessage(text)
     } catch (e: unknown) {
@@ -430,6 +439,7 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
       {/* Messages */}
       <div className="flex-1 min-h-0">
         <Virtuoso
+          ref={virtuosoRef}
           className="h-full w-full"
           data={messages}
           initialTopMostItemIndex={messages.length - 1}
@@ -574,7 +584,14 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
       <MemeFinder 
         open={isMemeFinderOpen} 
         onOpenChange={setIsMemeFinderOpen} 
-        onSelect={(url) => setContent(prev => prev ? `${prev}\n${url}` : url)} 
+        onSelect={async (url) => {
+          scrollToBottom()
+          try {
+            await sendMessage(url)
+          } catch (e: unknown) {
+            alert(e instanceof Error ? e.message : 'An error occurred')
+          }
+        }} 
       />
     </div>
   )

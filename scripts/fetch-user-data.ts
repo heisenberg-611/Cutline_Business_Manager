@@ -7,17 +7,14 @@ async function exportUserData() {
   console.log("Fetching users with their associated projects and financial information...")
   
   try {
-    const users = await prisma.user.findMany({
+    const rawUsers = await prisma.user.findMany({
       include: {
-        // Include direct user relations
         notifications: true,
-        // Users are connected to businesses via memberships
         memberships: {
           include: {
             business: {
               include: {
                 clients: true,
-                // Fetch the projects tied to the business with all their relations
                 projects: {
                   include: {
                     client: true,
@@ -40,7 +37,6 @@ async function exportUserData() {
                     stages: true
                   }
                 },
-                // Fetch the financial information tied to the business
                 invoices: {
                   include: {
                     lineItems: true,
@@ -55,7 +51,6 @@ async function exportUserData() {
                 creditNotes: true,
                 invoiceReminders: true,
                 auditLogs: true,
-                notifications: true,
                 feedbackRequests: true,
                 feedbackResponses: true,
                 testimonials: true,
@@ -68,12 +63,64 @@ async function exportUserData() {
       }
     })
 
-    // Because this data can be massive, we will save it to a JSON file instead of flooding the terminal
+    // Process the users to enforce role-based access controls
+    const users = rawUsers.map(user => {
+      // Process memberships
+      const processedMemberships = user.memberships.map(membership => {
+        const isMember = membership.role !== 'org:admin';
+
+        if (isMember && membership.business) {
+          // 1. Filter projects to only those assigned to the user
+          const assignedProjects = membership.business.projects.filter(
+            p => p.assigneeId === user.id
+          ).map(p => ({
+            ...p,
+            // 2. Sanitize client data for the assigned projects
+            client: p.client ? {
+              ...p.client,
+              email: null,
+              phone: null,
+              industry: null,
+              preferredChannel: null,
+              internalRating: null,
+            } : p.client
+          }));
+
+          // 3. Strip out org-wide data that members shouldn't see
+          return {
+            ...membership,
+            business: {
+              ...membership.business,
+              projects: assignedProjects,
+              clients: [], // Members cannot see the raw client list
+              invoices: [], // Prevent access to org-wide financials
+              payments: [],
+              expenses: [],
+              creditNotes: [],
+              invoiceReminders: [],
+              auditLogs: [],
+              notifications: [], // Prevent access to org-wide notifications
+              analyticsSnapshots: [],
+              projectRequests: [], // Intake forms are usually admin/manager only
+            }
+          };
+        }
+
+        // Admins see everything
+        return membership;
+      });
+
+      return {
+        ...user,
+        memberships: processedMemberships
+      };
+    });
+
     const outputPath = 'scripts/user-data-export.json';
     fs.writeFileSync(outputPath, JSON.stringify(users, null, 2));
     
-    console.log(`\n✅ Successfully fetched ${users.length} users!`)
-    console.log(`📂 All data (including projects and financials) has been saved to: ${outputPath}`)
+    console.log(`\n✅ Successfully fetched and scoped data for ${users.length} users!`)
+    console.log(`📂 All data (including scoped projects and financials) has been saved to: ${outputPath}`)
     
   } catch (error) {
     console.error('❌ Error fetching user data:', error)
