@@ -63,9 +63,9 @@ export default function RootLayout({
           <Script id="onesignal-init" strategy="afterInteractive">
             {`
               window.OneSignalDeferred = window.OneSignalDeferred || [];
-              OneSignalDeferred.push(async function(OneSignal) {
+              window.OneSignalDeferred.push(async function(OneSignal) {
                 await OneSignal.init({
-                  appId: process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "16fa8c06-2ba4-49e4-aa97-27a784494e33",
+                  appId: "${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "16fa8c06-2ba4-49e4-aa97-27a784494e33"}",
                   safari_web_id: "web.onesignal.auto.5e2915a8-1095-4900-b2af-7b25bf2970dd",
                   notifyButton: {
                     enable: true,
