@@ -6,6 +6,7 @@ const withSerwist = withSerwistInit({
   swDest: "public/sw.js",
   // Temporarily enabled in development so OneSignal can test the Service Worker
   // disable: process.env.NODE_ENV === "development",
+  register: false,
 });
 
 const nextConfig: NextConfig = {

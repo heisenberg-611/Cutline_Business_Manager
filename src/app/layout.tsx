@@ -70,7 +70,7 @@ export default function RootLayout({
                   notifyButton: {
                     enable: true,
                   },
-                  serviceWorkerPath: "sw.js",
+                  serviceWorkerPath: "OneSignalSDKWorker.js",
                   serviceWorkerParam: { scope: "/" }
                 });
               });
