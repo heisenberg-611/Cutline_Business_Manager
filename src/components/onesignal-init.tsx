@@ -113,9 +113,13 @@ export function OneSignalInit() {
 
 function DebugOneSignal() {
   return (
-    <div className="fixed bottom-24 left-4 z-50">
+    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[99999]">
       <button 
         onClick={() => {
+          if (!window.OneSignal) {
+            alert("OneSignal SDK completely failed to load! Do you have an AdBlocker (uBlock Origin, Brave Shields) turned on? Please disable it and refresh.");
+            return;
+          }
           window.OneSignalDeferred.push(async function(OneSignal: any) {
             try {
               const result = await OneSignal.Notifications.requestPermission();
@@ -127,7 +131,7 @@ function DebugOneSignal() {
             }
           });
         }}
-        className="bg-red-500 text-white text-xs px-3 py-1 rounded shadow-lg"
+        className="bg-red-600 hover:bg-red-700 text-white font-bold text-lg px-8 py-4 rounded-xl shadow-2xl border-4 border-white animate-pulse"
       >
         Force Subscribe Test
       </button>
