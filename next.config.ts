@@ -4,7 +4,8 @@ import withSerwistInit from "@serwist/next";
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.NODE_ENV === "development",
+  // Temporarily enabled in development so OneSignal can test the Service Worker
+  // disable: process.env.NODE_ENV === "development",
 });
 
 const nextConfig: NextConfig = {
