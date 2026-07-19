@@ -60,7 +60,7 @@ export default async function ProjectsPage({
             Manage your active editing projects, track deadlines, and priorities.
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
           {isAdmin && (
             <>
               <ExportProjectsButton projects={projects} />

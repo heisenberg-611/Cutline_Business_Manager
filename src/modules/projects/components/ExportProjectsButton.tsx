@@ -67,7 +67,7 @@ export function ExportProjectsButton({ projects }: { projects: any[] }) {
   }
 
   return (
-    <Button variant="outline" onClick={handleExport} className="shrink-0 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+    <Button variant="outline" onClick={handleExport} className="w-full sm:w-auto shrink-0 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
       <Download className="w-4 h-4 mr-2" />
       Export
     </Button>
