@@ -3,6 +3,7 @@ import { TogglePublishButton } from '@/modules/feedback/components/toggle-publis
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 
 export const metadata = {
   title: 'Testimonials',
@@ -12,15 +13,14 @@ export default async function TestimonialsPage() {
   const testimonials = await getTestimonials()
 
   return (
-    <div className="p-8 w-full mx-auto space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="w-full mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Testimonials</h1>
-        <div className="flex items-center space-x-4">
-          <Link href="/dashboard/feedback" className="text-sm font-medium hover:underline">
-            &larr; Back to Inbox
-          </Link>
-          <Link href="/dashboard/feedback/requests" className="text-sm font-medium hover:underline">
-            View Requests &rarr;
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <Link href="/dashboard/feedback" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto bg-white hover:bg-zinc-100 text-zinc-900 border-zinc-200 dark:bg-zinc-950 dark:hover:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-800">
+              &larr; Back to Inbox
+            </Button>
           </Link>
         </div>
       </div>
@@ -33,16 +33,16 @@ export default async function TestimonialsPage() {
         <div className="grid gap-6">
           {testimonials.map((testimonial) => (
             <Card key={testimonial.id}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl">
-                    {testimonial.project.title} - {testimonial.client.displayName}
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+                <div className="space-y-1 w-full">
+                  <CardTitle className="text-xl break-words">
+                    {testimonial.project?.title || 'Unknown Project'} - {testimonial.client?.displayName || 'Unknown Client'}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    From Feedback Score: {testimonial.feedbackResponse.overallScore} / 10
+                    From Feedback Score: {testimonial.feedbackResponse?.overallScore ?? 'N/A'} / 10
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Badge variant={testimonial.isPublished ? 'default' : 'secondary'}>
                     {testimonial.isPublished ? 'Published' : 'Hidden'}
                   </Badge>

@@ -9,6 +9,7 @@ import { ResendFeedbackEmailButton } from '@/modules/feedback/components/resend-
 import { CreateFeedbackRequestDialog } from '@/modules/feedback/components/create-feedback-request-dialog'
 import { CopyableLink } from '@/modules/feedback/components/copyable-link'
 import { getAppUrl } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 export const metadata = {
   title: 'Feedback Requests',
@@ -25,14 +26,18 @@ export default async function FeedbackRequestsPage() {
   const appUrl = getAppUrl()
 
   return (
-    <div className="p-8 w-full mx-auto space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="w-full mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Feedback Requests</h1>
-        <div className="flex items-center space-x-4">
-          <Link href="/dashboard/feedback" className="text-sm font-medium hover:underline">
-            &larr; Back to Inbox
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <Link href="/dashboard/feedback" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto bg-white hover:bg-zinc-100 text-zinc-900 border-zinc-200 dark:bg-zinc-950 dark:hover:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-800">
+              &larr; Back to Inbox
+            </Button>
           </Link>
-          <CreateFeedbackRequestDialog projects={projects} />
+          <div className="w-full sm:w-auto">
+            <CreateFeedbackRequestDialog projects={projects} />
+          </div>
         </div>
       </div>
       
@@ -44,16 +49,16 @@ export default async function FeedbackRequestsPage() {
         <div className="grid gap-6">
           {requests.map((request) => (
             <Card key={request.id}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+                <div className="space-y-1 w-full">
+                  <CardTitle className="text-xl break-words">
                     {request.project.title} - {request.client.displayName}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
                     Sent on {new Date(request.createdAt).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   <Badge 
                     variant={
                       request.status === 'COMPLETED' ? 'default' : 

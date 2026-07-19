@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { DeleteFeedbackButton } from '@/modules/feedback/components/delete-feedback-button'
 import { ResolveFeedbackButton } from '@/modules/feedback/components/resolve-feedback-button'
+import { Button } from '@/components/ui/button'
 
 export const metadata = {
   title: 'Feedback',
@@ -14,15 +15,19 @@ export default async function FeedbackInboxPage() {
   const responses = await getFeedbackResponses()
 
   return (
-    <div className="p-8 w-full mx-auto space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="w-full mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">Feedback Inbox</h1>
-        <div className="flex items-center space-x-4">
-          <Link href="/dashboard/feedback/requests" className="text-sm font-medium hover:underline">
-            View Requests &rarr;
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <Link href="/dashboard/feedback/requests" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto bg-white hover:bg-zinc-100 text-zinc-900 border-zinc-200 dark:bg-zinc-950 dark:hover:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-800">
+              View Requests
+            </Button>
           </Link>
-          <Link href="/dashboard/feedback/testimonials" className="text-sm font-medium hover:underline">
-            View Testimonials &rarr;
+          <Link href="/dashboard/feedback/testimonials" className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
+              View Testimonials
+            </Button>
           </Link>
         </div>
       </div>
@@ -35,16 +40,16 @@ export default async function FeedbackInboxPage() {
         <div className="grid gap-6">
           {responses.map((response) => (
             <Card key={response.id}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-2">
+                <div className="space-y-1 w-full">
+                  <CardTitle className="text-xl break-words">
                     {response.request.project.title} - {response.request.client.displayName}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
                     Overall Score: {response.overallScore} / 10
                   </p>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   {response.consentToPublish && !response.testimonial && (
                     <ConvertTestimonialButton 
                       responseId={response.id} 
@@ -65,7 +70,7 @@ export default async function FeedbackInboxPage() {
               </CardHeader>
               <CardContent>
                 {response.dimensionScores && (
-                  <div className="flex gap-4 mb-4 text-sm">
+                  <div className="flex flex-wrap gap-4 mb-4 text-sm">
                     {Object.entries(response.dimensionScores as Record<string, number>).map(([key, value]) => (
                       <div key={key} className="flex flex-col">
                         <span className="text-muted-foreground capitalize">{key}</span>

@@ -46,10 +46,10 @@ export function CreateFeedbackRequestDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
+      <DialogTrigger render={<Button className="w-full sm:w-auto bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-50/90" />}>
         Generate Feedback Link
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
         <DialogHeader>
           <DialogTitle>Generate Feedback Link</DialogTitle>
           <DialogDescription>
