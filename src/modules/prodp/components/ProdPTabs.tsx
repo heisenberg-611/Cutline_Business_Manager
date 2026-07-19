@@ -89,9 +89,9 @@ export function ProdPTabs({ businessId, activeProjects, reviewRequests }: { busi
 
   return (
     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-      <TabsList className="mb-4">
-        <TabsTrigger value="preprod">Pre-Production</TabsTrigger>
-        <TabsTrigger value="postprod">Post-Production</TabsTrigger>
+      <TabsList className="mb-4 flex w-full md:inline-flex md:w-fit">
+        <TabsTrigger value="preprod" className="text-xs sm:text-sm">Pre-Production</TabsTrigger>
+        <TabsTrigger value="postprod" className="text-xs sm:text-sm">Post-Production</TabsTrigger>
       </TabsList>
 
       <TabsContent value="preprod" className="space-y-4">
