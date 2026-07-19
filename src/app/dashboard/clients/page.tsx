@@ -44,7 +44,9 @@ export default async function ClientsPage({
             Manage your repeat clients, view their ratings, and track their lifetime value.
           </p>
         </div>
-        <ClientForm defaultOpen={shouldOpenNewClient} />
+        <div className="w-full sm:w-auto">
+          <ClientForm defaultOpen={shouldOpenNewClient} />
+        </div>
       </div>
       
       <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">

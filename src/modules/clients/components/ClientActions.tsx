@@ -108,7 +108,7 @@ export function ClientActions({ client }: { client: Client }) {
       </DropdownMenu>
 
       <Dialog open={isEditOpen} onOpenChange={handleEditOpenChange}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
           <DialogHeader>
             <DialogTitle>Edit Client</DialogTitle>
           </DialogHeader>
@@ -164,7 +164,7 @@ export function ClientActions({ client }: { client: Client }) {
                 type="tel"
                 placeholder="+1 (555) 000-0000"
                 value={formData.phone || ''}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                onChange={e => setFormData({ ...formData, phone: e.target.value.replace(/[^0-9+\-()\s]/g, '') })}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">

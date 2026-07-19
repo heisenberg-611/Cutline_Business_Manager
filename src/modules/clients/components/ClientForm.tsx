@@ -72,7 +72,7 @@ export function ClientForm({ defaultOpen = false }: { defaultOpen?: boolean }) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger 
         render={
-          <Button className="bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
+          <Button className="w-full sm:w-auto bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
             <Plus className="w-4 h-4 mr-2" />
             New Client
           </Button>
