@@ -31,7 +31,7 @@ export default async function SettingsPage() {
   if (!business) redirect('/dashboard/select-business')
 
   return (
-    <div className="max-w-7xl w-full mx-auto pb-24 space-y-12">
+    <div className="max-w-7xl w-full mx-auto pb-24 space-y-8 md:space-y-12">
       {/* Header */}
       <div className="border-b border-zinc-200 dark:border-white/10 pb-5">
         <h3 className="text-xl font-semibold leading-6 text-zinc-900 dark:text-zinc-100">
@@ -142,7 +142,7 @@ export default async function SettingsPage() {
       <hr className="border-zinc-200 dark:border-white/10" />
 
       {/* ROW 3: Customization Editors (2x2 Grid) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10 items-start">
         
         {/* Pipeline Stages */}
         <section className="space-y-4">

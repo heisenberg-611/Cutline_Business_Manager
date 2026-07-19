@@ -24,7 +24,7 @@ type Stage = {
 const IconSelector = ({ value, onChange }: { value: string, onChange: (v: string) => void }) => {
   return (
     <Select value={value} onValueChange={(val) => { if (val) onChange(val) }}>
-      <SelectTrigger className="w-[140px] h-8 text-xs shrink-0">
+      <SelectTrigger className="w-full sm:w-[140px] h-8 text-xs shrink-0">
         <SelectValue placeholder="Select icon..." />
       </SelectTrigger>
       <SelectContent align="start" alignItemWithTrigger={false}>
@@ -125,29 +125,31 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
                       <div
                         ref={provided.innerRef}
                         {...provided.draggableProps}
-                        className={`flex items-center gap-3 p-3 rounded-lg border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900 group ${isPending ? 'opacity-50 pointer-events-none' : ''} ${snapshot.isDragging ? 'shadow-lg border-zinc-300 dark:border-white/20' : ''}`}
+                        className={`flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 rounded-lg border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-zinc-900 group ${isPending ? 'opacity-50 pointer-events-none' : ''} ${snapshot.isDragging ? 'shadow-lg border-zinc-300 dark:border-white/20' : ''}`}
                       >
                         <div {...provided.dragHandleProps} className="shrink-0">
                           <GripVertical className="w-4 h-4 text-zinc-300 dark:text-zinc-600 hover:text-zinc-500 cursor-grab active:cursor-grabbing" />
                         </div>
 
                         {editingId === stage.id ? (
-                          <>
+                          <div className="flex flex-1 flex-col sm:flex-row gap-2 w-full sm:w-auto">
                             <IconSelector value={editIcon} onChange={setEditIcon} />
-                            <Input
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && handleUpdate(stage.id)}
-                              className="h-8 text-sm flex-1"
-                              autoFocus
-                            />
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-green-600" onClick={() => handleUpdate(stage.id)}>
-                              <Check className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingId(null)}>
-                              <X className="w-3.5 h-3.5" />
-                            </Button>
-                          </>
+                            <div className="flex gap-2 flex-1">
+                              <Input
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleUpdate(stage.id)}
+                                className="h-8 text-sm flex-1"
+                                autoFocus
+                              />
+                              <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600 shrink-0" onClick={() => handleUpdate(stage.id)}>
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={() => setEditingId(null)}>
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <DisplayIcon className="w-4 h-4 text-zinc-500" />
@@ -190,7 +192,7 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
       </DragDropContext>
 
       {isAdding ? (
-        <div className="flex items-center gap-2 p-3 rounded-lg border border-dashed border-zinc-300 dark:border-white/20 bg-zinc-50 dark:bg-zinc-900">
+        <div className="flex flex-col sm:flex-row gap-2 p-3 rounded-lg border border-dashed border-zinc-300 dark:border-white/20 bg-zinc-50 dark:bg-zinc-900">
           <IconSelector value={newStageIcon} onChange={setNewStageIcon} />
           <Input
             value={newStageName}
@@ -200,12 +202,14 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
             className="h-8 text-sm flex-1"
             autoFocus
           />
-          <Button size="sm" onClick={handleAdd} disabled={!newStageName.trim() || isPending}>
-            Add
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => { setIsAdding(false); setNewStageName(''); setNewStageIcon('') }}>
-            Cancel
-          </Button>
+          <div className="flex gap-2 sm:mt-0 mt-1 justify-end">
+            <Button size="sm" onClick={handleAdd} disabled={!newStageName.trim() || isPending} className="flex-1 sm:flex-none">
+              Add
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setIsAdding(false); setNewStageName(''); setNewStageIcon('') }} className="flex-1 sm:flex-none">
+              Cancel
+            </Button>
+          </div>
         </div>
       ) : (
         <Button
