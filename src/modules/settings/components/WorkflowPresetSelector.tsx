@@ -3,8 +3,9 @@
 import React, { useState, useTransition } from 'react'
 import { WORKFLOW_PRESETS, WorkflowPreset } from '../config/presets'
 import { Button } from '@/components/ui/button'
-import { Loader2, RotateCcw } from 'lucide-react'
+import { Loader2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
 import { applyWorkflowPreset, restoreDefaults } from '../actions'
+import { cn } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
@@ -20,6 +21,7 @@ export function WorkflowPresetSelector() {
   const [selectedPreset, setSelectedPreset] = useState<WorkflowPreset | null>(null)
   const [isResetting, setIsResetting] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -53,7 +55,21 @@ export function WorkflowPresetSelector() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="sm:hidden">
+        <Button 
+          variant="outline" 
+          className="w-full justify-between bg-white dark:bg-zinc-950"
+          onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+        >
+          {isMobileExpanded ? 'Hide Workflow Presets' : 'View Workflow Presets'}
+          {isMobileExpanded ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
+        </Button>
+      </div>
+
+      <div className={cn(
+        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
+        !isMobileExpanded && "hidden sm:grid"
+      )}>
         {WORKFLOW_PRESETS.map((preset) => (
           <motion.div
             key={preset.id}
