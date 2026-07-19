@@ -489,9 +489,16 @@ export function AppLayout({
               />
             </div>
           </div>
-          <div className="flex items-center gap-2 md:gap-4">
-            <div className="md:hidden">
-              <ThemeToggle isCollapsed={true} />
+          <div className="flex items-center gap-1 md:gap-2">
+            <button
+              onClick={() => setIsCommandOpen(true)}
+              className="md:hidden p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-white/5 rounded-full transition-colors flex items-center justify-center"
+              aria-label="Search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+            <div className="md:hidden flex items-center justify-center p-2">
+              <ThemeToggle isCollapsed={true} variant="icon" />
             </div>
             <button
               onClick={() => setIsQuickActionsOpen(true)}
@@ -501,7 +508,15 @@ export function AppLayout({
               New
             </button>
             <NotificationCenter initialPrefs={initialNotificationPreferences} />
-            <UserButton />
+            <div className="flex items-center justify-center p-1">
+              <UserButton 
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: "w-8 h-8",
+                  }
+                }}
+              />
+            </div>
           </div>
         </header>
 
@@ -669,17 +684,6 @@ export function AppLayout({
                 <div className="space-y-2">
                   <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider px-2 mb-3">Tools & Preferences</h3>
                   
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false)
-                      setIsCommandOpen(true)
-                    }}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent bg-zinc-50 dark:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
-                  >
-                    <Search className="w-5 h-5 shrink-0 text-zinc-500 dark:text-zinc-400" />
-                    <span className="text-sm font-medium">Global Search</span>
-                  </button>
-
                   <button
                     onClick={() => {
                       setIsMobileMenuOpen(false)

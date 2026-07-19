@@ -3,7 +3,7 @@
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 
-export async function globalSearch(query: string) {
+export async function globalSearch(query: string, filterType?: string) {
   const { orgId } = await auth()
   if (!orgId) return []
 
@@ -11,7 +11,7 @@ export async function globalSearch(query: string) {
   if (q.length < 2) return []
 
   const [projects, clients, invoices, assets, expenses] = await Promise.all([
-    prisma.project.findMany({
+    (!filterType || filterType === 'project') ? prisma.project.findMany({
       where: {
         businessId: orgId,
         OR: [
@@ -26,8 +26,9 @@ export async function globalSearch(query: string) {
         displayId: true,
         client: { select: { displayName: true } }
       }
-    }),
-    prisma.client.findMany({
+    }) : Promise.resolve([]),
+    
+    (!filterType || filterType === 'client') ? prisma.client.findMany({
       where: {
         businessId: orgId,
         OR: [
@@ -38,8 +39,9 @@ export async function globalSearch(query: string) {
       },
       take: 5,
       select: { id: true, displayName: true, companyName: true, email: true }
-    }),
-    prisma.invoice.findMany({
+    }) : Promise.resolve([]),
+    
+    (!filterType || filterType === 'finance') ? prisma.invoice.findMany({
       where: {
         businessId: orgId,
         OR: [
@@ -54,8 +56,9 @@ export async function globalSearch(query: string) {
         status: true,
         client: { select: { displayName: true } }
       }
-    }),
-    prisma.asset.findMany({
+    }) : Promise.resolve([]),
+    
+    (!filterType || filterType === 'asset') ? prisma.asset.findMany({
       where: {
         businessId: orgId,
         OR: [
@@ -66,8 +69,9 @@ export async function globalSearch(query: string) {
       },
       take: 5,
       select: { id: true, name: true, type: true, vendor: true }
-    }),
-    prisma.expense.findMany({
+    }) : Promise.resolve([]),
+    
+    (!filterType || filterType === 'finance') ? prisma.expense.findMany({
       where: {
         businessId: orgId,
         OR: [
@@ -83,7 +87,7 @@ export async function globalSearch(query: string) {
         category: true,
         project: { select: { title: true } }
       }
-    })
+    }) : Promise.resolve([])
   ])
 
   const results = [
