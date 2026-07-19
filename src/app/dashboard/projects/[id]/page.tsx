@@ -38,7 +38,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <div className="space-y-6 h-[calc(100vh-8rem)] flex flex-col">
+    <div className="space-y-6 flex flex-col md:h-[calc(100vh-8rem)]">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5 shrink-0">
         <div>
@@ -57,7 +57,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </Badge>
             )}
           </div>
-          <div className="mt-2 text-sm text-zinc-500 flex items-center gap-2">
+          <div className="mt-2 text-sm text-zinc-500 flex items-center gap-2 flex-wrap">
             Client: <span className="font-medium text-zinc-700 dark:text-zinc-300">{project.client?.displayName}</span>
             {project.priority && (
               <>
@@ -129,24 +129,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       </div>
       
       {/* Main Content Area - Split into Panels */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-6 min-h-0">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-6 md:min-h-0">
         {/* Notes Column */}
-        <div className="min-h-0">
+        <div className="h-[400px] md:h-auto md:min-h-0">
           <NotesPanel projectId={project.id} notes={project.notes} />
         </div>
 
         {/* Links Column */}
-        <div className="min-h-0">
+        <div className="h-[400px] md:h-auto md:min-h-0">
           <LinksPanel projectId={project.id} links={project.links as any} />
         </div>
 
         {/* Time Tracking Column */}
-        <div className="min-h-0">
+        <div className="h-[400px] md:h-auto md:min-h-0">
           <TimePanel projectId={project.id} timeEntries={project.timeEntries} />
         </div>
 
         {/* Assets Column */}
-        <div className="min-h-0">
+        <div className="h-[400px] md:h-auto md:min-h-0">
           <AssetPanel 
             projectId={project.id} 
             currentAssets={project.assets} 

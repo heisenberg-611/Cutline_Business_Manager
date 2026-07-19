@@ -105,7 +105,7 @@ export function ProjectActions({ project, members = [] }: { project: Project, me
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button variant="outline" size="sm" onClick={() => setIsEditOpen(true)}>
           <Edit className="h-4 w-4 mr-2" />
           Edit
