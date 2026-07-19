@@ -97,7 +97,7 @@ export function ExpenseDialog({ open, onOpenChange, expense, projects, businessC
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 sm:max-w-[425px] w-[95vw] sm:w-full max-h-[90dvh] overflow-y-auto rounded-xl">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Expense' : 'Log Expense'}</DialogTitle>
           <DialogDescription>
@@ -175,11 +175,11 @@ export function ExpenseDialog({ open, onOpenChange, expense, projects, businessC
             </Select>
           </div>
 
-          <div className="flex justify-end pt-4">
-            <Button type="button" variant="outline" className="mr-2" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+            <Button type="button" variant="outline" className="w-full sm:w-auto order-2 sm:order-1" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="w-full sm:w-auto order-1 sm:order-2 bg-zinc-900 text-zinc-50 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditing ? 'Save Changes' : 'Save Expense'}
             </Button>
