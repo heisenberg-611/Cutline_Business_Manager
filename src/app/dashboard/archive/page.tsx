@@ -27,7 +27,7 @@ export default async function ArchivePage() {
   const projects = await getArchivedProjects(orgId)
 
   return (
-    <div className="space-y-6">
+    <div className="w-full mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-5">
         <div>
           <h3 className="text-xl font-semibold leading-6 text-zinc-900 dark:text-zinc-100">
