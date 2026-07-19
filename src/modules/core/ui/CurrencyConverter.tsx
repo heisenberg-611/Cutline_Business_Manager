@@ -93,7 +93,7 @@ export function CurrencyConverter({ open, onOpenChange }: { open: boolean, onOpe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 sm:max-w-[425px] w-[95vw] sm:w-full rounded-xl">
         <DialogHeader>
           <DialogTitle>Currency Converter</DialogTitle>
           <DialogDescription>

@@ -66,6 +66,7 @@ export function AppLayout({
   const [isCurrencyConverterOpen, setIsCurrencyConverterOpen] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isNavigating, setIsNavigating] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const sidebarRef = React.useRef<HTMLElement>(null)
   const [optimisticPathname, setOptimisticPathname] = useState<string | null>(null)
   const pathname = usePathname()
@@ -572,8 +573,8 @@ export function AppLayout({
       <CurrencyConverter open={isCurrencyConverterOpen} onOpenChange={setIsCurrencyConverterOpen} />
 
       {/* MOBILE BOTTOM NAV */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#0A0A0A] border-t border-zinc-200 dark:border-white/10 flex items-center gap-2 px-3 py-2 overflow-x-auto snap-x [&::-webkit-scrollbar]:hidden shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-        {navItems.map((item) => {
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-[#0A0A0A] border-t border-zinc-200 dark:border-white/10 grid grid-cols-5 h-[68px] shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)]">
+        {navItems.filter(i => ['/dashboard', '/dashboard/projects', '/dashboard/financials', '/dashboard/clients'].includes(i.href)).slice(0, 4).map((item) => {
           const currentPath = optimisticPathname || pathname
           const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href))
           return (
@@ -586,37 +587,132 @@ export function AppLayout({
                   setOptimisticPathname(item.href)
                 }
               }}
-              className={`flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center transition-colors ${isActive
-                  ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10'
+              className={`flex flex-col items-center justify-center gap-1 transition-colors ${isActive
+                  ? 'text-indigo-600 dark:text-indigo-400'
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
                 }`}
             >
-              <item.icon className="w-5 h-5 shrink-0" />
+              <item.icon className={`w-5 h-5 ${isActive ? 'fill-indigo-50 dark:fill-indigo-900/20' : ''}`} />
               <span className="text-[10px] font-medium">{item.label}</span>
             </Link>
           )
         })}
 
-        <div className="w-[1px] h-8 bg-zinc-200 dark:bg-white/10 shrink-0 mx-1" />
-
         <button
-          onClick={() => setIsCurrencyConverterOpen(true)}
-          className="flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          onClick={() => setIsMobileMenuOpen(true)}
+          className={`flex flex-col items-center justify-center gap-1 transition-colors ${isMobileMenuOpen ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'}`}
         >
-          <Calculator className="w-5 h-5 shrink-0" />
-          <span className="text-[10px] font-medium">Calculator</span>
+          <Menu className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Menu</span>
         </button>
-
-        {isAdmin && (
-          <Link
-            href="/dashboard/settings"
-            className="flex flex-col items-center justify-center min-w-[72px] h-12 gap-1 rounded-lg shrink-0 snap-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-          >
-            <Settings className="w-5 h-5 shrink-0" />
-            <span className="text-[10px] font-medium">Settings</span>
-          </Link>
-        )}
       </nav>
+
+      {/* MOBILE MENU DRAWER */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="md:hidden fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#0A0A0A] rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh] border-t border-zinc-200 dark:border-white/10"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-zinc-100 dark:border-white/5">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 pl-2">Menu</h2>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                <div className="grid grid-cols-2 gap-2">
+                  {navItems.filter(i => !['/dashboard', '/dashboard/projects', '/dashboard/financials', '/dashboard/clients'].includes(i.href)).map((item) => {
+                    const currentPath = optimisticPathname || pathname
+                    const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href))
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => {
+                          setIsMobileMenuOpen(false)
+                          if (pathname !== item.href) {
+                            setIsNavigating(true)
+                            setOptimisticPathname(item.href)
+                          }
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                          isActive 
+                            ? 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-400 font-medium' 
+                            : 'bg-zinc-50 dark:bg-zinc-900/50 border-transparent text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                        }`}
+                      >
+                        <item.icon className="w-5 h-5 shrink-0" />
+                        <span className="text-sm">{item.label}</span>
+                      </Link>
+                    )
+                  })}
+                </div>
+
+                <div className="h-[1px] w-full bg-zinc-100 dark:bg-white/5" />
+                
+                <div className="space-y-2">
+                  <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider px-2 mb-3">Tools & Preferences</h3>
+                  
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false)
+                      setIsCommandOpen(true)
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent bg-zinc-50 dark:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                  >
+                    <Search className="w-5 h-5 shrink-0 text-zinc-500 dark:text-zinc-400" />
+                    <span className="text-sm font-medium">Global Search</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false)
+                      setIsCurrencyConverterOpen(true)
+                    }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent bg-zinc-50 dark:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                  >
+                    <Calculator className="w-5 h-5 shrink-0 text-zinc-500 dark:text-zinc-400" />
+                    <span className="text-sm font-medium">Currency Converter</span>
+                  </button>
+
+                  {isAdmin && (
+                    <Link
+                      href="/dashboard/settings"
+                      onClick={() => {
+                        setIsMobileMenuOpen(false)
+                        if (pathname !== '/dashboard/settings') {
+                          setIsNavigating(true)
+                          setOptimisticPathname('/dashboard/settings')
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent bg-zinc-50 dark:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    >
+                      <Settings className="w-5 h-5 shrink-0 text-zinc-500 dark:text-zinc-400" />
+                      <span className="text-sm font-medium">Settings</span>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
