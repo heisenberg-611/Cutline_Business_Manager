@@ -32,33 +32,33 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
       if (stored) {
         try {
           prefs = JSON.parse(stored)
-        } catch (e) {}
+        } catch (e) { }
       }
-      
+
       // Respect DND mode or none tone
       if (prefs.dnd || prefs.tone === 'none') return
 
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
       const ctx = new AudioContext();
-      
+
       const playNote = (freq: number, startTime: number, type: OscillatorType = 'triangle', duration = 0.4) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        
+
         osc.type = type;
         osc.frequency.setValueAtTime(freq, startTime);
-        
+
         gain.gain.setValueAtTime(0.3, startTime);
         gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-        
+
         osc.connect(gain);
         gain.connect(ctx.destination);
-        
+
         osc.start(startTime);
         osc.stop(startTime + duration + 0.1);
       }
-      
+
       if (prefs.tone === 'chime') {
         playNote(1046.50, ctx.currentTime);        // C6
         playNote(1318.51, ctx.currentTime + 0.15); // E6
@@ -96,7 +96,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
         osc.start(ctx.currentTime)
         osc.stop(ctx.currentTime + 0.15)
       }
-      
+
     } catch (e) {
       console.log("Audio playback failed or blocked", e);
     }
@@ -106,7 +106,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
     try {
       const data = await getNotifications()
       setNotifications(data)
-      
+
       if (isInitialFetch.current) {
         isInitialFetch.current = false
         if (data.length > 0) {
@@ -167,10 +167,10 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
     })
 
     // Observe head for any title changes Next.js might make
-    observer.observe(headElement, { 
-      childList: true, 
-      subtree: true, 
-      characterData: true 
+    observer.observe(headElement, {
+      childList: true,
+      subtree: true,
+      characterData: true
     })
 
     return () => observer.disconnect()
@@ -216,7 +216,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
         <PopoverPrimitive.Positioner sideOffset={8} align="end">
           <PopoverPrimitive.Popup
             className={cn(
-              "z-50 w-80 sm:w-96 rounded-xl border border-zinc-200 bg-white shadow-xl outline-none",
+              "z-50 w-[calc(100vw-2rem)] sm:w-96 rounded-xl border border-zinc-200 bg-white shadow-xl outline-none origin-top-right",
               "dark:border-white/10 dark:bg-[#121212]",
               "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
             )}
@@ -225,7 +225,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Notifications</h2>
               <div className="flex gap-3">
                 {unreadCount > 0 && (
-                  <button 
+                  <button
                     onClick={handleMarkAllAsRead}
                     className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                   >
@@ -233,7 +233,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
                   </button>
                 )}
                 {notifications.length > 0 && (
-                  <button 
+                  <button
                     onClick={handleClearAll}
                     className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 flex items-center gap-1"
                   >
@@ -243,7 +243,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
                 )}
               </div>
             </div>
-            
+
             <div className="max-h-[350px] overflow-y-auto overflow-x-hidden p-1">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
@@ -257,12 +257,12 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
               ) : (
                 <div className="flex flex-col gap-1">
                   {notifications.map(notification => (
-                    <div 
+                    <div
                       key={notification.id}
                       className={cn(
                         "relative flex gap-3 rounded-lg p-3 text-sm transition-colors cursor-default",
-                        notification.isRead 
-                          ? "hover:bg-zinc-50 dark:hover:bg-white/5" 
+                        notification.isRead
+                          ? "hover:bg-zinc-50 dark:hover:bg-white/5"
                           : "bg-indigo-50/50 dark:bg-indigo-500/10 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
                       )}
                     >
@@ -285,7 +285,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
                           {notification.message}
                         </p>
                       </div>
-                      
+
                       {!notification.isRead && (
                         <button
                           onClick={(e) => {
@@ -300,7 +300,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
                         </button>
                       )}
                       {!notification.isRead && (
-                         <div className="absolute left-1.5 top-4 h-1.5 w-1.5 rounded-full bg-indigo-500 group-hover:opacity-0 transition-opacity" />
+                        <div className="absolute left-1.5 top-4 h-1.5 w-1.5 rounded-full bg-indigo-500 group-hover:opacity-0 transition-opacity" />
                       )}
                     </div>
                   ))}
