@@ -64,11 +64,12 @@ The application is built as a Modular Monolith, leveraging Server Components and
 - Isolated business environments utilizing Clerk Organizations.
 - Granular Role-Based Access Control (RBAC) separating `org:admin` (Full access) from `org:member` (Pipeline-only read access).
 - Smart client directory with sequential ID generation (`CL-XXX`) and dynamic 5-star rating algorithms for sorting high-value accounts.
+- **Global Command Palette:** Instantly jump to any Client, Project, or Invoice across the system using the `Cmd+K` global fuzzy search with localized caching.
 
 ### 2. Intelligent Financial Engine
 - End-to-end invoice lifecycle management (Draft, Sent, Partially Paid, Paid, Void).
 - Automatic cost-allocation for business assets linked to projects.
-- Client-side and server-side PDF generation featuring multi-currency support and exact payment timestamps.
+- **Seamless PDF Generation:** Server-side PDF compilation utilizing `@react-pdf/renderer` streamed directly via Blob ObjectURLs, eliminating heavy client-side CPU loads and providing a lag-free, responsive in-app previewer across all devices.
 - Public, client-facing payment portals (`/invoices/[id]/pay`) to streamline receivables.
 
 ### 3. Project & Pipeline Workflow
@@ -99,6 +100,7 @@ Performance is treated as a core feature. We rely on React Server Components to 
 **Optimizations Include:**
 - **Database Aggregation:** Replaced in-memory JavaScript `.reduce()` calculations with Prisma `.aggregate()`, offloading heavy math to Postgres and minimizing memory overhead.
 - **Optimized Data Pagination:** Replaced massive unpaginated queries with targeted, database-level filtering (`take`, `orderBy`) to prevent over-fetching on dashboards.
+- **Hardware-Accelerated UI:** Implemented strict GPU-offloading (`will-change: transform`) for complex Framer Motion sidebars and drawers, ensuring a silky-smooth 60FPS mobile experience free of layout thrashing.
 - **Concurrent Execution:** Eliminated query waterfalls by wrapping independent database reads in `Promise.all`.
 - **Database Indexing:** Maintained strict relational integrity and fast lookups through optimized foreign keys and indexes (e.g., user-based time tracking).
 - Direct database connection pooling (with Prisma Accelerate maintained as an optional backup caching layer).

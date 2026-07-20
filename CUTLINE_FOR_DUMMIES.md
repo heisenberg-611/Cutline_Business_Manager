@@ -17,7 +17,11 @@ Once inside the dashboard, your first stop should be the **Settings** gear (bott
 * **Workflow Presets**: Under Settings, you can fully customize your project pipeline stages or instantly load a preset (like a Video Editor or Software Agency workflow). You can also click **Restore Defaults** at any time.
 * **Invoicing Settings**: Set your Default Currency (e.g. $, ₹, ৳, £), Invoice Prefix, and add any specific **Payment Instructions** (like your Bank Details, PayPal, or Stripe links). This will automatically appear on all future invoices!
 
-## 2. Managing Your Clients 🤝
+## 2. Global Search & Quick Navigation 🔍
+To move lightning-fast around the app, press **Cmd + K** (or **Ctrl + K** on Windows) anywhere, or tap the **Search** magnifying glass on mobile. 
+This opens the **Global Command Palette**. You can type a client's name, a project title, or an invoice number to instantly jump directly to that page without clicking through menus!
+
+## 3. Managing Your Clients 🤝
 Everything starts with your clients. Head over to the **Clients** tab to add them.
 * Click **"New Client"**.
 * Fill in their Name, Company, Email, and Phone.
@@ -46,10 +50,11 @@ When the work is done (or when you need a deposit), it's time to get paid. Go to
 * Your **Payment Instructions** and **Currency** will automatically load based on your Settings.
 * Click **Save Changes**.
 
-**Sending the Invoice:**
+**Sending & Previewing the Invoice:**
 1. Open the invoice.
-2. Click **"Mark as Sent"**. Cutline OS will automatically shoot a beautifully styled, highly professional HTML email directly to your client. 
-3. **The Public Payment Page**: The email includes a button linking to a secure, public payment portal. Your client can view this page to see exactly what they owe and read your Payment Instructions.
+2. Click **Open PDF** to preview exactly what the client will see. This opens a beautiful, full-screen native viewer right inside the app (no more annoying tabs popping open on your phone!).
+3. If everything looks good, click **"Mark as Sent"**. Cutline OS will automatically shoot a beautifully styled, highly professional HTML email directly to your client. 
+4. **The Public Payment Page**: The email includes a button linking to a secure, public payment portal. Your client can view this page to see exactly what they owe and read your Payment Instructions.
 
 **Recording Payments:**
 When the client pays you, open the invoice and click **"Record Payment"**. Enter the amount paid, the method, and the **exact date and time** the payment was received. The invoice will instantly update to "Partially Paid" or "Paid", and PDFs will reflect the precise payment timestamp!

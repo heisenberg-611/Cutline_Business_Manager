@@ -259,8 +259,14 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
                   {notifications.map(notification => (
                     <div
                       key={notification.id}
+                      onClick={() => {
+                        if (notification.actionUrl) {
+                          window.location.href = notification.actionUrl;
+                        }
+                      }}
                       className={cn(
-                        "relative flex gap-3 rounded-lg p-3 text-sm transition-colors cursor-default",
+                        "relative flex gap-3 rounded-lg p-3 text-sm transition-colors cursor-default group",
+                        notification.actionUrl && "cursor-pointer",
                         notification.isRead
                           ? "hover:bg-zinc-50 dark:hover:bg-white/5"
                           : "bg-indigo-50/50 dark:bg-indigo-500/10 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
