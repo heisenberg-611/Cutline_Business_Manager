@@ -11,6 +11,7 @@ import { EditInvoiceButton } from '@/modules/financials/components/EditInvoiceBu
 import { Badge } from '@/components/ui/badge'
 import { getInvoiceDataForPdf } from '@/lib/invoices/pdf-data'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadInvoiceButton'
+import { PreviewInvoiceDialog } from '@/modules/financials/components/PreviewInvoiceDialog'
 
 const formatMoney = (cents: number, currency = 'USD') => {
   return new Intl.NumberFormat('en-US', {
@@ -49,8 +50,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     getClients(orgId),
     prisma.project.findMany({
       where: { businessId: orgId, isArchived: false },
-      select: { 
-        id: true, 
+      select: {
+        id: true,
         title: true,
         clientId: true,
         assets: {
@@ -79,17 +80,17 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             <p className="text-sm text-zinc-500 mt-1">{invoice.client.displayName}</p>
           </div>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full md:w-auto [&>*]:w-full sm:[&>*]:w-auto [&_button]:w-full sm:[&_button]:w-auto">
           {invoice.status === 'DRAFT' && (
-            <EditInvoiceButton 
-              invoice={invoice} 
-              clients={clients} 
-              projects={projects} 
-              businessCurrency={invoice.currency} 
+            <EditInvoiceButton
+              invoice={invoice}
+              clients={clients}
+              projects={projects}
+              businessCurrency={invoice.currency}
             />
           )}
-          
+
           {invoice.status === 'DRAFT' && (
             <form action={async () => {
               'use server'
@@ -113,21 +114,21 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               <Ban className="h-4 w-4 mr-2" /> Delete
             </Button>
           </form>
-          
+
           {/* Client-side instant download (generates PDF in browser) */}
           {invoiceDataForPdf && (
             <div className="w-full sm:w-auto">
               <DownloadInvoiceButton invoiceData={invoiceDataForPdf} />
             </div>
           )}
-          
-          {/* Fallback: server-side PDF (opens in new tab via API route) */}
-          <a href={`/api/invoices/${invoice.id}/pdf`} target="_blank" rel="noreferrer" className="w-full sm:w-auto">
-            <Button variant="outline" className="text-zinc-500 w-full sm:w-auto">
-              <ExternalLink className="h-4 w-4 mr-2" /> Open PDF
-            </Button>
-          </a>
-          
+
+          {/* In-app PDF Viewer Modal */}
+          {invoiceDataForPdf && (
+            <div className="w-full sm:w-auto">
+              <PreviewInvoiceDialog invoiceData={invoiceDataForPdf} />
+            </div>
+          )}
+
           {['SENT', 'PARTIALLY_PAID', 'OVERDUE'].includes(invoice.status) && invoice.amountDueCents > 0 && (
             <div className="w-full sm:w-auto">
               <RecordPaymentDialog invoiceId={invoice.id} amountDueCents={invoice.amountDueCents} currency={invoice.currency} />
@@ -153,7 +154,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 </div>
               ))}
             </div>
-            
+
             <div className="border-t border-zinc-200 dark:border-zinc-800 mt-6 pt-6 space-y-2 text-sm">
               <div className="flex justify-between text-zinc-500">
                 <span>Subtotal</span>
