@@ -2,7 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
-import { Users, FileText, MessageSquare, UsersRound, ArrowUpRight, CheckCircle2, LayoutDashboard, Sparkles, Zap, Shield } from 'lucide-react';
+import { Users, FileText, MessageSquare, UsersRound, ArrowUpRight, CheckCircle2, LayoutDashboard, Sparkles, Zap, Shield, Folder, Mail, Clock } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Cutline | Your creative business, finally organized',
@@ -99,27 +99,59 @@ export default async function MarketingHomepage() {
                 </div>
                 <div className="flex flex-1 p-4 gap-4">
                   {/* Fake Sidebar */}
-                  <div className="w-48 hidden xl:flex flex-col gap-3">
-                    <div className="h-8 rounded-md bg-muted/50 w-full"></div>
-                    <div className="h-8 rounded-md bg-muted/30 w-3/4"></div>
-                    <div className="h-8 rounded-md bg-muted/30 w-4/5"></div>
-                    <div className="h-8 rounded-md bg-muted/30 w-full"></div>
+                  <div className="w-48 hidden xl:flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted/50 text-[13px] font-medium text-foreground"><LayoutDashboard className="w-4 h-4"/> Dashboard</div>
+                    <div className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-muted-foreground"><Users className="w-4 h-4"/> Clients</div>
+                    <div className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-muted-foreground"><Folder className="w-4 h-4"/> Projects</div>
+                    <div className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-muted-foreground"><FileText className="w-4 h-4"/> Invoices</div>
+                    <div className="flex items-center gap-2 px-3 py-2 text-[13px] font-medium text-muted-foreground"><MessageSquare className="w-4 h-4"/> Feedback</div>
                   </div>
                   {/* Fake Main Content */}
                   <div className="flex-1 flex flex-col gap-4">
-                    <div className="flex justify-between items-center">
-                      <div className="h-8 rounded-md bg-foreground/10 w-40"></div>
-                      <div className="h-8 rounded-md bg-primary/20 w-24"></div>
+                    <div className="flex justify-between items-center pb-3 border-b border-border/40">
+                      <div>
+                         <div className="text-sm font-semibold text-foreground">ACME Rebranding</div>
+                         <div className="text-[11px] text-muted-foreground mt-0.5">Due in 3 days</div>
+                      </div>
+                      <div className="bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[11px] px-2.5 py-1 rounded-full font-medium">In Review</div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="h-24 rounded-lg bg-muted/40 border border-border/50"></div>
-                      <div className="h-24 rounded-lg bg-muted/40 border border-border/50"></div>
-                      <div className="h-24 rounded-lg bg-muted/40 border border-border/50"></div>
+                    {/* Fake Kanban / Pipeline */}
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="h-24 rounded-lg bg-muted/30 border border-border/50 p-2.5 flex flex-col gap-2">
+                         <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">To Do</div>
+                         <div className="bg-background rounded p-2 border border-border/50 shadow-sm"><div className="w-3/4 h-1.5 bg-muted-foreground/30 rounded-full mb-1.5"></div><div className="w-1/2 h-1.5 bg-muted-foreground/30 rounded-full"></div></div>
+                      </div>
+                      <div className="h-24 rounded-lg bg-muted/30 border border-border/50 p-2.5 flex flex-col gap-2">
+                         <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Review</div>
+                         <div className="bg-background rounded p-2 border border-border/50 shadow-sm border-l-2 border-l-amber-500"><div className="w-full h-1.5 bg-amber-500/30 rounded-full mb-1.5"></div><div className="w-2/3 h-1.5 bg-amber-500/30 rounded-full"></div></div>
+                      </div>
+                      <div className="h-24 rounded-lg bg-muted/30 border border-border/50 p-2.5 flex flex-col gap-2">
+                         <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Done</div>
+                         <div className="bg-background rounded p-2 border border-border/50 shadow-sm opacity-60"><div className="w-4/5 h-1.5 bg-muted-foreground/30 rounded-full"></div></div>
+                      </div>
                     </div>
-                    <div className="flex-1 rounded-lg bg-muted/20 border border-border/50 p-4 flex flex-col gap-3">
-                       <div className="h-12 rounded-md bg-background border border-border/30 w-full"></div>
-                       <div className="h-12 rounded-md bg-background border border-border/30 w-full"></div>
-                       <div className="h-12 rounded-md bg-background border border-border/30 w-full"></div>
+                    {/* Fake Feedback / Invoice section */}
+                    <div className="flex-1 rounded-lg bg-muted/10 border border-border/50 p-3 flex gap-3">
+                       {/* Feedback thread */}
+                       <div className="flex-1 flex flex-col gap-2">
+                          <div className="text-[11px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5"/> Client Feedback</div>
+                          <div className="bg-background p-2.5 rounded-lg border border-border/50 shadow-sm">
+                             <div className="flex items-center gap-2 mb-2">
+                                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary">JD</div>
+                                <div className="text-[11px] font-semibold">Jane (Client)</div>
+                             </div>
+                             <div className="text-[11px] text-muted-foreground leading-relaxed">Love the new logo concept! Can we try it in the dark blue from the brand guidelines?</div>
+                          </div>
+                       </div>
+                       {/* Quick Invoice */}
+                       <div className="w-[120px] bg-background rounded-lg border border-border/50 p-3 flex flex-col justify-between shadow-sm">
+                          <div className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/> Invoice #042</div>
+                          <div>
+                            <div className="text-xl font-bold tracking-tight text-foreground">$1,200</div>
+                            <div className="text-[10px] text-muted-foreground">Due Oct 15</div>
+                          </div>
+                          <div className="w-full bg-green-500/10 text-green-600 border border-green-500/20 text-center text-[10px] py-1 rounded mt-2 font-medium">Paid in full</div>
+                       </div>
                     </div>
                   </div>
                 </div>
@@ -347,20 +379,50 @@ export default async function MarketingHomepage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-12 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-md bg-muted flex items-center justify-center">
-              <Sparkles className="w-3 h-3" />
+      {/* Footer / Contact Section */}
+      <footer id="contact" className="border-t border-border/50 pt-16 pb-8 mt-12 bg-muted/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+                </div>
+                <span className="text-lg font-semibold text-foreground tracking-tight">Cutline</span>
+              </div>
+              <p className="text-muted-foreground max-w-sm leading-relaxed text-sm">
+                Your creative business, finally organized. Clients, projects, invoicing, and feedback — all in one beautiful workspace.
+              </p>
             </div>
-            <span className="font-semibold text-foreground">Cutline</span>
-            <span className="ml-2">© {new Date().getFullYear()} All rights reserved.</span>
+            
+            <div>
+              <h3 className="font-semibold text-foreground mb-4">Legal</h3>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-foreground mb-4">Contact</h3>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li>
+                  <a href="mailto:support@cutline.app" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
+                    <Mail className="w-4 h-4" /> support@cutline.app
+                  </a>
+                </li>
+                <li>
+                  <a href="mailto:sales@cutline.app" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
+                    <MessageSquare className="w-4 h-4" /> sales@cutline.app
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className="flex gap-8">
-            <Link href="#" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-            <Link href="#" className="hover:text-foreground transition-colors">Terms of Service</Link>
-            <Link href="#" className="hover:text-foreground transition-colors">Contact</Link>
+          
+          <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
+            <p>© {new Date().getFullYear()} Cutline. All rights reserved.</p>
+            <p className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> Support active Mon-Fri, 9am - 5pm EST</p>
           </div>
         </div>
       </footer>
