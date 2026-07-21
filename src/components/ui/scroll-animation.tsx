@@ -11,7 +11,7 @@ export function FadeIn({ children, delay = 0, className }: { children: React.Rea
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-10%" }}
+      viewport={{ once: true }}
       transition={{ duration: 0.8, delay, ease: transitionEase }}
       className={className}
     >
@@ -25,7 +25,7 @@ export function FadeInStagger({ children, className }: { children: React.ReactNo
     <motion.div
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, margin: "-10%" }}
+      viewport={{ once: true }}
       variants={{
         hidden: {},
         visible: {
@@ -60,7 +60,7 @@ export function ScaleIn({ children, delay = 0, className }: { children: React.Re
     <motion.div
       initial={{ opacity: 0, scale: 0.96, filter: "blur(4px)" }}
       whileInView={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-      viewport={{ once: true, margin: "-10%" }}
+      viewport={{ once: true }}
       transition={{ duration: 1, delay, ease: transitionEase }}
       className={className}
     >

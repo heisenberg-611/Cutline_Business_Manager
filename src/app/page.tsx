@@ -6,14 +6,14 @@ import { Users, FileText, MessageSquare, UsersRound, ArrowUpRight, CheckCircle2,
 import { FadeIn, FadeInStagger, FadeInStaggerItem, ScaleIn } from '@/components/ui/scroll-animation';
 
 export const metadata: Metadata = {
-  title: 'Cutline | Your creative business, finally organized',
-  description: 'Clients, projects, invoicing, and feedback — all in one place. Built for photographers, designers, video editors, and creative studios.',
+  title: 'Cutline OS | Your creative business, finally organized',
+  description: 'Manage clients, track projects, send invoices, and collect feedback—all in one beautiful workspace.',
   openGraph: {
-    title: 'Cutline | Your creative business, finally organized',
-    description: 'Clients, projects, invoicing, and feedback — all in one place. Built for creative professionals.',
+    title: 'Cutline OS | Your creative business, finally organized',
+    description: 'Replace five different tools with one seamless workflow.',
     url: 'https://cutline.app',
-    siteName: 'Cutline',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Cutline - Your creative business, finally organized' }],
+    siteName: 'Cutline OS',
+    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Cutline OS - Your creative business, finally organized' }],
     locale: 'en_US',
     type: 'website',
   },
@@ -23,15 +23,15 @@ export default async function MarketingHomepage() {
   const { userId } = await auth();
   
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans overflow-x-hidden">
+    <div className="force-light min-h-screen bg-background text-foreground font-sans overflow-x-hidden">
       {/* Navigation */}
       <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 lg:w-1/3">
-            <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+            <div className="w-7 h-7 flex items-center justify-center">
+              <img src="/icon.svg" alt="Cutline OS Logo" className="w-full h-full object-contain" />
             </div>
-            <Link href="/" className="text-lg font-semibold tracking-tight">Cutline</Link>
+            <Link href="/" className="text-lg font-semibold tracking-tight">Cutline OS</Link>
           </div>
           
           <nav className="hidden md:flex items-center justify-center gap-8 text-sm font-medium text-muted-foreground lg:w-1/3">
@@ -96,9 +96,9 @@ export default async function MarketingHomepage() {
               
               <FadeInStaggerItem className="mt-8 flex items-center gap-4 text-sm text-muted-foreground">
                 <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 border-2 border-background"></div>
-                  <div className="w-8 h-8 rounded-full bg-zinc-300 dark:bg-zinc-700 border-2 border-background"></div>
-                  <div className="w-8 h-8 rounded-full bg-zinc-400 dark:bg-zinc-600 border-2 border-background"></div>
+                  <div className="w-8 h-8 rounded-full bg-zinc-200 border-2 border-background"></div>
+                  <div className="w-8 h-8 rounded-full bg-zinc-300 border-2 border-background"></div>
+                  <div className="w-8 h-8 rounded-full bg-zinc-400 border-2 border-background"></div>
                 </div>
                 <p>Trusted by 2,000+ creative professionals</p>
               </FadeInStaggerItem>
@@ -247,7 +247,7 @@ export default async function MarketingHomepage() {
                   <UsersRound className="w-10 h-10 text-primary mb-6" />
                   <h3 className="text-2xl font-semibold mb-3">Room to grow</h3>
                   <p className="text-muted-foreground leading-relaxed text-lg">
-                    Roles, assignment, and messaging for when you build a team. Cutline scales gracefully from solo freelancer to a bustling studio.
+                    Roles, assignment, and messaging for when you build a team. Cutline OS scales gracefully from solo freelancer to a bustling studio.
                   </p>
                 </div>
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity translate-x-1/4 text-foreground">
@@ -262,7 +262,7 @@ export default async function MarketingHomepage() {
         <section id="how-it-works" className="py-24 overflow-hidden">
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
             <FadeIn>
-              <h2 className="text-3xl md:text-4xl font-semibold mb-16 tracking-tight text-center">How Cutline works</h2>
+              <h2 className="text-3xl md:text-4xl font-semibold mb-16 tracking-tight text-center">How Cutline OS works</h2>
             </FadeIn>
             
             <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
@@ -352,12 +352,12 @@ export default async function MarketingHomepage() {
         <section id="about" className="py-24">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-8">Built by creatives, for creatives.</h2>
-            <div className="prose prose-lg dark:prose-invert mx-auto text-muted-foreground">
+            <div className="prose prose-lg mx-auto text-muted-foreground">
               <p className="mb-6 text-xl leading-relaxed">
                 We understand the chaos of managing a creative business. The endless email chains, the lost feedback, the late invoices, and the overwhelming feeling that you're spending more time managing the work than actually creating it.
               </p>
               <p className="text-xl leading-relaxed">
-                We built Cutline to replace the scattered mess of spreadsheets, generic task managers, and PDFs with a single, elegant workspace that understands how creative services actually work. Our mission is simple: let you focus on what you do best—creating.
+                We built Cutline OS to replace the scattered mess of spreadsheets, generic task managers, and PDFs with a single, elegant workspace that understands how creative services actually work. Our mission is simple: let you focus on what you do best—creating.
               </p>
             </div>
           </div>
@@ -369,7 +369,7 @@ export default async function MarketingHomepage() {
             <div className="absolute inset-0 bg-gradient-to-br from-primary-foreground/10 to-transparent rounded-[2.5rem]"></div>
             <div className="relative z-10">
               <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">Ready to get organized?</h2>
-              <p className="text-xl opacity-90 mb-10 max-w-2xl mx-auto">Join thousands of creative professionals who use Cutline to run their business smoothly and profitably.</p>
+              <p className="text-xl opacity-90 mb-10 max-w-2xl mx-auto">Join thousands of creative professionals who use Cutline OS to run their business smoothly and profitably.</p>
               <Link href={userId ? "/dashboard" : "/login"} className="inline-flex items-center justify-center bg-background text-foreground rounded-full px-8 py-4 text-base font-medium hover:bg-muted transition-colors shadow-lg shadow-background/20 group">
                 {userId ? "Go to Dashboard" : "Start your free trial"}
                 <ArrowUpRight className="ml-2 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
@@ -385,10 +385,10 @@ export default async function MarketingHomepage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
-                  <Sparkles className="w-3.5 h-3.5 text-primary-foreground" />
+                <div className="w-6 h-6 flex items-center justify-center">
+                  <img src="/icon.svg" alt="Cutline OS Logo" className="w-full h-full object-contain" />
                 </div>
-                <span className="text-lg font-semibold text-foreground tracking-tight">Cutline</span>
+                <span className="text-lg font-semibold text-foreground tracking-tight">Cutline OS</span>
               </div>
               <p className="text-muted-foreground max-w-sm leading-relaxed text-sm">
                 Your creative business, finally organized. Clients, projects, invoicing, and feedback — all in one beautiful workspace.
@@ -421,7 +421,7 @@ export default async function MarketingHomepage() {
           </div>
           
           <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} Cutline. All rights reserved.</p>
+            <p>© {new Date().getFullYear()} Cutline OS. All rights reserved.</p>
             <p className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> Support active Mon-Fri, 9am - 5pm EST</p>
           </div>
         </div>
