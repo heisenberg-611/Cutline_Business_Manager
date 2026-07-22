@@ -90,7 +90,7 @@ export default async function MarketingHomepage() {
               </FadeInStaggerItem>
               
               <FadeInStaggerItem className="flex flex-col sm:flex-row items-start gap-4">
-                <Link href={userId ? "/dashboard" : "/login"} className="inline-flex items-center justify-center bg-primary text-primary-foreground rounded-full px-8 py-4 text-base font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 w-full sm:w-auto">
+                <Link href={userId ? "/dashboard" : "/sign-up"} className="inline-flex items-center justify-center bg-primary text-primary-foreground rounded-full px-8 py-4 text-base font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 w-full sm:w-auto">
                   {userId ? "Go to Dashboard" : "Start for free"}
                 </Link>
                 <Link href="#features" className="inline-flex items-center justify-center bg-transparent border border-border rounded-full px-8 py-4 text-base font-medium text-foreground hover:bg-muted transition-colors w-full sm:w-auto">
@@ -243,7 +243,7 @@ export default async function MarketingHomepage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/login" className="w-full py-3 rounded-xl border border-border text-center font-medium hover:bg-muted transition-colors">Get Started</Link>
+                <Link href="/sign-up" className="w-full py-3 rounded-xl border border-border text-center font-medium hover:bg-muted transition-colors">Get Started</Link>
               </FadeInStaggerItem>
 
               {/* Professional (Highlighted) */}
