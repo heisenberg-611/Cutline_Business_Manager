@@ -53,3 +53,22 @@ export async function rejectRequest(requestId: string) {
   
   revalidatePath('/admin/subscriptions');
 }
+
+export async function deleteRequest(requestId: string) {
+  const admin = await requireAdmin(); // SECURITY CHECK
+  
+  await prisma.subscriptionRequest.delete({
+    where: { id: requestId },
+  });
+
+  await prisma.adminAuditLog.create({
+    data: {
+      adminEmail: admin.email,
+      action: 'DELETE_SUBSCRIPTION_REQUEST',
+      targetId: requestId,
+    }
+  });
+  
+  revalidatePath('/admin/subscriptions');
+  revalidatePath('/admin/finances');
+}

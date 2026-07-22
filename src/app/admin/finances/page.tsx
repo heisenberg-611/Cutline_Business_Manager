@@ -1,6 +1,7 @@
 import prisma from '@/modules/core/db/prisma';
 import { PLAN_PRICES } from '@/lib/subscription';
 import { requireAdmin } from '../actions';
+import { DeleteRequestButton } from './DeleteRequestButton';
 
 export const metadata = {
   title: 'Finances Admin',
@@ -38,6 +39,7 @@ export default async function AdminFinancesPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Business</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Plan</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Amount</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-zinc-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-zinc-950 divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -55,11 +57,14 @@ export default async function AdminFinancesPage() {
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-zinc-900 dark:text-zinc-100">
                   ৳{PLAN_PRICES[req.planRequested as keyof typeof PLAN_PRICES]}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <DeleteRequestButton requestId={req.id} />
+                </td>
               </tr>
             ))}
             {approvedRequests.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-sm text-zinc-500">
+                <td colSpan={5} className="px-6 py-8 text-center text-sm text-zinc-500">
                   No approved payments yet.
                 </td>
               </tr>

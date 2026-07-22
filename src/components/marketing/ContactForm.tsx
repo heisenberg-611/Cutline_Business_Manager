@@ -7,9 +7,10 @@ import { CheckCircle2, Loader2, Send } from 'lucide-react';
 interface ContactFormProps {
   title?: string;
   defaultMessage?: string;
+  source?: string;
 }
 
-export function ContactForm({ title = "Send us a message", defaultMessage = "" }: ContactFormProps = {}) {
+export function ContactForm({ title = "Send us a message", defaultMessage = "", source = "Website Contact" }: ContactFormProps = {}) {
   const [state, formAction, isPending] = useActionState(submitContactForm, null);
 
   if (state?.success) {
@@ -31,6 +32,8 @@ export function ContactForm({ title = "Send us a message", defaultMessage = "" }
             {state.error}
           </div>
         )}
+        
+        <input type="hidden" name="source" value={source} />
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">

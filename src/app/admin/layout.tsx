@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Home, Users, CreditCard, Activity, LogOut, ShieldAlert, Settings, Building2, Megaphone, ShieldCheck } from 'lucide-react';
+import { Home, Users, CreditCard, Activity, LogOut, ShieldAlert, Settings, Building2, Megaphone, ShieldCheck, MessageSquare } from 'lucide-react';
 import prisma from '@/modules/core/db/prisma';
 import { cookies } from 'next/headers';
 import { AdminAuthForm } from './components/AdminAuthForm';
@@ -57,6 +57,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </Link>
           <Link href="/admin/finances" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             <CreditCard className="w-4 h-4" /> Finances
+          </Link>
+          <Link href="/admin/messages" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <MessageSquare className="w-4 h-4" /> Messages
           </Link>
           <Link href="/admin/organizations" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             <Building2 className="w-4 h-4" /> Organizations

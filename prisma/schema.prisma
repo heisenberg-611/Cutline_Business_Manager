@@ -840,3 +840,15 @@ model AdminAuditLog {
   @@index([adminEmail])
   @@index([targetId])
 }
+
+model SystemContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String   @db.Text
+  source    String   @default("contact_form")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("system_contact_messages")
+}

@@ -29,6 +29,7 @@ export function UpgradeContactModal() {
           <ContactForm 
             title="Upgrade to Business Plan" 
             defaultMessage="Hi team, I would like to upgrade my workspace to the Business Plan." 
+            source="Business Plan Upgrade Request"
           />
         </div>
       </DialogContent>

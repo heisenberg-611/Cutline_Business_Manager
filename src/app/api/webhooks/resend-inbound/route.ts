@@ -64,16 +64,44 @@ export async function POST(req: Request) {
     }
 
     // Forward the email using Resend's built-in forwarding method
-    // This correctly fetches the original email (including HTML/text/attachments) 
-    // and forwards it to the destination.
-    const { error } = await resend.emails.receiving.forward({
+    const forwardResponse = await resend.emails.receiving.forward({
       emailId: payload.data.email_id,
       to: forwardTo,
-      from: 'contact@cutlin.tech', // Must be your verified sending domain
+      from: 'contact@cutlin.tech',
     });
 
+    let { error } = forwardResponse;
+
+    // Fallback: If native forward fails (e.g., missing raw.download_url), manually fetch and send
     if (error) {
-      console.error('Failed to forward email:', error);
+      console.warn('Native forward failed, attempting manual fallback:', error);
+      
+      const emailRecord = await resend.emails.receiving.get(payload.data.email_id);
+      
+      if (!emailRecord.error && emailRecord.data) {
+        const emailBody = emailRecord.data;
+        const fallbackRes = await resend.emails.send({
+          from: 'contact@cutlin.tech',
+          to: forwardTo,
+          replyTo: payload.data.from,
+          subject: `[Forwarded] ${payload.data.subject}`,
+          html: `
+            <div style="background-color: #f4f4f5; padding: 16px; margin-bottom: 24px; border-radius: 8px;">
+              <p style="margin: 0 0 8px 0;"><strong>From:</strong> ${payload.data.from}</p>
+              <p style="margin: 0 0 8px 0;"><strong>To:</strong> ${toAddressStr}</p>
+              <p style="margin: 0;"><strong>Subject:</strong> ${payload.data.subject}</p>
+            </div>
+            <div>
+              ${emailBody.html || emailBody.text || payload.data.html || payload.data.text || 'No content found'}
+            </div>
+          `
+        });
+        error = fallbackRes.error;
+      }
+    }
+
+    if (error) {
+      console.error('Failed to forward email (both methods failed):', error);
       return NextResponse.json({ success: false, error }, { status: 500 });
     }
 
