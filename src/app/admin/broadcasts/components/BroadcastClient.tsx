@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useOptimistic, startTransition } from 'react';
 import { createBroadcast, toggleBroadcast, deleteBroadcast } from '../actions';
 import { Megaphone, Trash2, Power, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -11,11 +11,42 @@ export function BroadcastClient({ alerts }: { alerts: any[] }) {
   const [message, setMessage] = useState('');
   const [type, setType] = useState('info'); // info, warning, error, success
 
+  const [optimisticAlerts, updateOptimisticAlerts] = useOptimistic(
+    alerts,
+    (state, update: { action: 'CREATE' | 'TOGGLE' | 'DELETE'; payload: any }) => {
+      switch (update.action) {
+        case 'CREATE':
+          return [update.payload, ...state];
+        case 'TOGGLE':
+          return state.map(a => a.id === update.payload.id ? { ...a, isActive: !a.isActive } : a);
+        case 'DELETE':
+          return state.filter(a => a.id !== update.payload.id);
+        default:
+          return state;
+      }
+    }
+  );
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !message) return;
     
     setLoading(true);
+    
+    // Optimistic payload mock ID and date
+    const optimisticPayload = {
+      id: `opt_${Date.now()}`,
+      title,
+      message,
+      type,
+      isActive: true,
+      createdAt: new Date().toISOString()
+    };
+    
+    startTransition(() => {
+      updateOptimisticAlerts({ action: 'CREATE', payload: optimisticPayload });
+    });
+
     try {
       await createBroadcast(title, message, type);
       setTitle('');
@@ -29,25 +60,25 @@ export function BroadcastClient({ alerts }: { alerts: any[] }) {
   };
 
   const handleToggle = async (id: string, current: boolean) => {
-    setLoading(true);
+    startTransition(() => {
+      updateOptimisticAlerts({ action: 'TOGGLE', payload: { id } });
+    });
     try {
       await toggleBroadcast(id, !current);
     } catch (err: any) {
       alert(err.message || 'Failed to toggle');
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this broadcast?')) return;
-    setLoading(true);
+    startTransition(() => {
+      updateOptimisticAlerts({ action: 'DELETE', payload: { id } });
+    });
     try {
       await deleteBroadcast(id);
     } catch (err: any) {
       alert(err.message || 'Failed to delete');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -120,13 +151,13 @@ export function BroadcastClient({ alerts }: { alerts: any[] }) {
       <div className="lg:col-span-2 space-y-4">
         <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Broadcast History</h2>
         
-        {alerts.length === 0 ? (
+        {optimisticAlerts.length === 0 ? (
           <div className="bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-white/10 p-12 text-center text-zinc-500">
             No broadcasts found.
           </div>
         ) : (
           <div className="space-y-4">
-            {alerts.map((alert) => (
+            {optimisticAlerts.map((alert) => (
               <div 
                 key={alert.id} 
                 className={`bg-white dark:bg-zinc-950 rounded-xl border ${alert.isActive ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-zinc-200 dark:border-white/10'} p-5 shadow-sm transition-all`}

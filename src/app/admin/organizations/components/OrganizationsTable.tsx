@@ -1,12 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useOptimistic, startTransition } from 'react';
 import { EditSubscriptionModal } from './EditSubscriptionModal';
 import { Settings2, Building2, Crown, Star } from 'lucide-react';
 import { format } from 'date-fns';
 
 export function OrganizationsTable({ businesses }: { businesses: any[] }) {
   const [editingBusiness, setEditingBusiness] = useState<any>(null);
+
+  const [optimisticBusinesses, addOptimisticUpdate] = useOptimistic(
+    businesses,
+    (state, update: { id: string; plan: string; end: string | null }) => {
+      return state.map(b => 
+        b.id === update.id 
+          ? { ...b, subscriptionPlan: update.plan, subscriptionPeriodEnd: update.end }
+          : b
+      );
+    }
+  );
 
   const getStatusBadge = (b: any) => {
     if (b.subscriptionPlan === 'FREE') {
@@ -39,7 +50,7 @@ export function OrganizationsTable({ businesses }: { businesses: any[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-white/5">
-              {businesses.map((b) => (
+              {optimisticBusinesses.map((b) => (
                 <tr key={b.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -84,7 +95,7 @@ export function OrganizationsTable({ businesses }: { businesses: any[] }) {
                 </tr>
               ))}
               
-              {businesses.length === 0 && (
+              {optimisticBusinesses.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-zinc-500">
                     No organizations found.
@@ -100,6 +111,11 @@ export function OrganizationsTable({ businesses }: { businesses: any[] }) {
         <EditSubscriptionModal 
           business={editingBusiness} 
           onClose={() => setEditingBusiness(null)} 
+          onOptimisticUpdate={(plan: string, end: string | null) => {
+            startTransition(() => {
+              addOptimisticUpdate({ id: editingBusiness.id, plan, end });
+            });
+          }}
         />
       )}
     </>

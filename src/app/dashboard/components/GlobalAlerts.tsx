@@ -14,13 +14,19 @@ export function GlobalAlerts({ alerts }: { alerts: any[] }) {
     }
   }, []);
 
-  const handleDismiss = (id: string) => {
-    const newDismissed = [...dismissed, id];
+  const handleDismiss = (alert: any) => {
+    const token = `${alert.id}_${new Date(alert.updatedAt).getTime()}`;
+    const newDismissed = [...dismissed, token];
     setDismissed(newDismissed);
     localStorage.setItem('cutline_dismissed_alerts', JSON.stringify(newDismissed));
   };
 
-  const activeAlerts = alerts.filter(a => !dismissed.includes(a.id));
+  const activeAlerts = alerts.filter(a => {
+    const token = `${a.id}_${new Date(a.updatedAt).getTime()}`;
+    // We check if the exact version was dismissed. We also ignore plain IDs to force a re-show 
+    // of previously dismissed alerts that were bugged, but once dismissed again they will use the token.
+    return !dismissed.includes(token);
+  });
 
   if (activeAlerts.length === 0) return null;
 
@@ -53,7 +59,7 @@ export function GlobalAlerts({ alerts }: { alerts: any[] }) {
                 </p>
               </div>
               <button 
-                onClick={() => handleDismiss(alert.id)}
+                onClick={() => handleDismiss(alert)}
                 className="flex-shrink-0 p-1 hover:bg-white/20 rounded-md transition-colors"
               >
                 <X className="w-5 h-5" />

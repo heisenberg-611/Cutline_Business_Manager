@@ -8,10 +8,12 @@ import { SubscriptionPlan } from '@prisma/client';
 
 export function EditSubscriptionModal({ 
   business, 
-  onClose 
+  onClose,
+  onOptimisticUpdate
 }: { 
   business: any; 
-  onClose: () => void 
+  onClose: () => void;
+  onOptimisticUpdate: (plan: string, end: string | null) => void;
 }) {
   const [plan, setPlan] = useState<SubscriptionPlan>(business.subscriptionPlan || 'FREE');
   const [loading, setLoading] = useState(false);
@@ -43,8 +45,12 @@ export function EditSubscriptionModal({
     setLoading(true);
     try {
       const end = periodEnd ? new Date(periodEnd) : null;
+      
+      // Fire optimistic update before server request completes
+      onOptimisticUpdate(plan, periodEnd ? new Date(periodEnd).toISOString() : null);
+      onClose(); // Close modal instantly for snappiness
+
       await forceUpdateSubscription(business.id, plan, end);
-      onClose();
     } catch (err: any) {
       alert(err.message || 'Failed to update subscription');
     } finally {
@@ -56,8 +62,11 @@ export function EditSubscriptionModal({
     if (!confirm('Are you sure you want to instantly revoke this organization\'s access?')) return;
     setLoading(true);
     try {
-      await revokeSubscription(business.id);
+      // Fire optimistic update
+      onOptimisticUpdate('FREE', null);
       onClose();
+
+      await revokeSubscription(business.id);
     } catch (err: any) {
       alert(err.message || 'Failed to revoke');
     } finally {
