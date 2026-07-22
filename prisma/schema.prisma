@@ -818,3 +818,25 @@ model GlobalSettings {
   
   @@map("global_settings")
 }
+
+model SystemAlert {
+  id        String   @id @default(cuid())
+  title     String
+  message   String
+  type      String   @default("info") // info, warning, error, success
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  adminEmail String
+  action    String
+  targetId  String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([adminEmail])
+  @@index([targetId])
+}
