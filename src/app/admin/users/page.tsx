@@ -3,15 +3,31 @@ import prisma from '@/modules/core/db/prisma';
 import { Users as UsersIcon, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 import Image from 'next/image';
+import { SearchUsers } from './components/SearchUsers';
+import { Suspense } from 'react';
 
 export const metadata = {
   title: 'Users Directory | Admin',
 };
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   await requireAdmin();
 
+  const resolvedParams = await searchParams;
+  const query = resolvedParams?.q || '';
+
   const users = await prisma.user.findMany({
+    where: query ? {
+      OR: [
+        { email: { contains: query, mode: 'insensitive' } },
+        { firstName: { contains: query, mode: 'insensitive' } },
+        { lastName: { contains: query, mode: 'insensitive' } },
+      ]
+    } : undefined,
     orderBy: { createdAt: 'desc' },
     include: {
       memberships: {
@@ -24,17 +40,22 @@ export default async function UsersPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <div>
-        <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400 mb-2">
-          <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <UsersIcon className="w-5 h-5" />
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div>
+          <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400 mb-2">
+            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <UsersIcon className="w-5 h-5" />
+            </div>
+            <span className="font-semibold tracking-wide uppercase text-sm">Directory</span>
           </div>
-          <span className="font-semibold tracking-wide uppercase text-sm">Directory</span>
+          <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">User Management</h1>
+          <p className="mt-2 text-zinc-500 max-w-2xl">
+            View all registered users and the organizations they belong to.
+          </p>
         </div>
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">User Management</h1>
-        <p className="mt-2 text-zinc-500 max-w-2xl">
-          View all registered users and the organizations they belong to.
-        </p>
+        <Suspense fallback={<div className="h-10 w-full max-w-sm bg-zinc-100 dark:bg-zinc-900 animate-pulse rounded-md" />}>
+          <SearchUsers />
+        </Suspense>
       </div>
 
       <div className="bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-white/10 shadow-sm overflow-hidden">
