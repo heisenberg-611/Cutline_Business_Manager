@@ -50,5 +50,6 @@ export const config = {
     '/dashboard(.*)',
     '/admin(.*)',
     '/api(.*)',
+    '/claim-trial(.*)',
   ],
 }

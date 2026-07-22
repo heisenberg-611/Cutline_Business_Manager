@@ -5,6 +5,9 @@ import { auth } from '@clerk/nextjs/server';
 import { Users, FileText, MessageSquare, UsersRound, ArrowUpRight, CheckCircle2, LayoutDashboard, Sparkles, Zap, Shield, Folder, Mail, Clock } from 'lucide-react';
 import { FadeIn, FadeInStagger, FadeInStaggerItem, ScaleIn } from '@/components/ui/scroll-animation';
 import { HeroMockup } from '@/components/marketing/hero-mockup';
+import { PLAN_PRICES, PLAN_FEATURES, PLANS } from '@/lib/subscription';
+import { ContactForm } from '@/components/marketing/ContactForm';
+import { X } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Cutline OS | Your creative business, finally organized',
@@ -226,12 +229,19 @@ export default async function MarketingHomepage() {
               {/* Starter */}
               <FadeInStaggerItem className="bg-background rounded-3xl p-8 border border-border shadow-sm flex flex-col">
                 <h3 className="text-xl font-semibold mb-2">Starter</h3>
-                <div className="mb-6"><span className="text-4xl font-bold">$0</span><span className="text-muted-foreground">/month</span></div>
+                <div className="mb-6"><span className="text-4xl font-bold">৳{PLAN_PRICES.FREE}</span><span className="text-muted-foreground">/month</span></div>
                 <p className="text-muted-foreground text-sm mb-8">Perfect for freelancers just starting out.</p>
-                <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 text-primary" /> Up to 3 active projects</li>
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 text-primary" /> Basic invoicing</li>
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 text-primary" /> Standard client portal</li>
+                <ul className="space-y-3 mb-8 flex-1">
+                  {PLAN_FEATURES[PLANS.FREE].map((feature) => (
+                    <li key={feature.name} className="flex items-start gap-3 text-sm">
+                      {feature.included ? (
+                        <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      ) : (
+                        <X className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                      )}
+                      <span className={feature.included ? "text-foreground" : "text-muted-foreground"}>{feature.name}</span>
+                    </li>
+                  ))}
                 </ul>
                 <Link href="/login" className="w-full py-3 rounded-xl border border-border text-center font-medium hover:bg-muted transition-colors">Get Started</Link>
               </FadeInStaggerItem>
@@ -242,29 +252,41 @@ export default async function MarketingHomepage() {
                   MOST POPULAR
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Professional</h3>
-                <div className="mb-6"><span className="text-4xl font-bold">$29</span><span className="opacity-80">/month</span></div>
+                <div className="mb-6"><span className="text-4xl font-bold">৳{PLAN_PRICES.PRO}</span><span className="opacity-80">/month</span></div>
                 <p className="opacity-90 text-sm mb-8">For busy creatives who need serious tools.</p>
-                <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 opacity-90" /> Unlimited active projects</li>
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 opacity-90" /> Advanced workflow & pipelines</li>
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 opacity-90" /> Custom branded client portals</li>
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 opacity-90" /> In-context feedback tools</li>
+                <ul className="space-y-3 mb-8 flex-1">
+                  {PLAN_FEATURES[PLANS.PRO].map((feature) => (
+                    <li key={feature.name} className="flex items-start gap-3 text-sm">
+                      {feature.included ? (
+                        <CheckCircle2 className="w-4 h-4 opacity-90 mt-0.5 shrink-0" />
+                      ) : (
+                        <X className="w-4 h-4 opacity-50 mt-0.5 shrink-0" />
+                      )}
+                      <span className={feature.included ? "" : "opacity-70"}>{feature.name}</span>
+                    </li>
+                  ))}
                 </ul>
-                <Link href="/login" className="w-full py-3 rounded-xl bg-background text-foreground text-center font-medium hover:bg-muted transition-colors">Start Free Trial</Link>
+                <Link href="/claim-trial" className="w-full py-3 rounded-xl bg-background text-foreground text-center font-medium hover:bg-muted transition-colors">Start 1 Month Free Trial</Link>
               </FadeInStaggerItem>
 
-              {/* Studio */}
+              {/* Business */}
               <FadeInStaggerItem className="bg-background rounded-3xl p-8 border border-border shadow-sm flex flex-col">
-                <h3 className="text-xl font-semibold mb-2">Studio</h3>
-                <div className="mb-6"><span className="text-4xl font-bold">$99</span><span className="text-muted-foreground">/month</span></div>
+                <h3 className="text-xl font-semibold mb-2">Business</h3>
+                <div className="mb-6"><span className="text-4xl font-bold">৳{PLAN_PRICES.BUSINESS}</span><span className="text-muted-foreground">/month</span></div>
                 <p className="text-muted-foreground text-sm mb-8">For growing teams and agencies.</p>
-                <ul className="space-y-4 mb-8 flex-1">
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 text-primary" /> Everything in Pro</li>
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 text-primary" /> Up to 5 team members</li>
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 text-primary" /> Granular permissions</li>
-                  <li className="flex items-center gap-3 text-sm"><CheckCircle2 className="w-4 h-4 text-primary" /> Priority support</li>
+                <ul className="space-y-3 mb-8 flex-1">
+                  {PLAN_FEATURES[PLANS.BUSINESS].map((feature) => (
+                    <li key={feature.name} className="flex items-start gap-3 text-sm">
+                      {feature.included ? (
+                        <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      ) : (
+                        <X className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                      )}
+                      <span className={feature.included ? "text-foreground" : "text-muted-foreground"}>{feature.name}</span>
+                    </li>
+                  ))}
                 </ul>
-                <Link href="/contact" className="w-full py-3 rounded-xl border border-border text-center font-medium hover:bg-muted transition-colors">Contact Sales</Link>
+                <Link href="#contact" className="w-full py-3 rounded-xl border border-border text-center font-medium hover:bg-muted transition-colors">Contact Sales</Link>
               </FadeInStaggerItem>
 
             </FadeInStagger>
@@ -300,10 +322,46 @@ export default async function MarketingHomepage() {
             </div>
           </ScaleIn>
         </section>
+
+        {/* NEW: Contact Form Section */}
+        <section id="contact" className="py-24 bg-muted/20 border-t border-border/50 overflow-hidden">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <FadeIn>
+                <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">Get in touch</h2>
+                <p className="text-lg text-muted-foreground mb-8">Have a question about our pricing, features, or need help setting up your team? We're here to help.</p>
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4 text-muted-foreground">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <Mail className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground">Email us directly</h4>
+                      <p>support@cutlin.tech</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-muted-foreground">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground">Support Hours</h4>
+                      <p>Mon-Fri, 9am - 5pm EST</p>
+                    </div>
+                  </div>
+                </div>
+              </FadeIn>
+              
+              <FadeIn>
+                <ContactForm />
+              </FadeIn>
+            </div>
+          </div>
+        </section>
       </main>
 
-      {/* Footer / Contact Section */}
-      <footer id="contact" className="border-t border-border/50 pt-16 pb-8 mt-12 bg-muted/10">
+      {/* Footer */}
+      <footer className="border-t border-border/50 pt-16 pb-8 bg-muted/10">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="md:col-span-2">
@@ -330,13 +388,13 @@ export default async function MarketingHomepage() {
               <h3 className="font-semibold text-foreground mb-4">Contact</h3>
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li>
-                  <a href="mailto:support@cutline.app" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
-                    <Mail className="w-4 h-4" /> support@cutline.app
+                  <a href="mailto:support@cutlin.tech" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
+                    <Mail className="w-4 h-4" /> support@cutlin.tech
                   </a>
                 </li>
                 <li>
-                  <a href="mailto:sales@cutline.app" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
-                    <MessageSquare className="w-4 h-4" /> sales@cutline.app
+                  <a href="mailto:sales@cutlin.tech" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
+                    <MessageSquare className="w-4 h-4" /> sales@cutlin.tech
                   </a>
                 </li>
               </ul>

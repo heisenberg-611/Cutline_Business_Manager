@@ -1,6 +1,8 @@
 import { OrganizationList } from '@clerk/nextjs'
 
-export default function SelectBusinessPage() {
+export default async function SelectBusinessPage({ searchParams }: { searchParams: Promise<{ redirect_url?: string }> }) {
+  const { redirect_url } = await searchParams;
+  const redirectUrl = redirect_url || '/dashboard';
   return (
     <div className="flex flex-col items-center justify-center py-24">
       <div className="mb-8 text-center">
@@ -10,8 +12,8 @@ export default function SelectBusinessPage() {
       
       <OrganizationList 
         hidePersonal={true}
-        afterSelectOrganizationUrl="/dashboard"
-        afterCreateOrganizationUrl="/dashboard"
+        afterSelectOrganizationUrl={redirectUrl}
+        afterCreateOrganizationUrl={redirectUrl}
       />
     </div>
   )

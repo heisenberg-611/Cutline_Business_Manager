@@ -13,6 +13,42 @@ export const PLAN_PRICES = {
   BUSINESS: 299,
 };
 
+export const PLAN_FEATURES = {
+  [PLANS.FREE]: [
+    { name: 'Dashboard & Analytics', included: true },
+    { name: 'Client & Project Management', included: true },
+    { name: 'Financial Tracking', included: true },
+    { name: 'Asset Management', included: true },
+    { name: 'Email Invoices Directly', included: false },
+    { name: 'Client Feedback Forms', included: false },
+    { name: 'Access to ProdP', included: false },
+    { name: 'Team Member Invites', included: false },
+    { name: 'Realtime Messages', included: false },
+  ],
+  [PLANS.PRO]: [
+    { name: 'Dashboard & Analytics', included: true },
+    { name: 'Client & Project Management', included: true },
+    { name: 'Financial Tracking', included: true },
+    { name: 'Asset Management', included: true },
+    { name: 'Email Invoices Directly', included: true },
+    { name: 'Client Feedback Forms', included: true },
+    { name: 'Access to ProdP', included: true },
+    { name: 'Team Member Invites', included: false },
+    { name: 'Realtime Messages', included: false },
+  ],
+  [PLANS.BUSINESS]: [
+    { name: 'Dashboard & Analytics', included: true },
+    { name: 'Client & Project Management', included: true },
+    { name: 'Financial Tracking', included: true },
+    { name: 'Asset Management', included: true },
+    { name: 'Email Invoices Directly', included: true },
+    { name: 'Client Feedback Forms', included: true },
+    { name: 'Access to ProdP', included: true },
+    { name: 'Team Member Invites', included: true },
+    { name: 'Realtime Messages', included: true },
+  ]
+};
+
 
 
 export function isSubscriptionActive(business: { subscriptionPlan: SubscriptionPlan; subscriptionPeriodEnd: Date | null }) {

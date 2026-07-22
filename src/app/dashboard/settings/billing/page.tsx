@@ -1,49 +1,13 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import prisma from '@/modules/core/db/prisma'
-import { getActivePlan, PLANS, PLAN_PRICES } from '@/lib/subscription'
+import { getActivePlan, PLANS, PLAN_PRICES, PLAN_FEATURES } from '@/lib/subscription'
 import { cancelSubscription, downgradeToPro, restoreBusinessPlan } from './actions'
 import { Check, X } from 'lucide-react'
 import Link from 'next/link'
 
 export const metadata = {
   title: 'Billing & Plans',
-}
-
-const features = {
-  [PLANS.FREE]: [
-    { name: 'Dashboard & Analytics', included: true },
-    { name: 'Client & Project Management', included: true },
-    { name: 'Financial Tracking', included: true },
-    { name: 'Asset Management', included: true },
-    { name: 'Email Invoices Directly', included: false },
-    { name: 'Client Feedback Forms', included: false },
-    { name: 'Access to ProdP', included: false },
-    { name: 'Team Member Invites', included: false },
-    { name: 'Realtime Messages', included: false },
-  ],
-  [PLANS.PRO]: [
-    { name: 'Dashboard & Analytics', included: true },
-    { name: 'Client & Project Management', included: true },
-    { name: 'Financial Tracking', included: true },
-    { name: 'Asset Management', included: true },
-    { name: 'Email Invoices Directly', included: true },
-    { name: 'Client Feedback Forms', included: true },
-    { name: 'Access to ProdP', included: true },
-    { name: 'Team Member Invites', included: false },
-    { name: 'Realtime Messages', included: false },
-  ],
-  [PLANS.BUSINESS]: [
-    { name: 'Dashboard & Analytics', included: true },
-    { name: 'Client & Project Management', included: true },
-    { name: 'Financial Tracking', included: true },
-    { name: 'Asset Management', included: true },
-    { name: 'Email Invoices Directly', included: true },
-    { name: 'Client Feedback Forms', included: true },
-    { name: 'Access to ProdP', included: true },
-    { name: 'Team Member Invites', included: true },
-    { name: 'Realtime Messages', included: true },
-  ]
 }
 
 export default async function BillingPage() {
@@ -102,7 +66,7 @@ export default async function BillingPage() {
               </div>
               
               <ul className="mt-8 space-y-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400 flex-1">
-                {features[plan as keyof typeof features].map((feature) => (
+                {PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES].map((feature) => (
                   <li key={feature.name} className="flex gap-x-3">
                     {feature.included ? (
                       <Check className="h-6 w-5 flex-none text-indigo-600" aria-hidden="true" />
