@@ -4,7 +4,7 @@ import { useConversationMessages, useConversations } from '../hooks'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Ghost, Send, Megaphone, Loader2, Users, MessageSquare, Bell, BellOff, Trash2, RefreshCcw, SmilePlus, ChevronLeft, Timer, Check, Shield } from 'lucide-react'
+import { Ghost, Send, Megaphone, Loader2, Users, MessageSquare, Bell, BellOff, Trash2, RefreshCcw, SmilePlus, ChevronLeft, Timer, Check, Shield, Copy } from 'lucide-react'
 import { MemeFinder } from './MemeFinder'
 import EmojiPicker, { Theme } from 'emoji-picker-react'
 import { useTheme } from 'next-themes'
@@ -405,6 +405,21 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
               title={conversation.myParticipantRecord?.isMuted ? "Unmute Notifications" : "Mute Notifications"}
             >
               {isMuting ? <Loader2 className="w-4 h-4 animate-spin" /> : conversation.myParticipantRecord?.isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+            </Button>
+          )}
+          {isGuest && conversation.guestToken && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                const url = `${window.location.origin}/chat/${conversation.guestToken}`
+                navigator.clipboard.writeText(url)
+                alert('Guest chat link copied to clipboard!')
+              }}
+              className="text-purple-500 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-500/10"
+              title="Copy Guest Link"
+            >
+              <Copy className="w-4 h-4" />
             </Button>
           )}
           {!isBroadcast && (
