@@ -4,7 +4,12 @@ import { useActionState } from 'react';
 import { submitContactForm } from '@/app/actions/contact';
 import { CheckCircle2, Loader2, Send } from 'lucide-react';
 
-export function ContactForm() {
+interface ContactFormProps {
+  title?: string;
+  defaultMessage?: string;
+}
+
+export function ContactForm({ title = "Send us a message", defaultMessage = "" }: ContactFormProps = {}) {
   const [state, formAction, isPending] = useActionState(submitContactForm, null);
 
   if (state?.success) {
@@ -19,7 +24,7 @@ export function ContactForm() {
 
   return (
     <div className="bg-background rounded-3xl p-8 border border-border shadow-sm">
-      <h3 className="text-2xl font-semibold mb-6">Send us a message</h3>
+      <h3 className="text-2xl font-semibold mb-6">{title}</h3>
       <form action={formAction} className="space-y-4">
         {state?.error && (
           <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 text-sm rounded-lg">
@@ -59,6 +64,7 @@ export function ContactForm() {
             name="message" 
             required 
             rows={4}
+            defaultValue={defaultMessage}
             placeholder="How can we help you?"
             className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none" 
           />

@@ -5,6 +5,7 @@ import { getActivePlan, PLANS, PLAN_PRICES, PLAN_FEATURES } from '@/lib/subscrip
 import { cancelSubscription, downgradeToPro, restoreBusinessPlan } from './actions'
 import { Check, X } from 'lucide-react'
 import Link from 'next/link'
+import { UpgradeContactModal } from './components/UpgradeContactModal'
 
 export const metadata = {
   title: 'Billing & Plans',
@@ -101,6 +102,8 @@ export default async function BillingPage() {
                       Restore Business Plan
                     </button>
                   </form>
+                ) : plan === PLANS.BUSINESS ? (
+                  <UpgradeContactModal />
                 ) : (
                   <Link href={`/dashboard/settings/billing/checkout?plan=${plan}`} className="block w-full rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors">
                     Upgrade to {plan.charAt(0) + plan.slice(1).toLowerCase()}

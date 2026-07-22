@@ -1,6 +1,9 @@
 'use server';
 
 import { Resend } from 'resend';
+import { render } from '@react-email/render';
+import React from 'react';
+import { ContactFormEmail } from '@/emails/contact-form';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -19,18 +22,14 @@ export async function submitContactForm(prevState: any, formData: FormData) {
   }
 
   try {
+    const htmlContent = await render(React.createElement(ContactFormEmail, { name, email, message }));
+
     const { error } = await resend.emails.send({
       from: 'contact@cutlin.tech', // Verified domain
       to: 'support@cutlin.tech', // Your team's inbox
       replyTo: email,
       subject: `New Contact Request from ${name}`,
-      html: `
-        <h2>New Contact Request</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Message:</strong></p>
-        <p style="white-space: pre-wrap;">${message}</p>
-      `,
+      html: htmlContent,
     });
 
     if (error) {
