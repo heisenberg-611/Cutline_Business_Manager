@@ -2,13 +2,14 @@ import { AppLayout } from '@/modules/core/ui/AppLayout'
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { GlobalAlerts } from './components/GlobalAlerts'
+import { getActivePlan, canInviteMembers } from '@/lib/subscription'
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { userId } = await auth()
+  const { userId, orgId } = await auth()
   let initialNavPreferences: { href: string; visible: boolean }[] | undefined = undefined
   let initialQuickActionPreferences: { id: string; visible: boolean }[] | undefined = undefined
   let initialNotificationPreferences: { tone: string; dnd: boolean } | undefined = undefined
@@ -35,10 +36,26 @@ export default async function DashboardLayout({
     orderBy: { createdAt: 'desc' }
   });
 
+  let canInvite = false;
+  if (orgId) {
+    const business = await prisma.business.findUnique({
+      where: { id: orgId },
+      select: { subscriptionPlan: true, subscriptionPeriodEnd: true }
+    });
+    if (business) {
+      canInvite = canInviteMembers(getActivePlan(business));
+    }
+  }
+
   return (
     <>
       <GlobalAlerts alerts={activeAlerts} />
-      <AppLayout initialNavPreferences={initialNavPreferences} initialQuickActionPreferences={initialQuickActionPreferences} initialNotificationPreferences={initialNotificationPreferences}>
+      <AppLayout 
+        initialNavPreferences={initialNavPreferences} 
+        initialQuickActionPreferences={initialQuickActionPreferences} 
+        initialNotificationPreferences={initialNotificationPreferences}
+        canInvite={canInvite}
+      >
         {children}
       </AppLayout>
     </>

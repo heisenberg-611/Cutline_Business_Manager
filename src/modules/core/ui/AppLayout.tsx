@@ -52,12 +52,14 @@ export function AppLayout({
   children, 
   initialNavPreferences,
   initialQuickActionPreferences,
-  initialNotificationPreferences
+  initialNotificationPreferences,
+  canInvite = false
 }: { 
   children: React.ReactNode
   initialNavPreferences?: { href: string; visible: boolean }[]
   initialQuickActionPreferences?: QuickActionPreference[]
   initialNotificationPreferences?: { tone: string; dnd: boolean }
+  canInvite?: boolean
 }) {
   const [isCommandOpen, setIsCommandOpen] = useState(false)
   const [isPinned, setIsPinned] = useState(false)
@@ -215,7 +217,11 @@ export function AppLayout({
                   organizationPreviewAvatarBox: "!w-8 !h-8",
                   avatarBox: "!w-8 !h-8",
                   avatarImage: "!w-8 !h-8",
-                  organizationPreview: "gap-3 items-center"
+                  organizationPreview: "gap-3 items-center",
+                  ...(canInvite ? {} : {
+                    organizationProfilePageLink__members: "!hidden",
+                    organizationProfilePage__members: "!hidden"
+                  })
                 }
               }}
             />
@@ -484,7 +490,11 @@ export function AppLayout({
                   elements: {
                     organizationSwitcherTrigger: "focus:shadow-none focus:outline-none justify-start px-0 py-0 min-w-0 max-w-[130px] sm:max-w-[200px]",
                     organizationPreviewMainIdentifier: "font-semibold text-sm truncate",
-                    organizationPreview: "min-w-0 overflow-hidden"
+                    organizationPreview: "min-w-0 overflow-hidden",
+                    ...(canInvite ? {} : {
+                      organizationProfilePageLink__members: "!hidden",
+                      organizationProfilePage__members: "!hidden"
+                    })
                   }
                 }}
               />
