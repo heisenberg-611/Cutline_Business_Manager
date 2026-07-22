@@ -52,25 +52,25 @@ model Business {
   updatedAt DateTime @updatedAt
 
   subscriptionRequests SubscriptionRequest[]
-  memberships        BusinessMembership[]
-  clients            Client[]
-  projects           Project[]
-  workflowTemplates  WorkflowTemplate[]
-  invoices           Invoice[]
-  assets             Asset[]
-  payments           Payment[]
-  expenses           Expense[]
-  creditNotes        CreditNote[]
-  invoiceReminders   InvoiceReminder[]
-  auditLogs          AuditLog[]
-  notifications      Notification[]
-  feedbackRequests   FeedbackRequest[]
-  feedbackResponses  FeedbackResponse[]
-  testimonials       Testimonial[]
-  reviewRequests     ReviewRequest[]
-  analyticsSnapshots AnalyticsSnapshot[]
-  projectRequests    ProjectRequest[]
-  Conversation       Conversation[]
+  memberships          BusinessMembership[]
+  clients              Client[]
+  projects             Project[]
+  workflowTemplates    WorkflowTemplate[]
+  invoices             Invoice[]
+  assets               Asset[]
+  payments             Payment[]
+  expenses             Expense[]
+  creditNotes          CreditNote[]
+  invoiceReminders     InvoiceReminder[]
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+  feedbackRequests     FeedbackRequest[]
+  feedbackResponses    FeedbackResponse[]
+  testimonials         Testimonial[]
+  reviewRequests       ReviewRequest[]
+  analyticsSnapshots   AnalyticsSnapshot[]
+  projectRequests      ProjectRequest[]
+  Conversation         Conversation[]
 
   @@map("businesses")
 }
@@ -125,14 +125,14 @@ enum SubscriptionRequestStatus {
 }
 
 model SubscriptionRequest {
-  id             String                    @id @default(cuid())
-  businessId     String
-  planRequested  SubscriptionPlan
-  transactionId  String                    @unique
-  paymentMethod  String
-  status         SubscriptionRequestStatus @default(PENDING)
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  id            String                    @id @default(cuid())
+  businessId    String
+  planRequested SubscriptionPlan
+  transactionId String                    @unique
+  paymentMethod String
+  status        SubscriptionRequestStatus @default(PENDING)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
@@ -166,6 +166,7 @@ model Client {
   feedbackRequests FeedbackRequest[]
   testimonials     Testimonial[]
   reviewRequests   ReviewRequest[]
+  Conversation     Conversation[]
 
   @@unique([businessId, displayId])
   @@unique([businessId, email]) // Prevent duplicate client emails within a business
@@ -740,23 +741,33 @@ enum ConversationType {
   DIRECT
   BROADCAST
   GROUP
+  GUEST_LINK
 }
 
 model Conversation {
-  id         String           @id @default(cuid())
-  businessId String
-  type       ConversationType
+  id               String           @id @default(cuid())
+  businessId       String
+  type             ConversationType
   title            String?
   slowModeEnabled  Boolean          @default(false)
   slowModeCooldown Int              @default(10)
   createdBy        String
-  createdAt        DateTime         @default(now())
+
+  // Guest Link functionality
+  guestToken String? @unique
+  guestName  String?
+  clientId   String?
+  client     Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
 
   business     Business                  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   participants ConversationParticipant[]
   messages     Message[]
 
   @@index([businessId])
+  @@index([guestToken])
+  @@index([clientId])
   @@map("conversations")
 }
 
@@ -781,6 +792,7 @@ model Message {
   id             String    @id @default(cuid())
   conversationId String
   senderId       String?
+  isGuest        Boolean   @default(false)
   content        String    @db.Text
   createdAt      DateTime  @default(now())
   deletedAt      DateTime?
@@ -803,7 +815,7 @@ model GlobalAdmin {
   passwordHash String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
+
   @@map("global_admins")
 }
 
@@ -812,10 +824,10 @@ model GlobalAdmin {
 // -----------------------------------------------------------------------------
 
 model GlobalSettings {
-  id               String @id @default("default")
-  paymentMethods   Json   @default("[]")
-  updatedAt        DateTime @updatedAt
-  
+  id             String   @id @default("default")
+  paymentMethods Json     @default("[]")
+  updatedAt      DateTime @updatedAt
+
   @@map("global_settings")
 }
 
@@ -830,12 +842,12 @@ model SystemAlert {
 }
 
 model AdminAuditLog {
-  id        String   @id @default(cuid())
+  id         String   @id @default(cuid())
   adminEmail String
-  action    String
-  targetId  String
-  metadata  Json?
-  createdAt DateTime @default(now())
+  action     String
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
 
   @@index([adminEmail])
   @@index([targetId])

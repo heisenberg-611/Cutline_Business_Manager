@@ -47,6 +47,7 @@ export function MessagingSidebar({ currentUserId, isAdmin }: { currentUserId: st
           conversations?.map((conv) => {
             const isBroadcast = conv.type === 'BROADCAST'
             const isGroup = conv.type === 'GROUP'
+            const isGuest = conv.type === 'GUEST_LINK'
             
             // For Direct Message, find the other person
             const otherParticipant = conv.participants?.find((p: { userId: string, user: { firstName: string | null, lastName: string | null } }) => p.userId !== currentUserId)?.user
@@ -63,6 +64,8 @@ export function MessagingSidebar({ currentUserId, isAdmin }: { currentUserId: st
                   ?.join(', ')
                 title = names || 'Group Chat'
               }
+            } else if (isGuest) {
+              title = conv.guestName || conv.client?.displayName || 'Client/Guest Chat'
             } else if (otherParticipant) {
               title = `${otherParticipant.firstName} ${otherParticipant.lastName}`
             }
@@ -78,7 +81,7 @@ export function MessagingSidebar({ currentUserId, isAdmin }: { currentUserId: st
               >
                 <div className={cn(
                   "mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                  isBroadcast ? "bg-blue-500/10 text-blue-500" : isGroup ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary"
+                  isBroadcast ? "bg-blue-500/10 text-blue-500" : isGroup ? "bg-green-500/10 text-green-600" : isGuest ? "bg-purple-500/10 text-purple-600" : "bg-primary/10 text-primary"
                 )}>
                   {isBroadcast ? <Megaphone className="w-4 h-4" /> : isGroup ? <Users className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
                 </div>
@@ -91,7 +94,7 @@ export function MessagingSidebar({ currentUserId, isAdmin }: { currentUserId: st
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {isBroadcast ? 'Broadcast to all members' : isGroup ? `${conv.participants?.length || 0} members` : 'Direct Message'}
+                    {isBroadcast ? 'Broadcast to all members' : isGroup ? `${conv.participants?.length || 0} members` : isGuest ? 'Temporary External Chat' : 'Direct Message'}
                   </p>
                 </div>
               </button>

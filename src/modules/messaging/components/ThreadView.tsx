@@ -139,6 +139,7 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
   const conversation = conversations?.find(c => c.id === conversationId)
   const isBroadcast = conversation?.type === 'BROADCAST'
   const isGroup = conversation?.type === 'GROUP'
+  const isGuest = conversation?.type === 'GUEST_LINK'
   
   let headerTitle = 'Direct Message'
   let headerSubtitle = 'Private Conversation'
@@ -157,6 +158,9 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
       headerTitle = names || 'Group Chat'
     }
     headerSubtitle = `${conversation.participants?.length || 0} members`
+  } else if (isGuest) {
+    headerTitle = conversation.guestName || conversation.client?.displayName || 'Client/Guest Chat'
+    headerSubtitle = 'Temporary External Chat'
   }
 
   const latestMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
@@ -307,7 +311,7 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
           </Button>
           <div className={cn(
             "w-10 h-10 rounded-full flex items-center justify-center",
-            isBroadcast ? "bg-blue-500/10 text-blue-500" : isGroup ? "bg-green-500/10 text-green-600" : "bg-primary/10 text-primary"
+            isBroadcast ? "bg-blue-500/10 text-blue-500" : isGroup ? "bg-green-500/10 text-green-600" : isGuest ? "bg-purple-500/10 text-purple-600" : "bg-primary/10 text-primary"
           )}>
             {isBroadcast ? <Megaphone className="w-5 h-5" /> : isGroup ? <Users className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
           </div>
@@ -473,14 +477,19 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
           }}
           itemContent={(index, msg: any) => {
             const isMine = msg.senderId === currentUserId
-            const senderName = msg.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : 'Former Member'
+            
+            let senderName = msg.sender ? `${msg.sender.firstName} ${msg.sender.lastName}` : 'Former Member'
+            if (msg.isGuest) {
+              senderName = conversation.guestName || conversation.client?.displayName || 'Client/Guest'
+            }
+
             const isSenderAdmin = msg.sender?.memberships?.[0]?.role === 'org:admin'
             const onlyEmojis = isOnlyEmojis(msg.content)
 
             return (
               <div className="py-2 px-4">
                 <div key={msg.id} className={cn("flex flex-col max-w-[90%] md:max-w-[80%]", isMine ? "ml-auto items-end" : "mr-auto items-start")}>
-                  {(!isMine && (isGroup || isBroadcast)) && (
+                  {(!isMine && (isGroup || isBroadcast || isGuest)) && (
                     <span className="text-xs text-muted-foreground mb-1 ml-1 flex items-center gap-1">
                       {senderName}
                       {isSenderAdmin && <Shield className="w-3 h-3 text-primary/70" />}

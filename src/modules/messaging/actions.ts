@@ -640,3 +640,30 @@ export async function deleteMessage(messageId: string) {
   
   return { success: true }
 }
+
+/**
+ * Creates a generic Guest Chat Link for the business (can be sent to any client).
+ */
+export async function createBusinessGuestChatLink() {
+  const { auth: clerkAuth } = await import('@clerk/nextjs/server')
+  const { userId, orgId } = await clerkAuth()
+  if (!userId || !orgId) throw new Error('Unauthorized')
+
+  const { v4: uuidv4 } = await import('uuid')
+  const token = uuidv4()
+  
+  const conversation = await prisma.conversation.create({
+    data: {
+      businessId: orgId,
+      type: 'GUEST_LINK',
+      guestToken: token,
+      createdBy: userId,
+      title: 'Temporary Client Chat',
+      participants: {
+        create: { userId } // Add creator as a participant to see it in their sidebar
+      }
+    }
+  })
+
+  return { conversationId: conversation.id, token }
+}

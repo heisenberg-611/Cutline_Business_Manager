@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { getMembersForMessaging, getOrCreateDirectConversation, createBroadcast, createGroupConversation } from '../actions'
+import { getMembersForMessaging, getOrCreateDirectConversation, createBroadcast, createGroupConversation, createBusinessGuestChatLink } from '../actions'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { Loader2, Users, X, Check } from 'lucide-react'
+import { Loader2, Users, X, Check, Link as LinkIcon, Copy } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -16,8 +16,9 @@ export function NewMessageModal({ open, onOpenChange, isAdmin }: { open: boolean
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   
-  const [mode, setMode] = useState<'SELECT' | 'BROADCAST'>('SELECT')
+  const [mode, setMode] = useState<'SELECT' | 'BROADCAST' | 'GUEST'>('SELECT')
   const [broadcastContent, setBroadcastContent] = useState('')
+  const [generatedLink, setGeneratedLink] = useState('')
   
   // Group chat selection state
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([])
@@ -46,6 +47,7 @@ export function NewMessageModal({ open, onOpenChange, isAdmin }: { open: boolean
     if (open) {
       setMode('SELECT')
       setBroadcastContent('')
+      setGeneratedLink('')
       setSelectedUserIds([])
       setSearchQuery('')
       setGroupTitle('')
@@ -92,6 +94,20 @@ export function NewMessageModal({ open, onOpenChange, isAdmin }: { open: boolean
     }
   }
 
+  const handleCreateGuestLink = async () => {
+    setIsSending(true)
+    try {
+      const { token } = await createBusinessGuestChatLink()
+      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+      const link = `${window.location.origin}/chat/${token}`
+      setGeneratedLink(link)
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'An error occurred')
+    } finally {
+      setIsSending(false)
+    }
+  }
+
   const toggleUser = (userId: string) => {
     setSelectedUserIds(prev => 
       prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
@@ -108,11 +124,15 @@ export function NewMessageModal({ open, onOpenChange, isAdmin }: { open: boolean
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[85vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>{mode === 'SELECT' ? 'New Message' : 'Send Broadcast'}</DialogTitle>
+          <DialogTitle>
+            {mode === 'SELECT' ? 'New Message' : mode === 'BROADCAST' ? 'Send Broadcast' : 'Temporary Chat Link'}
+          </DialogTitle>
           <DialogDescription>
             {mode === 'SELECT' 
               ? 'Select one or more members to start a chat.' 
-              : 'This message will be sent to every active member in the business.'}
+              : mode === 'BROADCAST'
+              ? 'This message will be sent to every active member in the business.'
+              : 'Generate a secure, temporary link to chat with a client outside the app.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -131,6 +151,17 @@ export function NewMessageModal({ open, onOpenChange, isAdmin }: { open: boolean
                   <p className="text-xs text-muted-foreground font-normal">Send a one-way message to all members.</p>
                 </Button>
               )}
+
+              <Button 
+                variant="outline" 
+                className="w-full justify-start h-auto p-4 flex flex-col items-start gap-1 shrink-0 border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 dark:border-indigo-900 dark:bg-indigo-900/10 dark:hover:bg-indigo-900/20"
+                onClick={() => { setMode('GUEST'); handleCreateGuestLink(); }}
+              >
+                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold">
+                  <LinkIcon className="w-4 h-4" /> Generate Client Chat Link
+                </div>
+                <p className="text-xs text-indigo-600/70 dark:text-indigo-400/70 font-normal">Create a temporary link to chat with an external client.</p>
+              </Button>
 
               <div className="flex flex-col gap-2 shrink-0">
                 {selectedUserIds.length > 0 && (
@@ -205,7 +236,7 @@ export function NewMessageModal({ open, onOpenChange, isAdmin }: { open: boolean
                 </div>
               )}
             </div>
-          ) : (
+          ) : mode === 'BROADCAST' ? (
             <div className="space-y-4">
               <Textarea 
                 placeholder="Type your announcement here..."
@@ -220,6 +251,31 @@ export function NewMessageModal({ open, onOpenChange, isAdmin }: { open: boolean
                   {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send Broadcast'}
                 </Button>
               </div>
+            </div>
+          ) : (
+            <div className="space-y-4 flex flex-col h-full justify-center">
+              {isSending ? (
+                <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
+                  <Loader2 className="w-8 h-8 animate-spin mb-4" />
+                  <p>Generating secure chat link...</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Share this link with your client. They can click it to instantly start chatting with you, no account required.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input readOnly value={generatedLink} className="font-mono text-xs" />
+                    <Button variant="outline" size="icon" onClick={() => navigator.clipboard.writeText(generatedLink)}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex gap-2 justify-end mt-4">
+                    <Button variant="ghost" onClick={() => { setMode('SELECT'); setGeneratedLink(''); }}>Back</Button>
+                    <Button onClick={() => onOpenChange(false)}>Done</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
