@@ -1,6 +1,7 @@
 import { AppLayout } from '@/modules/core/ui/AppLayout'
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
+import { GlobalAlerts } from './components/GlobalAlerts'
 
 export default async function DashboardLayout({
   children,
@@ -29,5 +30,17 @@ export default async function DashboardLayout({
     }
   }
 
-  return <AppLayout initialNavPreferences={initialNavPreferences} initialQuickActionPreferences={initialQuickActionPreferences} initialNotificationPreferences={initialNotificationPreferences}>{children}</AppLayout>
+  const activeAlerts = await prisma.systemAlert.findMany({
+    where: { isActive: true },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  return (
+    <>
+      <GlobalAlerts alerts={activeAlerts} />
+      <AppLayout initialNavPreferences={initialNavPreferences} initialQuickActionPreferences={initialQuickActionPreferences} initialNotificationPreferences={initialNotificationPreferences}>
+        {children}
+      </AppLayout>
+    </>
+  )
 }

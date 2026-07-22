@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Home, Users, CreditCard, Activity, LogOut, ShieldAlert, Settings, Building2 } from 'lucide-react';
+import { Home, Users, CreditCard, Activity, LogOut, ShieldAlert, Settings, Building2, Megaphone } from 'lucide-react';
 import prisma from '@/modules/core/db/prisma';
 import { cookies } from 'next/headers';
 import { AdminAuthForm } from './components/AdminAuthForm';
@@ -45,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Sidebar */}
       <aside className="w-full md:w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 flex flex-col">
         <div className="h-16 flex items-center px-6 border-b border-zinc-200 dark:border-zinc-800">
-          <div className="w-6 h-6 mr-2 bg-indigo-600 rounded-md"></div>
+          <img src="/icon.svg" alt="Cutline OS" className="w-8 h-8 mr-3 rounded-md object-cover" />
           <h1 className="font-bold text-zinc-900 dark:text-white">Cutline Admin</h1>
         </div>
         <nav className="flex-1 p-4 space-y-1">
@@ -61,8 +61,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/organizations" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             <Building2 className="w-4 h-4" /> Organizations
           </Link>
+          <Link href="/admin/users" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <Users className="w-4 h-4" /> Users
+          </Link>
+          <Link href="/admin/broadcasts" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <Megaphone className="w-4 h-4" /> Broadcasts
+          </Link>
           <Link href="/admin/admins" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
-            <Users className="w-4 h-4" /> Admins
+            <ShieldAlert className="w-4 h-4" /> Admins
           </Link>
           <Link href="/admin/settings" className="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800">
             <Settings className="w-4 h-4" /> Platform Settings
