@@ -13,11 +13,10 @@ export const metadata = {
 export default async function AdminOverviewPage() {
   await requireAdmin();
 
-  const [totalBusinesses, totalUsers, pendingRequests, approvedRequestsCount, allBusinesses, approvedRequests] = await Promise.all([
+  const [totalBusinesses, totalUsers, pendingRequests, allBusinesses, approvedRequests] = await Promise.all([
     prisma.business.count(),
     prisma.user.count(),
     prisma.subscriptionRequest.count({ where: { status: 'PENDING' } }),
-    prisma.subscriptionRequest.count({ where: { status: 'APPROVED' } }),
     prisma.business.findMany({ select: { subscriptionPlan: true, createdAt: true } }),
     prisma.subscriptionRequest.findMany({ 
       where: { status: 'APPROVED' }, 
@@ -34,8 +33,8 @@ export default async function AdminOverviewPage() {
   });
 
   // Compute last 6 months charts
-  const revenueData = [];
-  const growthData = [];
+  const revenueData: { month: string; revenue: number }[] = [];
+  const growthData: { month: string; signups: number }[] = [];
   
   for (let i = 5; i >= 0; i--) {
     const date = subMonths(new Date(), i);
