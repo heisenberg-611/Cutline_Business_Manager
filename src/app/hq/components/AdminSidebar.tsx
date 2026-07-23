@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Home, Users, CreditCard, Activity, LogOut, ShieldAlert, Settings, Building2, Megaphone, ShieldCheck, MessageSquare } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const NAV_ITEMS = [
   { href: '/hq', label: 'Overview', icon: Home, exact: true },
@@ -67,6 +68,12 @@ export function AdminSidebar({
       <div className="p-2 md:p-4 border-t border-border/50 space-y-2 bg-background/40 shrink-0 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="hidden md:block text-xs text-muted-foreground text-center mb-2 truncate font-medium">
           {adminEmail}
+        </div>
+        <div className="hidden md:block">
+          <ThemeToggle isCollapsed={false} />
+        </div>
+        <div className="md:hidden">
+          <ThemeToggle isCollapsed={true} />
         </div>
         <form action={logoutAction}>
           <button type="submit" title="Lock Panel" className="w-full flex items-center justify-center gap-2 px-3 py-3 md:py-2 text-sm font-medium rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { usePathname } from "next/navigation"
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const orig = console.error;
@@ -17,5 +18,16 @@ export function ThemeProvider({
   children,
   ...props
 }: React.ComponentProps<typeof NextThemesProvider>) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+  const pathname = usePathname();
+  const isAdmin = pathname?.startsWith('/hq');
+  
+  return (
+    <NextThemesProvider 
+      {...props} 
+      key={isAdmin ? "admin" : "user"}
+      storageKey={isAdmin ? "admin-theme" : "theme"}
+    >
+      {children}
+    </NextThemesProvider>
+  )
 }
