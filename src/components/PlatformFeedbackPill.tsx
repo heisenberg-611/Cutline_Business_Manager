@@ -15,8 +15,8 @@ export function PlatformFeedbackPill() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pathname = usePathname();
 
-  // Do not show the feedback pill in the admin section
-  if (pathname?.startsWith('/hq')) {
+  // Only show the feedback pill in the user dashboard
+  if (!pathname?.startsWith('/dashboard')) {
     return null;
   }
 
