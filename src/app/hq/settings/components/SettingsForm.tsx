@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { updateGlobalSettings } from '../actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Plus, Shield, Zap, Mail, Settings, CreditCard } from 'lucide-react';
+import { Trash2, Plus, Shield, Zap, Mail, Settings, CreditCard, Database, DownloadCloud } from 'lucide-react';
 
 type PaymentMethod = {
   id: string;
@@ -17,6 +17,15 @@ export function SettingsForm({ initialData }: { initialData: any }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const [exportOptions, setExportOptions] = useState({
+    businesses: true,
+    users: true,
+    subscriptionRequests: true,
+    globalSettings: true,
+    systemAlerts: true,
+  });
+  
+  const exportUrl = `/hq/api/export?entities=${Object.entries(exportOptions).filter(([k, v]) => v).map(([k]) => k).join(',')}`;
   
   // Safely parse initial payment methods
   let defaultMethods: PaymentMethod[] = [];
@@ -93,6 +102,7 @@ export function SettingsForm({ initialData }: { initialData: any }) {
     { id: 'subscription', label: 'Subscriptions', icon: Zap },
     { id: 'communications', label: 'Communications', icon: Mail },
     { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'data', label: 'Data & Backups', icon: Database },
   ];
 
   return (
@@ -265,6 +275,48 @@ export function SettingsForm({ initialData }: { initialData: any }) {
                       No payment methods configured.
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'data' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                <h3 className="text-lg font-semibold border-b border-border/50 pb-4">Data & Backups</h3>
+                
+                <div className="space-y-4">
+                  <div className="p-6 border border-border/50 rounded-xl bg-muted/10">
+                    <h4 className="text-base font-semibold mb-2">Selective Database Export</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Choose which data tables to include in your JSON backup download. Keep this file secure.
+                    </p>
+                    
+                    <div className="space-y-3 mb-6 bg-background rounded-lg border border-border/50 p-4">
+                      {Object.entries({
+                        businesses: 'Organizations (Businesses)',
+                        users: 'Users Directory',
+                        subscriptionRequests: 'Subscription History',
+                        globalSettings: 'Global Settings',
+                        systemAlerts: 'System Broadcasts'
+                      }).map(([key, label]) => (
+                        <label key={key} className="flex items-center gap-3 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            checked={exportOptions[key as keyof typeof exportOptions]}
+                            onChange={(e) => setExportOptions(prev => ({ ...prev, [key]: e.target.checked }))}
+                            className="w-4 h-4 text-primary rounded border-border"
+                          />
+                          <span className="text-sm font-medium">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+
+                    <a href={exportUrl} download>
+                      <Button type="button" className="bg-indigo-600 hover:bg-indigo-700 text-white" disabled={!Object.values(exportOptions).some(Boolean)}>
+                        <DownloadCloud className="w-4 h-4 mr-2" />
+                        Export Selected Data
+                      </Button>
+                    </a>
+                  </div>
                 </div>
               </div>
             )}
