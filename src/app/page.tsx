@@ -30,7 +30,7 @@ export default async function MarketingHomepage() {
     <div className="force-light min-h-screen bg-background text-foreground font-sans overflow-x-hidden">
       {/* Navigation */}
       <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12 h-16 flex items-center justify-between">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 lg:w-1/3">
             <div className="w-7 h-7 flex items-center justify-center">
               <img src="/icon.svg" alt="Cutline OS Logo" className="w-full h-full object-contain" />
@@ -65,7 +65,7 @@ export default async function MarketingHomepage() {
 
       <main>
         {/* Hero Section - Full Viewport Height */}
-        <section className="relative min-h-[calc(100vh-4rem)] flex items-center px-4 sm:px-6 lg:px-12 max-w-[1440px] mx-auto py-12 lg:py-0">
+        <section className="relative min-h-[calc(100vh-4rem)] flex items-center px-4 sm:px-6 lg:px-12 max-w-[1920px] mx-auto py-12 lg:py-0">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center w-full">
             
             {/* Left Content */}
@@ -116,7 +116,7 @@ export default async function MarketingHomepage() {
 
         {/* How it works - Horizontal Flow */}
         <section id="how-it-works" className="py-24 overflow-hidden">
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
             <FadeIn>
               <h2 className="text-3xl md:text-4xl font-semibold mb-16 tracking-tight text-center">How Cutline OS works</h2>
             </FadeIn>
@@ -148,7 +148,7 @@ export default async function MarketingHomepage() {
 
         {/* Feature Bento Grid (Uses space much more efficiently) */}
         <section id="features" className="py-24 bg-muted/20 border-y border-border/50 overflow-hidden">
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
             <FadeIn className="text-center mb-16 max-w-2xl mx-auto">
               <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">Everything you need to run your creative business</h2>
               <p className="text-lg text-muted-foreground">Replace five different tools with one seamless workflow designed specifically for client services.</p>
@@ -218,13 +218,13 @@ export default async function MarketingHomepage() {
 
         {/* NEW: Pricing Section */}
         <section id="pricing" className="py-24 bg-muted/20 border-y border-border/50 overflow-hidden">
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
             <FadeIn className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">Simple, transparent pricing</h2>
               <p className="text-lg text-muted-foreground">Start for free, upgrade when you need more power.</p>
             </FadeIn>
             
-            <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 max-w-6xl mx-auto">
+            <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 max-w-[1440px] mx-auto">
               
               {/* Starter */}
               <FadeInStaggerItem className="bg-background rounded-3xl p-8 border border-border shadow-sm flex flex-col">
@@ -309,7 +309,7 @@ export default async function MarketingHomepage() {
         </section>
 
         {/* Closing CTA */}
-        <section className="py-24 px-4 sm:px-6 lg:px-12 max-w-[1440px] mx-auto overflow-hidden">
+        <section className="py-24 px-4 sm:px-6 lg:px-12 max-w-[1920px] mx-auto overflow-hidden">
           <ScaleIn className="bg-primary text-primary-foreground rounded-[2.5rem] p-12 md:p-20 text-center relative shadow-2xl">
             <div className="absolute inset-0 bg-gradient-to-br from-primary-foreground/10 to-transparent rounded-[2.5rem]"></div>
             <div className="relative z-10">
@@ -325,7 +325,7 @@ export default async function MarketingHomepage() {
 
         {/* NEW: Contact Form Section */}
         <section id="contact" className="py-24 bg-muted/20 border-t border-border/50 overflow-hidden">
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <FadeIn>
                 <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">Get in touch</h2>
@@ -362,7 +362,7 @@ export default async function MarketingHomepage() {
 
       {/* Footer */}
       <footer className="border-t border-border/50 pt-16 pb-8 bg-muted/10">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-12">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
             <div className="md:col-span-2">
               <div className="flex items-center gap-2 mb-4">

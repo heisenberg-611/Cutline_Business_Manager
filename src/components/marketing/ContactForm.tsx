@@ -15,16 +15,18 @@ export function ContactForm({ title = "Send us a message", defaultMessage = "", 
 
   if (state?.success) {
     return (
-      <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-2xl p-8 text-center h-full flex flex-col justify-center items-center">
-        <CheckCircle2 className="w-12 h-12 text-green-500 mb-4 mx-auto" />
-        <h3 className="text-xl font-semibold text-green-900 dark:text-green-100 mb-2">Message Sent!</h3>
-        <p className="text-green-700 dark:text-green-400 text-sm">We'll get back to you as soon as possible.</p>
+      <div className="bg-background rounded-3xl p-8 border border-border/50 shadow-sm text-center h-full flex flex-col justify-center items-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+          <CheckCircle2 className="w-8 h-8 text-green-600" />
+        </div>
+        <h3 className="text-2xl font-semibold text-foreground mb-2">Message Sent!</h3>
+        <p className="text-muted-foreground">We'll get back to you as soon as possible.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-background rounded-3xl p-8 border border-border shadow-sm">
+    <div className="bg-background rounded-3xl p-8 border border-border/50 shadow-sm">
       <h3 className="text-2xl font-semibold mb-6">{title}</h3>
       <form action={formAction} className="space-y-4">
         {state?.error && (
@@ -37,31 +39,31 @@ export function ContactForm({ title = "Send us a message", defaultMessage = "", 
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label htmlFor="name" className="text-sm font-medium">Name</label>
+            <label htmlFor="name" className="text-sm font-medium text-foreground">Name</label>
             <input 
               id="name"
               name="name" 
               type="text" 
               required 
               placeholder="Your name"
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" 
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-muted-foreground" 
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium">Email</label>
+            <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
             <input 
               id="email"
               name="email" 
               type="email" 
               required 
               placeholder="you@example.com"
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all" 
+              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-muted-foreground" 
             />
           </div>
         </div>
         
         <div className="space-y-2">
-          <label htmlFor="message" className="text-sm font-medium">Message</label>
+          <label htmlFor="message" className="text-sm font-medium text-foreground">Message</label>
           <textarea 
             id="message"
             name="message" 
@@ -69,7 +71,7 @@ export function ContactForm({ title = "Send us a message", defaultMessage = "", 
             rows={4}
             defaultValue={defaultMessage}
             placeholder="How can we help you?"
-            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none" 
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all resize-none placeholder:text-muted-foreground" 
           />
         </div>
         
