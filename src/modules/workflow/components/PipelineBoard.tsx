@@ -64,7 +64,7 @@ const isDeliveryStage = (stageName: string) => {
   )
 }
 
-export default function PipelineBoard({ stages, projects: initialProjects }: { stages: Stage[], projects: Project[] }) {
+export default function PipelineBoard({ stages, projects: initialProjects, hasFeedbackFeature = true }: { stages: Stage[], projects: Project[], hasFeedbackFeature?: boolean }) {
 
   const { orgRole } = useAuth()
   const isAdmin = orgRole === 'org:admin'
@@ -486,6 +486,7 @@ export default function PipelineBoard({ stages, projects: initialProjects }: { s
             clientId={(completedProject as any).clientId || completedProject.client?.displayName}
             clientHasEmail={!!(completedProject as any).client?.email}
             projectName={completedProject.title}
+            hasFeedbackFeature={hasFeedbackFeature}
           />
           <MemberDeliveryModal
             open={memberDeliveryModalOpen}

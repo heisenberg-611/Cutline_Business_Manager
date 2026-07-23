@@ -6,6 +6,8 @@ import { PipelineBoardWrapper as PipelineBoard } from '@/modules/workflow/compon
 import { PipelineTable } from '@/modules/workflow/components/PipelineTable'
 import { PipelineTimeline } from '@/modules/workflow/components/PipelineTimeline'
 import { PipelineViewToggle } from '@/modules/workflow/components/PipelineViewToggle'
+import prisma from '@/modules/core/db/prisma'
+import { getActivePlan, canUseFeedback } from '@/lib/subscription'
 
 export const metadata = {
   title: 'Pipeline',
@@ -29,6 +31,14 @@ export default async function PipelinePage({
 
   // 2. Fetch all projects
   const projects = await getProjects(orgId)
+
+  // 3. Fetch business plan for feature gates
+  const business = await prisma.business.findUnique({
+    where: { id: orgId },
+    select: { subscriptionPlan: true, subscriptionPeriodEnd: true }
+  })
+  const plan = business ? getActivePlan(business) : 'FREE'
+  const hasFeedbackFeature = canUseFeedback(plan)
 
   if (!template) {
     return <div>Error loading pipeline.</div>
@@ -56,7 +66,7 @@ export default async function PipelinePage({
         ) : view === 'table' ? (
           <PipelineTable stages={template.stages} projects={projects as any[]} />
         ) : (
-          <PipelineBoard stages={template.stages} projects={projects as any[]} />
+          <PipelineBoard stages={template.stages} projects={projects as any[]} hasFeedbackFeature={hasFeedbackFeature} />
         )}
       </div>
     </div>
