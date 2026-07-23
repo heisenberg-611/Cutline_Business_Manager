@@ -15,8 +15,8 @@ export function PlatformFeedbackPill() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pathname = usePathname();
 
-  // Only show the feedback pill in the user dashboard
-  if (!pathname?.startsWith('/dashboard')) {
+  // ONLY show on the exact dashboard route, not in sub-menus like /dashboard/projects
+  if (pathname !== '/dashboard') {
     return null;
   }
 
