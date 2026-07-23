@@ -2,21 +2,41 @@ import prisma from '@/modules/core/db/prisma';
 import { PLAN_PRICES } from '@/lib/subscription';
 import { requireAdmin } from '../actions';
 import { DeleteRequestButton } from './DeleteRequestButton';
+import { PaginationControls } from '../components/PaginationControls';
 
 export const metadata = {
   title: 'Finances Admin',
 };
 
-export default async function AdminFinancesPage() {
+export default async function AdminFinancesPage(props: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdmin();
-  const approvedRequests = await prisma.subscriptionRequest.findMany({
-    where: { status: 'APPROVED' },
-    orderBy: { updatedAt: 'desc' },
-    include: { business: { select: { name: true } } },
-  });
 
-  const totalRevenue = approvedRequests.reduce((acc, req) => {
-    return acc + (PLAN_PRICES[req.planRequested as keyof typeof PLAN_PRICES] || 0);
+  const resolvedParams = await props.searchParams;
+  const currentPage = Math.max(1, parseInt(resolvedParams?.page || '1', 10));
+  const ITEMS_PER_PAGE = 20;
+
+  const [totalRequests, approvedRequests, groupedRevenue] = await prisma.$transaction([
+    prisma.subscriptionRequest.count({ where: { status: 'APPROVED' } }),
+    prisma.subscriptionRequest.findMany({
+      where: { status: 'APPROVED' },
+      orderBy: { updatedAt: 'desc' },
+      take: ITEMS_PER_PAGE,
+      skip: (currentPage - 1) * ITEMS_PER_PAGE,
+      include: { business: { select: { name: true } } },
+    }),
+    prisma.subscriptionRequest.groupBy({
+      by: ['planRequested'],
+      where: { status: 'APPROVED' },
+      _count: { id: true }
+    })
+  ]);
+
+  const totalPages = Math.ceil(totalRequests / ITEMS_PER_PAGE);
+
+  const totalRevenue = groupedRevenue.reduce((acc, group) => {
+    return acc + (group._count.id * (PLAN_PRICES[group.planRequested as keyof typeof PLAN_PRICES] || 0));
   }, 0);
 
   return (
@@ -71,6 +91,16 @@ export default async function AdminFinancesPage() {
             )}
           </tbody>
         </table>
+        
+        {totalPages > 1 && (
+          <div className="border-t border-zinc-200 dark:border-zinc-800">
+            <PaginationControls 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalRequests}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

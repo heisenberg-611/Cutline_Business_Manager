@@ -15,23 +15,14 @@ export default async function AdminOverviewPage() {
 
   const sixMonthsAgo = subMonths(startOfMonth(new Date()), 5);
 
-  const [totalBusinesses, totalUsers, pendingRequests, businessesByPlan, recentBusinesses, recentRequests] = await Promise.all([
+  const [totalBusinesses, totalUsers, pendingRequests, businessesByPlan] = await Promise.all([
     prisma.business.count(),
     prisma.user.count(),
     prisma.subscriptionRequest.count({ where: { status: 'PENDING' } }),
     prisma.business.groupBy({
       by: ['subscriptionPlan'],
       _count: { id: true }
-    }),
-    prisma.business.findMany({ 
-      where: { createdAt: { gte: sixMonthsAgo } },
-      select: { createdAt: true } 
-    }),
-    prisma.subscriptionRequest.findMany({ 
-      where: { status: 'APPROVED', updatedAt: { gte: sixMonthsAgo } }, 
-      select: { planRequested: true, updatedAt: true },
-      orderBy: { updatedAt: 'asc' }
-    }),
+    })
   ]);
 
   // Current Monthly Recurring Revenue
@@ -40,36 +31,49 @@ export default async function AdminOverviewPage() {
     return acc + (group._count.id * planPrice);
   }, 0);
 
-  // Compute last 6 months charts
+  // Compute last 6 months charts natively using DB aggregations
   const revenueData: { month: string; revenue: number }[] = [];
   const growthData: { month: string; signups: number }[] = [];
   
+  const monthQueries: Promise<any>[] = [];
+  const monthNames: string[] = [];
+
   for (let i = 5; i >= 0; i--) {
     const date = subMonths(new Date(), i);
     const monthName = format(date, 'MMM');
     const monthStart = startOfMonth(date);
     const monthEnd = endOfMonth(date);
     
-    // 2) Find all signups in that month
-    const signupsForMonth = recentBusinesses.filter(b => {
-      const bDate = new Date(b.createdAt);
-      return bDate >= monthStart && bDate <= monthEnd;
-    }).length;
+    monthNames.push(monthName);
+    
+    monthQueries.push(
+      prisma.business.count({
+        where: { createdAt: { gte: monthStart, lte: monthEnd } }
+      })
+    );
+    monthQueries.push(
+      prisma.subscriptionRequest.groupBy({
+        by: ['planRequested'],
+        where: { status: 'APPROVED', updatedAt: { gte: monthStart, lte: monthEnd } },
+        _count: { id: true }
+      })
+    );
+  }
 
-    // 3) Calculate total revenue from approved payments in that month
-    const requestsInMonth = recentRequests.filter(req => {
-      const reqDate = new Date(req.updatedAt);
-      return reqDate >= monthStart && reqDate <= monthEnd;
-    });
-
+  const monthResults = await Promise.all(monthQueries);
+  
+  for (let i = 0; i < 6; i++) {
+    const signupsForMonth = monthResults[i * 2] as number;
+    const requestsGroups = monthResults[i * 2 + 1] as any[];
+    
     let mrrForMonth = 0;
-    requestsInMonth.forEach(req => {
-      const planPrice = PLAN_PRICES[req.planRequested as keyof typeof PLAN_PRICES] || 0;
-      mrrForMonth += planPrice;
+    requestsGroups.forEach(group => {
+      const planPrice = PLAN_PRICES[group.planRequested as keyof typeof PLAN_PRICES] || 0;
+      mrrForMonth += group._count.id * planPrice;
     });
 
-    revenueData.push({ month: monthName, revenue: mrrForMonth });
-    growthData.push({ month: monthName, signups: signupsForMonth });
+    revenueData.push({ month: monthNames[i], revenue: mrrForMonth });
+    growthData.push({ month: monthNames[i], signups: signupsForMonth });
   }
 
   return (
