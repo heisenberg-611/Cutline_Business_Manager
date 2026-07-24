@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { Home, Users, CreditCard, Activity, LogOut, ShieldAlert, Settings, Building2, Megaphone, ShieldCheck, MessageSquare, Flag } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { AdminNotifications } from './AdminNotifications';
 
 const NAV_ITEMS = [
   { href: '/hq', label: 'Overview', icon: Home, exact: true },
@@ -29,6 +30,15 @@ export function AdminSidebar({
   logoutAction: () => Promise<void>;
 }) {
   const pathname = usePathname() || '';
+
+  useEffect(() => {
+    if (adminEmail) {
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(async function(OneSignal: any) {
+        await OneSignal.login(`admin_${adminEmail}`);
+      });
+    }
+  }, [adminEmail]);
 
   return (
     <aside className="w-16 md:w-64 shrink-0 bg-background/60 backdrop-blur-xl border-r border-border/50 flex flex-col shadow-2xl z-20 transition-all duration-300">
@@ -76,6 +86,7 @@ export function AdminSidebar({
         <div className="md:hidden">
           <ThemeToggle isCollapsed={true} />
         </div>
+        <AdminNotifications />
         <form action={logoutAction}>
           <button type="submit" title="Lock Panel" className="w-full flex items-center justify-center gap-2 px-3 py-3 md:py-2 text-sm font-medium rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
             <LogOut className="w-5 h-5 shrink-0" /> <span className="hidden md:block">Lock</span>

@@ -842,6 +842,18 @@ model GlobalAdmin {
   @@map("global_admins")
 }
 
+model AdminNotification {
+  id        String   @id @default(cuid())
+  title     String
+  message   String   @db.Text
+  type      String   // 'message', 'subscription', 'upgrade'
+  isRead    Boolean  @default(false)
+  actionUrl String?
+  createdAt DateTime @default(now())
+
+  @@map("admin_notifications")
+}
+
 // -----------------------------------------------------------------------------
 // GLOBAL SETTINGS
 // -----------------------------------------------------------------------------

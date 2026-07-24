@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/modules/core/db/prisma';
+import { createAdminNotification } from '@/lib/admin-notifications';
 
 export async function submitContactForm(prevState: any, formData: FormData) {
   const name = formData.get('name') as string;
@@ -20,6 +21,13 @@ export async function submitContactForm(prevState: any, formData: FormData) {
         message,
         source,
       }
+    });
+
+    await createAdminNotification({
+      title: 'New Contact Message',
+      message: `${name} (${email}) has sent a message via ${source}.`,
+      type: 'message',
+      actionUrl: '/hq/messages',
     });
 
     return { success: true };

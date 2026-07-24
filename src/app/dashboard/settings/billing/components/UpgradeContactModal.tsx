@@ -12,7 +12,7 @@ import { submitUpgradeRequest } from '../actions';
 import { CheckCircle2, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
-export function UpgradeContactModal() {
+export function UpgradeContactModal({ isUpgradePending = false }: { isUpgradePending?: boolean }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('Hi team, I would like to upgrade my workspace to the Business Plan.');
   const [isPending, setIsPending] = useState(false);
@@ -33,14 +33,27 @@ export function UpgradeContactModal() {
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      setTimeout(() => setSuccess(false), 300);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <a 
-        onClick={() => setOpen(true)}
-        className="cursor-pointer block w-full rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
-      >
-        Contact Sales
-      </a>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {isUpgradePending && !success ? (
+        <button disabled className="block w-full rounded-md bg-indigo-100 dark:bg-indigo-900/30 px-3 py-2 text-center text-sm font-semibold text-indigo-400 dark:text-indigo-600 cursor-not-allowed border border-transparent">
+          Request Pending
+        </button>
+      ) : (
+        <a 
+          onClick={() => setOpen(true)}
+          className="cursor-pointer block w-full rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors"
+        >
+          Contact Sales
+        </a>
+      )}
       <DialogContent className="sm:max-w-[500px] bg-background rounded-3xl p-8 border border-border/50 shadow-sm">
         <DialogHeader className="sr-only">
           <DialogTitle>Contact Sales to Upgrade</DialogTitle>

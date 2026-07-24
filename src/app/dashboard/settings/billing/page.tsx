@@ -126,12 +126,8 @@ export default async function BillingPage() {
                     <Link href={`/dashboard/settings/billing/checkout?plan=${plan}`} className="block w-full rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors">
                       Make Payment
                     </Link>
-                  ) : isUpgradePending ? (
-                    <button disabled className="block w-full rounded-md bg-indigo-100 dark:bg-indigo-900/30 px-3 py-2 text-center text-sm font-semibold text-indigo-400 dark:text-indigo-600 cursor-not-allowed border border-transparent">
-                      Request Pending
-                    </button>
                   ) : (
-                    <UpgradeContactModal />
+                    <UpgradeContactModal isUpgradePending={isUpgradePending} />
                   )
                 ) : (
                   <Link href={`/dashboard/settings/billing/checkout?plan=${plan}`} className="block w-full rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors">

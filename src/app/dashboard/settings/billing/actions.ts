@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import prisma from '@/modules/core/db/prisma';
 import { revalidatePath } from 'next/cache';
 import { PLANS } from '@/lib/subscription';
+import { createAdminNotification } from '@/lib/admin-notifications';
 
 export async function cancelSubscription() {
   const { orgId } = await auth();
@@ -97,6 +98,13 @@ export async function submitUpgradeRequest(message: string) {
       planRequested: PLANS.BUSINESS,
       message,
     }
+  });
+
+  await createAdminNotification({
+    title: 'New Upgrade Request',
+    message: `${business.name} has requested an upgrade to the Business plan.`,
+    type: 'upgrade',
+    actionUrl: '/hq/subscriptions',
   });
 
   revalidatePath('/dashboard/settings/billing');

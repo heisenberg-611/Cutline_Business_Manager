@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import prisma from '@/modules/core/db/prisma';
 import { PLANS } from '@/lib/subscription';
+import { createAdminNotification } from '@/lib/admin-notifications';
 
 export async function POST(req: Request) {
   try {
@@ -23,6 +24,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid plan requested' }, { status: 400 });
     }
 
+    // Fetch business name
+    const business = await prisma.business.findUnique({
+      where: { id: orgId },
+      select: { name: true }
+    });
+
     // Create the pending request
     const request = await prisma.subscriptionRequest.create({
       data: {
@@ -32,6 +39,13 @@ export async function POST(req: Request) {
         paymentMethod: paymentMethod,
         status: 'PENDING',
       },
+    });
+
+    await createAdminNotification({
+      title: 'New Subscription Request',
+      message: `${business?.name || 'A business'} has submitted a payment for the ${plan} plan.`,
+      type: 'subscription',
+      actionUrl: '/hq/subscriptions',
     });
 
     return NextResponse.json({ success: true, request });
