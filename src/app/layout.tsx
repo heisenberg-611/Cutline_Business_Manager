@@ -70,7 +70,8 @@ export default function RootLayout({
                   appId: "${process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || "16fa8c06-2ba4-49e4-aa97-27a784494e33"}",
                   safari_web_id: "web.onesignal.auto.5e2915a8-1095-4900-b2af-7b25bf2970dd",
                   serviceWorkerPath: "OneSignalSDKWorker.js",
-                  serviceWorkerParam: { scope: "/" }
+                  serviceWorkerParam: { scope: "/" },
+                  allowLocalhostAsSecureOrigin: true
                 });
               });
             `}

@@ -21,10 +21,16 @@ export function OneSignalInit() {
     
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     window.OneSignalDeferred.push(async function(OneSignal: any) {
-      if (user) {
-        await OneSignal.login(user.id);
-      } else {
-        await OneSignal.logout();
+      try {
+        if (!OneSignal.User) return;
+        
+        if (user) {
+          await OneSignal.login(user.id);
+        } else {
+          await OneSignal.logout();
+        }
+      } catch (e) {
+        // Silently fail if OneSignal is not initialized (e.g., on localhost without secure origin)
       }
     });
   }, [user, isLoaded]);

@@ -35,7 +35,13 @@ export function AdminSidebar({
     if (adminEmail) {
       window.OneSignalDeferred = window.OneSignalDeferred || [];
       window.OneSignalDeferred.push(async function(OneSignal: any) {
-        await OneSignal.login(`admin_${adminEmail}`);
+        try {
+          if (OneSignal.User) {
+            await OneSignal.login(`admin_${adminEmail}`);
+          }
+        } catch (e) {
+          // Silently fail if OneSignal is not initialized properly
+        }
       });
     }
   }, [adminEmail]);
