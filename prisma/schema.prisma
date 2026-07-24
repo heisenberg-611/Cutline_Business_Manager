@@ -53,6 +53,7 @@ model Business {
   updatedAt DateTime @updatedAt
 
   subscriptionRequests SubscriptionRequest[]
+  upgradeRequests      UpgradeRequest[]
   memberships          BusinessMembership[]
   clients              Client[]
   projects             Project[]
@@ -94,6 +95,7 @@ model User {
   assignedProjects        Project[]
   ConversationParticipant ConversationParticipant[]
   Message                 Message[]
+  upgradeRequests         UpgradeRequest[]
   timeEntries             TimeEntry[]
 
   @@map("users")
@@ -141,6 +143,25 @@ model SubscriptionRequest {
   @@index([businessId])
   @@index([status])
   @@map("subscription_requests")
+}
+
+model UpgradeRequest {
+  id            String                    @id @default(cuid())
+  businessId    String
+  userId        String
+  planRequested SubscriptionPlan
+  message       String                    @db.Text
+  status        SubscriptionRequestStatus @default(PENDING)
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([userId])
+  @@index([status])
+  @@map("upgrade_requests")
 }
 
 // -----------------------------------------------------------------------------

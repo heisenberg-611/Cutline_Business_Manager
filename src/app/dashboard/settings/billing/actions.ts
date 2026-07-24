@@ -79,3 +79,25 @@ export async function restoreBusinessPlan() {
 
   revalidatePath('/dashboard/settings/billing');
 }
+
+export async function submitUpgradeRequest(message: string) {
+  const { userId, orgId } = await auth();
+  if (!userId || !orgId) throw new Error('Unauthorized');
+
+  // Verify business exists
+  const business = await prisma.business.findUnique({
+    where: { id: orgId },
+  });
+  if (!business) throw new Error('Business not found');
+
+  await prisma.upgradeRequest.create({
+    data: {
+      businessId: orgId,
+      userId,
+      planRequested: PLANS.BUSINESS,
+      message,
+    }
+  });
+
+  revalidatePath('/dashboard/settings/billing');
+}

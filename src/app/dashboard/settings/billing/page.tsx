@@ -34,17 +34,28 @@ export default async function BillingPage() {
 
   let canRestoreBusiness = false;
   if (activePlan === PLANS.PRO && business.subscriptionPeriodEnd && new Date() < business.subscriptionPeriodEnd) {
-    const lastRequest = await prisma.subscriptionRequest.findFirst({
+    const lastSubRequest = await prisma.subscriptionRequest.findFirst({
       where: {
         businessId: orgId,
         status: 'APPROVED'
       },
       orderBy: { updatedAt: 'desc' }
     });
-    if (lastRequest?.planRequested === PLANS.BUSINESS) {
+    if (lastSubRequest?.planRequested === PLANS.BUSINESS) {
       canRestoreBusiness = true;
     }
   }
+
+  // Check UpgradeRequest
+  const lastUpgradeRequest = await prisma.upgradeRequest.findFirst({
+    where: {
+      businessId: orgId,
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const isUpgradePending = lastUpgradeRequest?.status === 'PENDING';
+  const isUpgradeApproved = lastUpgradeRequest?.status === 'APPROVED';
 
   return (
     <div className="max-w-7xl w-full mx-auto pb-24 space-y-8 md:space-y-12">
@@ -111,7 +122,17 @@ export default async function BillingPage() {
                     </button>
                   </form>
                 ) : plan === PLANS.BUSINESS ? (
-                  <UpgradeContactModal />
+                  isUpgradeApproved ? (
+                    <Link href={`/dashboard/settings/billing/checkout?plan=${plan}`} className="block w-full rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors">
+                      Make Payment
+                    </Link>
+                  ) : isUpgradePending ? (
+                    <button disabled className="block w-full rounded-md bg-indigo-100 dark:bg-indigo-900/30 px-3 py-2 text-center text-sm font-semibold text-indigo-400 dark:text-indigo-600 cursor-not-allowed border border-transparent">
+                      Request Pending
+                    </button>
+                  ) : (
+                    <UpgradeContactModal />
+                  )
                 ) : (
                   <Link href={`/dashboard/settings/billing/checkout?plan=${plan}`} className="block w-full rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-colors">
                     Upgrade to {plan.charAt(0) + plan.slice(1).toLowerCase()}
