@@ -52,7 +52,7 @@ export function PlatformFeedbackPill() {
   };
 
   return (
-    <div className="fixed bottom-[90px] md:bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className={`fixed bottom-[90px] md:bottom-6 right-6 flex flex-col items-end ${isOpen ? 'z-[60]' : 'z-40'}`}>
       <AnimatePresence>
         {isOpen && (
           <motion.div
