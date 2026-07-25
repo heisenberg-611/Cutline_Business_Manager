@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts'
-import { formatMoney, formatMoneyCompact } from '@/lib/format'
+import { formatDollars, formatDollarsCompact } from '@/lib/format'
 
 interface Props {
   data: {
@@ -39,7 +39,7 @@ export function RevenueTrendChart({ data, currency = 'USD' }: Props) {
           <YAxis 
             axisLine={false}
             tickLine={false}
-            tickFormatter={(val) => formatMoneyCompact(val, currency)}
+            tickFormatter={(val) => formatDollarsCompact(val, currency)}
             tick={{ fontSize: 12, fill: '#737373' }}
           />
           <Tooltip
@@ -51,7 +51,7 @@ export function RevenueTrendChart({ data, currency = 'USD' }: Props) {
               color: 'var(--card-foreground)',
               boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
             }}
-            formatter={(value: any) => [formatMoney(value, currency), 'Revenue']}
+            formatter={(value: any) => [formatDollars(value, currency), 'Revenue']}
             labelStyle={{ color: '#737373', marginBottom: '4px' }}
           />
           <Bar 

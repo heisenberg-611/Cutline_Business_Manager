@@ -42,6 +42,19 @@ export function formatDollars(dollars: number | null | undefined, currency = 'US
 }
 
 /**
+ * Same as formatDollars, but with compact notation (e.g., "$1K" instead of "$1,000.00").
+ */
+export function formatDollarsCompact(dollars: number | null | undefined, currency = 'USD'): string {
+  if (dollars == null || isNaN(dollars)) return new Intl.NumberFormat('en-US', { style: 'currency', currency, notation: 'compact' }).format(0);
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    notation: 'compact',
+    maximumFractionDigits: 0,
+  }).format(dollars);
+}
+
+/**
  * Formats a monetary value into a plain decimal string (e.g. "10.50") without currency symbols or commas.
  * Useful for CSV exports or numeric inputs.
  */
