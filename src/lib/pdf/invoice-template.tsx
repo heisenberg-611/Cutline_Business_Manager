@@ -1,4 +1,5 @@
 import React from 'react'
+import { formatMoney } from '@/lib/format'
 import path from 'path'
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 
@@ -416,15 +417,6 @@ export type InvoiceData = {
     method: string
     reference: string | null
   }>
-}
-
-const formatMoney = (cents: number, currency: string) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'code',
-    minimumFractionDigits: 2,
-  }).format(cents / 100)
 }
 
 const formatDate = (date: Date | null) => {

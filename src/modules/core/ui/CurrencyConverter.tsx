@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { formatDollars } from '@/lib/format'
 import {
   Dialog,
   DialogContent,
@@ -84,12 +85,7 @@ export function CurrencyConverter({ open, onOpenChange }: { open: boolean, onOpe
     setTargetCurrency(sourceCurrency)
   }
 
-  const formatCurrency = (val: number, code: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: code,
-    }).format(val)
-  }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,7 +160,7 @@ export function CurrencyConverter({ open, onOpenChange }: { open: boolean, onOpe
             ) : result !== null ? (
               <>
                 <div className="text-3xl font-semibold text-zinc-900 dark:text-zinc-100">
-                  {formatCurrency(result, targetCurrency)}
+                  {formatDollars(result, targetCurrency)}
                 </div>
                 {rate && (
                   <p className="text-xs text-zinc-500 mt-2">

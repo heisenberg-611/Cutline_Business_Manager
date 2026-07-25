@@ -1,4 +1,5 @@
 import React from 'react'
+import { formatMoney } from '@/lib/format'
 
 interface Props {
   buckets: {
@@ -9,14 +10,6 @@ interface Props {
   }
 }
 
-const formatMoney = (cents: number, currency: string = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'narrowSymbol',
-    minimumFractionDigits: 0,
-  }).format(cents / 100)
-}
 
 export function AgingBucketsCard({ buckets }: Props) {
   const total = Object.values(buckets).reduce((a, b) => a + b, 0)

@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
+import { cookies } from 'next/headers'
+import { formatMoney } from '@/lib/format'
 import prisma from '@/modules/core/db/prisma'
 
 export const metadata = {
@@ -33,13 +35,7 @@ export default async function AssetsPage({
 
   const currency = business?.defaultCurrency || 'USD'
 
-  const formatCurrency = (cents: number) => {
-    return new Intl.NumberFormat('en-US', { 
-      style: 'currency', 
-      currency: currency,
-      currencyDisplay: 'narrowSymbol'
-    }).format(cents / 100)
-  }
+
 
   const isExpiringSoon = (date: Date | null) => {
     if (!date) return false
@@ -108,7 +104,7 @@ export default async function AssetsPage({
                     <div className="text-xs text-zinc-400">{asset.licenseType || 'Standard'}</div>
                   </TableCell>
                   <TableCell className="text-zinc-600 dark:text-zinc-400">
-                    {formatCurrency(asset.cost)}
+                    {formatMoney(asset.cost, currency)}
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">

@@ -1,6 +1,6 @@
 'use client'
-
 import React, { useState, useEffect } from 'react'
+import { formatMoney, formatMoneyCompact } from '@/lib/format'
 import { getAnalyticsData } from '../actions'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -53,15 +53,6 @@ export function AnalyticsDashboard() {
       })
     return () => { isMounted = false }
   }, [startDate, endDate])
-
-  const formatCurrency = (amount: number, currency: string, compact: boolean = false) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-      maximumFractionDigits: 0,
-      ...(compact ? { notation: 'compact', compactDisplay: 'short' } : {})
-    }).format(amount)
-  }
 
   return (
     <div className="w-full mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -119,7 +110,7 @@ export function AnalyticsDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {formatCurrency(data.metrics.totalRevenue, data.metrics.currency)}
+                  {formatMoney(data.metrics.totalRevenue, data.metrics.currency)}
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">Selected period</p>
               </CardContent>
@@ -138,7 +129,7 @@ export function AnalyticsDashboard() {
               </CardHeader>
               <CardContent>
                 <div className={`text-3xl font-bold ${data.metrics.totalNetProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {formatCurrency(data.metrics.totalNetProfit, data.metrics.currency)}
+                  {formatMoney(data.metrics.totalNetProfit, data.metrics.currency)}
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">Selected period</p>
               </CardContent>
@@ -153,7 +144,7 @@ export function AnalyticsDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-red-600 dark:text-red-400">
-                  {formatCurrency(data.metrics.totalExpenses, data.metrics.currency)}
+                  {formatMoney(data.metrics.totalExpenses, data.metrics.currency)}
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">Selected period</p>
               </CardContent>
@@ -211,11 +202,11 @@ export function AnalyticsDashboard() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.2} />
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} dy={10} minTickGap={30} />
-                      <YAxis width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(val) => formatCurrency(val, data.metrics.currency, true)} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }}
-                        itemStyle={{ color: '#3b82f6' }}
-                        formatter={(value: any) => [formatCurrency(value, data.metrics.currency), 'Net Profit']}
+                      <YAxis width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(val) => formatMoneyCompact(val, data.metrics.currency)} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e4e4e7', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        itemStyle={{ color: '#18181b', fontSize: '14px', fontWeight: 500 }}
+                        formatter={(value: any) => [formatMoney(value, data.metrics.currency), 'Net Profit']}
                       />
                       <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorNetProfit)" />
                     </AreaChart>
@@ -246,12 +237,12 @@ export function AnalyticsDashboard() {
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#3f3f46" opacity={0.2} />
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} dy={10} minTickGap={30} />
-                      <YAxis width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(val) => formatCurrency(val, data.metrics.currency, true)} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#18181b', borderColor: '#27272a', borderRadius: '8px', color: '#fff' }}
-                        itemStyle={{ color: '#fff' }}
+                      <YAxis width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={(val) => formatMoneyCompact(val, data.metrics.currency)} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #e4e4e7', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        itemStyle={{ color: '#18181b', fontSize: '14px', fontWeight: 500 }}
                         formatter={(value: any, name: any) => [
-                          formatCurrency(value, data.metrics.currency), 
+                          formatMoney(value, data.metrics.currency), 
                           name ? String(name).charAt(0).toUpperCase() + String(name).slice(1) : ''
                         ]}
                       />

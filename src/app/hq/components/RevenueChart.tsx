@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { formatDollars } from '@/lib/format';
 
 export function RevenueChart({ data }: { data: { month: string; revenue: number }[] }) {
   if (!data || data.length === 0) {
@@ -41,13 +42,13 @@ export function RevenueChart({ data }: { data: { month: string; revenue: number 
             axisLine={false}
             tickLine={false}
             tick={{ fill: '#71717a', fontSize: 12 }}
-            tickFormatter={(value) => `$${value}`}
+            tickFormatter={(value) => formatDollars(value)}
             dx={-10}
           />
           <Tooltip 
             contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', borderColor: 'var(--tooltip-border, #e4e4e7)', borderRadius: '8px' }}
             itemStyle={{ color: '#4f46e5', fontWeight: 'bold' }}
-            formatter={(value: any) => [`$${value}`, 'Revenue']}
+            formatter={(value: any) => [formatDollars(value), 'Revenue']}
           />
           <Area 
             type="monotone" 

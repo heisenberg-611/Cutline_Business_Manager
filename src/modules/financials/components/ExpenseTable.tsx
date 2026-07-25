@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Trash, Edit2 } from "lucide-react"
+import { Receipt, Search, FileText, ChevronDown, Check, FolderKanban, MoreHorizontal, Trash, Edit2 } from 'lucide-react'
+import { formatMoney } from '@/lib/format'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { deleteExpense } from '../expense-actions'
 import { ExpenseDialog } from './ExpenseDialog'
@@ -34,14 +35,6 @@ interface Props {
   projects: { id: string, title: string }[]
   openNewExpense?: boolean
   businessCurrency?: string
-}
-
-const formatMoney = (cents: number, currency = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'narrowSymbol'
-  }).format(cents / 100)
 }
 
 const formatDate = (date: Date) => {

@@ -88,8 +88,8 @@ export async function getAnalyticsData(startDateStr: string, endDateStr: string)
   invoices.forEach(inv => {
     const dateStr = format(inv.updatedAt, 'MMM dd')
     if (revenueMap[dateStr] !== undefined) {
-      const amount = inv.status === 'PAID' ? inv.totalCents : inv.amountPaidCents
-      revenueMap[dateStr] += (amount / 100)
+      const amountCents = inv.status === 'PAID' ? inv.totalCents : inv.amountPaidCents
+      revenueMap[dateStr] += amountCents
     }
   })
 
@@ -124,7 +124,7 @@ export async function getAnalyticsData(startDateStr: string, endDateStr: string)
   expenses.forEach(exp => {
     const dateStr = format(exp.dateIncurred, 'MMM dd')
     if (expenseMap[dateStr] !== undefined) {
-      expenseMap[dateStr] += (exp.amountCents / 100)
+      expenseMap[dateStr] += exp.amountCents
     }
   })
 

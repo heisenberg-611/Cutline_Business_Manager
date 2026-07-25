@@ -1,5 +1,6 @@
 import React from 'react'
 import { TrendingUp, TrendingDown, AlertTriangle, Calendar, Activity, Star, Clock } from 'lucide-react'
+import { formatMoney } from '@/lib/format'
 
 interface Props {
   variant?: 'main' | 'finance'
@@ -19,15 +20,6 @@ interface Props {
 }
 
 export function StudioHealthFinanceStrip({ data, variant = 'main' }: Props) {
-  const formatMoney = (cents: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: data.currency || 'USD',
-      currencyDisplay: 'narrowSymbol',
-      minimumFractionDigits: 0,
-    }).format(cents / 100)
-  }
-
   return (
     <div className="flex flex-col lg:flex-row divide-y lg:divide-y-0 lg:divide-x divide-zinc-200 dark:divide-white/10 bg-white dark:bg-[#0A0A0A] border border-zinc-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
       
@@ -40,7 +32,7 @@ export function StudioHealthFinanceStrip({ data, variant = 'main' }: Props) {
         </div>
         <div className="flex items-baseline gap-2">
           <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-            {formatMoney(data.revenueMTD)}
+            {formatMoney(data.revenueMTD, data.currency)}
           </p>
           {data.revenueLastMonth > 0 && (
             <span className={`text-xs font-medium ${data.revenueDelta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
@@ -57,7 +49,7 @@ export function StudioHealthFinanceStrip({ data, variant = 'main' }: Props) {
             <h3 className="text-xs font-medium uppercase tracking-wider">Total Expenses</h3>
           </div>
           <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-            {formatMoney(data.expenseTotal)}
+            {formatMoney(data.expenseTotal, data.currency)}
           </p>
         </div>
       )}
@@ -70,7 +62,7 @@ export function StudioHealthFinanceStrip({ data, variant = 'main' }: Props) {
             <h3 className="text-xs font-medium uppercase tracking-wider">Outstanding</h3>
           </div>
           <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-            {formatMoney(data.outstanding)}
+            {formatMoney(data.outstanding, data.currency)}
           </p>
         </div>
       )}
