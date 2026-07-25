@@ -247,8 +247,7 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
 
   return (
     <div className="flex flex-col gap-4">
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style>{`
         .pipeline-resizer-wrapper {
           position: relative;
         }
@@ -264,7 +263,7 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
         .pipeline-resizer-wrapper::-webkit-scrollbar {
           display: none;
         }
-      `}} />
+      `}</style>
       <div className="flex items-center justify-end gap-3 px-1 shrink-0">
         <button
           onClick={resetSize}
