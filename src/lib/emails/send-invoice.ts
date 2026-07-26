@@ -3,6 +3,7 @@
 import { Resend } from 'resend'
 import { render } from '@react-email/render'
 import { InvoiceEmail } from '@/emails/invoice-email'
+import { formatMoney } from '../format'
 import prisma from '@/modules/core/db/prisma'
 import React from 'react'
 import { getAppUrl } from '@/lib/utils'
@@ -27,25 +28,18 @@ export async function sendDynamicInvoiceEmail(invoiceId: string, businessId: str
   const appUrl = getAppUrl()
   const paymentLink = `${appUrl}/invoices/${invoice.id}/pay` // Example link
 
-  // Formatter for currency
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: invoice.currency,
-    currencyDisplay: 'narrowSymbol'
-  })
-
   // Format data
-  const totalAmountStr = formatter.format(invoice.totalCents / 100)
-  const subtotalStr = formatter.format(invoice.subtotalCents / 100)
-  const taxStr = formatter.format(invoice.taxAmountCents / 100)
-  const amountDueStr = formatter.format(invoice.amountDueCents / 100)
+  const totalAmountStr = formatMoney(invoice.totalCents, invoice.currency)
+  const subtotalStr = formatMoney(invoice.subtotalCents, invoice.currency)
+  const taxStr = formatMoney(invoice.taxAmountCents, invoice.currency)
+  const amountDueStr = formatMoney(invoice.amountDueCents, invoice.currency)
   const dueDateStr = invoice.dueDate ? invoice.dueDate.toLocaleDateString() : 'Upon Receipt'
   const issueDateStr = invoice.issuedAt ? invoice.issuedAt.toLocaleDateString() : new Date().toLocaleDateString()
 
   const formattedLineItems = invoice.lineItems.map(item => ({
     description: item.description,
     quantity: item.quantity,
-    amount: formatter.format((item.amountCents * item.quantity) / 100)
+    amount: formatMoney(item.amountCents * item.quantity, invoice.currency)
   }))
 
   // Placeholder Replacement Logic

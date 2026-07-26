@@ -6,7 +6,7 @@
     "dev": "next dev --webpack",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint --max-warnings=377",
     "reset-db": "tsx scripts/reset-db.ts",
     "postinstall": "prisma generate",
     "vercel-build": "prisma generate && next build"

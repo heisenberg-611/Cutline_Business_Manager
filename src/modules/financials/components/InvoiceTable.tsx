@@ -1,5 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
+import { formatMoney } from '@/lib/format'
 import {
   Table,
   TableBody,
@@ -27,14 +28,6 @@ interface Invoice {
 
 interface Props {
   invoices: Invoice[]
-}
-
-const formatMoney = (cents: number, currency = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'narrowSymbol'
-  }).format(cents / 100)
 }
 
 const formatDate = (date: Date | null) => {

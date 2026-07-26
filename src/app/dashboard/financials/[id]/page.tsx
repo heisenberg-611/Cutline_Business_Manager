@@ -4,6 +4,7 @@ import Link from 'next/link'
 import prisma from '@/modules/core/db/prisma'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Download, Mail, Ban, Edit, Check, ExternalLink } from 'lucide-react'
+import { formatMoney } from '@/lib/format'
 import { RecordPaymentDialog } from '@/modules/financials/components/RecordPaymentDialog'
 import { sendInvoice, deleteInvoice } from '@/modules/financials/actions'
 import { getClients } from '@/modules/clients/actions'
@@ -13,14 +14,6 @@ import { getInvoiceDataForPdf } from '@/lib/invoices/pdf-data'
 import { DownloadInvoiceButton } from '@/components/invoices/DownloadInvoiceButton'
 import { PreviewInvoiceDialog } from '@/modules/financials/components/PreviewInvoiceDialog'
 import { canSendEmails, getActivePlan } from '@/lib/subscription'
-
-const formatMoney = (cents: number, currency = 'USD') => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    currencyDisplay: 'narrowSymbol'
-  }).format(cents / 100)
-}
 
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { orgId } = await auth()

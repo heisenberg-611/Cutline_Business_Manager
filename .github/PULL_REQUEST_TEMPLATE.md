@@ -28,3 +28,9 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] I have made corresponding changes to the documentation
 - [ ] My changes generate no new warnings (ESLint)
+
+## Refactor Smoke Checklist
+- [ ] **Messaging:** send a DM, create a group, send a broadcast, open a guest chat link and reply, delete a message, delete a conversation, mute/unmute, slow mode enforced, push notification received, insert a meme via MemeFinder.
+- [ ] **Financials:** create an invoice, preview it, send it (Resend delivers), download PDF, record a payment, add an expense, revenue/aging charts render with correct currency formatting.
+- [ ] **Pipeline:** create a card, drag between stages, edit stages in settings, card content with `<script>` or HTML renders inert.
+- [ ] **Admin:** open Edit Subscription from the organizations table and save.

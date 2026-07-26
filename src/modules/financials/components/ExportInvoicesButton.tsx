@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { formatDecimal } from '@/lib/format'
 import { Download } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -31,8 +32,6 @@ export function ExportInvoicesButton({ invoices }: { invoices: any[] }) {
     ]
     
     const rows = invoices.map(i => {
-      const formatMoney = (cents: number) => (cents / 100).toFixed(2)
-      
       return [
         `"${i.id || ''}"`,
         `"${i.invoiceNumber || ''}"`,
@@ -43,11 +42,11 @@ export function ExportInvoicesButton({ invoices }: { invoices: any[] }) {
         `"${(i.project?.title || '').replace(/"/g, '""')}"`,
         `"${i.status || ''}"`,
         `"${i.currency || 'USD'}"`,
-        `"${formatMoney(i.subtotalCents || 0)}"`,
-        `"${formatMoney(i.taxAmountCents || 0)}"`,
-        `"${formatMoney(i.totalCents || 0)}"`,
-        `"${formatMoney(i.amountPaidCents || 0)}"`,
-        `"${formatMoney(i.amountDueCents || 0)}"`,
+        `"${formatDecimal(i.subtotalCents)}"`,
+        `"${formatDecimal(i.taxAmountCents)}"`,
+        `"${formatDecimal(i.totalCents)}"`,
+        `"${formatDecimal(i.amountPaidCents)}"`,
+        `"${formatDecimal(i.amountDueCents)}"`,
         i.issuedAt ? format(new Date(i.issuedAt), 'yyyy-MM-dd') : '',
         i.dueDate ? format(new Date(i.dueDate), 'yyyy-MM-dd') : '',
         i.paidAt ? format(new Date(i.paidAt), 'yyyy-MM-dd') : '',
