@@ -48,7 +48,31 @@ import {
   X
 } from 'lucide-react'
 
-export function AppLayout({ 
+// Single source of truth for the sidebar collapse/expand motion so the
+// container, the icon repositioning, and every label fade stay in lockstep
+// instead of drifting apart on separate timings.
+const SIDEBAR_TRANSITION = { duration: 0.3, ease: [0.65, 0, 0.35, 1] as const }
+const ICON_SPRING = { type: 'spring' as const, stiffness: 300, damping: 20 }
+// Rows always render left-aligned (icon at the row's start) — no
+// justify-content toggle. That's not a compromise: the icon sits inside two
+// stacked padding layers (the row's own px-3, nested inside the nav/action-bar
+// wrapper's own px-3/p-3), so at the collapsed width the content box is
+// exactly 64 - 12*2 - 12*2 = 16px — precisely the icon's own size. There's no
+// slack to center within, so left-aligned already lands dead center; no
+// transform needed. (Deliberately not a `layout`/FLIP animation either way —
+// FLIP re-measures the DOM as the sibling label's own width tween plays out,
+// which fights any in-progress interpolation and snaps at the end.)
+
+// Collapsed (icon-only) rows get a deliberate size bump — h-4 (16px) reads as
+// visually equivalent to h-5 (20px), a 1.25x scale — so the icon carries more
+// weight once the label's gone. Driven as an explicit `scale` tween on
+// isCollapsed (own transition, own timing) rather than swapping Tailwind size
+// classes, which would jump in a single frame with nothing in between. It's a
+// pure transform (no layout impact), so the 4px of overflow past the 16px
+// content box on each axis is safe — nothing in the row or nav clips it.
+const ICON_COLLAPSED_SCALE = 1.25
+
+export function AppLayout({
   children, 
   initialNavPreferences,
   initialQuickActionPreferences,
@@ -216,15 +240,28 @@ export function AppLayout({
     <div className="flex h-[100dvh] w-full bg-background bg-gradient-to-br from-indigo-500/15 via-background to-purple-500/15 dark:from-indigo-500/10 dark:via-background dark:to-purple-500/10 text-foreground overflow-hidden font-sans">
 
       {/* LEFT SIDEBAR */}
-      <aside
+      <motion.aside
         ref={sidebarRef}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`hidden md:flex border-r border-border/50 bg-background/60 backdrop-blur-xl flex-col transition-all duration-300 ease-in-out-smooth z-20 ${isExpanded ? 'w-64' : 'w-16'}`}
+        animate={{ width: isExpanded ? 256 : 64 }}
+        transition={SIDEBAR_TRANSITION}
+        style={{ willChange: 'width' }}
+        className="hidden md:flex border-r border-border/50 bg-background/60 backdrop-blur-xl flex-col z-20"
       >
         {/* Business Switcher Top Header */}
-        <div className={`h-14 flex items-center border-b border-border/50 overflow-hidden shrink-0 transition-all ${isCollapsed ? 'px-0 justify-center' : 'px-4'}`}>
-          <div className={`transition-all duration-200 flex items-center ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-full'}`}>
+        <div className={`h-14 flex items-center border-b border-border/50 overflow-hidden shrink-0 relative transition-[padding] duration-300 ${isCollapsed ? 'px-0 justify-center' : 'px-4'}`}>
+          {/* Kept permanently mounted (never conditionally unmounted) so Clerk's
+              popover state and the aria-expanded MutationObserver never drop out
+              mid-toggle; it crossfades via opacity/width instead of display:none,
+              which is what makes the fade actually visible. */}
+          <motion.div
+            animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : '100%' }}
+            transition={SIDEBAR_TRANSITION}
+            style={{ pointerEvents: isCollapsed ? 'none' : 'auto' }}
+            aria-hidden={isCollapsed}
+            className="flex items-center overflow-hidden"
+          >
             <OrganizationSwitcher
               hidePersonal
               appearance={{
@@ -257,16 +294,20 @@ export function AppLayout({
                 }
               }}
             />
-          </div>
-          {isCollapsed && (
-            <div className="flex justify-center items-center w-[32px] min-w-[32px] h-[32px] text-foreground font-bold">
-              {organization?.imageUrl ? (
-                <img src={organization.imageUrl} alt={organization.name} className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-md object-cover shrink-0" />
-              ) : (
-                <div className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-md bg-muted/50 flex items-center justify-center shrink-0 text-sm">C</div>
-              )}
-            </div>
-          )}
+          </motion.div>
+          <motion.div
+            animate={{ opacity: isCollapsed ? 1 : 0, scale: isCollapsed ? 1 : 0.85 }}
+            transition={SIDEBAR_TRANSITION}
+            style={{ pointerEvents: isCollapsed ? 'auto' : 'none' }}
+            aria-hidden={!isCollapsed}
+            className="absolute flex justify-center items-center w-8 h-8 text-foreground font-bold"
+          >
+            {organization?.imageUrl ? (
+              <img src={organization.imageUrl} alt={organization.name} className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-md object-cover shrink-0" />
+            ) : (
+              <div className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-md bg-muted/50 flex items-center justify-center shrink-0 text-sm">C</div>
+            )}
+          </motion.div>
         </div>
 
         {/* Navigation */}
@@ -293,7 +334,7 @@ export function AppLayout({
                   className={`group relative z-0 flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${isActive
                       ? 'text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    } ${isCollapsed ? 'justify-center' : ''}`}
+                    }`}
                   title={isCollapsed ? item.label : undefined}
                 >
                   {isActive && (
@@ -304,23 +345,28 @@ export function AppLayout({
                     />
                   )}
                   <motion.div
-                    variants={{
-                      initial: { scale: 1 },
-                      hover: { scale: 1.1 },
-                      tap: { scale: 0.95 }
-                    }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
+                    transition={SIDEBAR_TRANSITION}
                   >
-                    <item.icon className={`h-4 w-4 shrink-0 transition-colors ${isActive ? '' : 'group-hover:text-indigo-500 dark:group-hover:text-indigo-400'}`} />
+                    <motion.div
+                      variants={{
+                        initial: { scale: 1 },
+                        hover: { scale: 1.1 },
+                        tap: { scale: 0.95 }
+                      }}
+                      transition={ICON_SPRING}
+                    >
+                      <item.icon className={`h-4 w-4 shrink-0 transition-colors ${isActive ? '' : 'group-hover:text-indigo-500 dark:group-hover:text-indigo-400'}`} />
+                    </motion.div>
                   </motion.div>
-                  <AnimatePresence mode="wait">
+                  <AnimatePresence initial={false}>
                     {!isCollapsed && (
                       <motion.span
                         key="nav-label"
                         initial={{ opacity: 0, width: 0 }}
                         animate={{ opacity: 1, width: 'auto' }}
                         exit={{ opacity: 0, width: 0 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        transition={SIDEBAR_TRANSITION}
                         className="whitespace-nowrap overflow-hidden"
                       >
                         {item.label}
@@ -338,28 +384,33 @@ export function AppLayout({
           <motion.div initial="initial" whileHover="hover" whileTap="tap">
             <button
               onClick={() => setIsCommandOpen(true)}
-              className={`group relative z-0 w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50 ${isCollapsed ? 'justify-center' : 'justify-between'}`}
+              className="group relative z-0 w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50"
               title={isCollapsed ? 'Search (Cmd+K)' : undefined}
             >
-              <div className="flex items-center gap-3 overflow-hidden">
+              <div className="flex items-center gap-3">
                 <motion.div
-                  variants={{
-                    initial: { scale: 1 },
-                    hover: { scale: 1.1 },
-                    tap: { scale: 0.95 }
-                  }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
+                  transition={SIDEBAR_TRANSITION}
                 >
-                  <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                  <motion.div
+                    variants={{
+                      initial: { scale: 1 },
+                      hover: { scale: 1.1 },
+                      tap: { scale: 0.95 }
+                    }}
+                    transition={ICON_SPRING}
+                  >
+                    <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                  </motion.div>
                 </motion.div>
-                <AnimatePresence mode="wait">
+                <AnimatePresence initial={false}>
                   {!isCollapsed && (
-                    <motion.span 
+                    <motion.span
                       key="search-text"
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 'auto' }}
                       exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      transition={SIDEBAR_TRANSITION}
                       className="whitespace-nowrap overflow-hidden"
                     >
                       Search...
@@ -367,14 +418,14 @@ export function AppLayout({
                   )}
                 </AnimatePresence>
               </div>
-              <AnimatePresence mode="wait">
+              <AnimatePresence initial={false}>
                 {!isCollapsed && (
-                  <motion.span 
+                  <motion.span
                     key="search-badge"
                     initial={{ opacity: 0, scale: 0.8, x: -10 }}
                     animate={{ opacity: 1, scale: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.8, x: -10 }}
-                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    transition={SIDEBAR_TRANSITION}
                     className="flex items-center text-xs opacity-50 bg-muted/50 border border-border px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 font-normal"
                   >
                     <CmdIcon className="h-3 w-3 mr-0.5 shrink-0" /> K
@@ -387,27 +438,32 @@ export function AppLayout({
           <motion.div initial="initial" whileHover="hover" whileTap="tap">
             <button 
               onClick={() => setIsCurrencyConverterOpen(true)}
-              className={`group relative z-0 w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50 ${isCollapsed ? 'justify-center' : ''}`}
+              className="group relative z-0 w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50"
               title={isCollapsed ? 'Currency Converter' : undefined}
             >
               <motion.div
-                variants={{
-                  initial: { scale: 1 },
-                  hover: { scale: 1.1 },
-                  tap: { scale: 0.95 }
-                }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
+                transition={SIDEBAR_TRANSITION}
               >
-                <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                <motion.div
+                  variants={{
+                    initial: { scale: 1 },
+                    hover: { scale: 1.1 },
+                    tap: { scale: 0.95 }
+                  }}
+                  transition={ICON_SPRING}
+                >
+                  <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                </motion.div>
               </motion.div>
-              <AnimatePresence mode="wait">
+              <AnimatePresence initial={false}>
                 {!isCollapsed && (
                   <motion.span
                     key="currency-label"
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: 'auto' }}
                     exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    transition={SIDEBAR_TRANSITION}
                     className="whitespace-nowrap overflow-hidden"
                   >
                     Currency Converter
@@ -425,7 +481,7 @@ export function AppLayout({
                   (optimisticPathname || pathname)?.startsWith('/dashboard/settings')
                     ? 'text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                } ${isCollapsed ? 'justify-center' : ''}`}
+                }`}
                 title={isCollapsed ? 'Settings' : undefined}
               >
                 {(optimisticPathname || pathname)?.startsWith('/dashboard/settings') && (
@@ -436,23 +492,28 @@ export function AppLayout({
                   />
                 )}
                 <motion.div
-                  variants={{
-                    initial: { scale: 1 },
-                    hover: { scale: 1.1 },
-                    tap: { scale: 0.95 }
-                  }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
+                  transition={SIDEBAR_TRANSITION}
                 >
-                  <Settings className={`h-4 w-4 shrink-0 transition-colors ${(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? '' : 'group-hover:text-indigo-500 dark:group-hover:text-indigo-400'}`} />
+                  <motion.div
+                    variants={{
+                      initial: { scale: 1 },
+                      hover: { scale: 1.1 },
+                      tap: { scale: 0.95 }
+                    }}
+                    transition={ICON_SPRING}
+                  >
+                    <Settings className={`h-4 w-4 shrink-0 transition-colors ${(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? '' : 'group-hover:text-indigo-500 dark:group-hover:text-indigo-400'}`} />
+                  </motion.div>
                 </motion.div>
-                <AnimatePresence mode="wait">
+                <AnimatePresence initial={false}>
                   {!isCollapsed && (
                     <motion.span
                       key="settings-label"
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 'auto' }}
                       exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.2, ease: "easeInOut" }}
+                      transition={SIDEBAR_TRANSITION}
                       className="whitespace-nowrap overflow-hidden"
                     >
                       Settings
@@ -468,31 +529,47 @@ export function AppLayout({
           <motion.div initial="initial" whileHover="hover" whileTap="tap">
             <button 
               onClick={togglePin}
-              className={`group relative z-0 w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50 ${isExpanded ? '' : 'justify-center'}`}
+              className="group relative z-0 w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/50"
               title={isExpanded ? (isPinned ? 'Unpin Sidebar' : 'Pin Sidebar') : undefined}
             >
               <motion.div
-                variants={{
-                  initial: { scale: 1 },
-                  hover: { scale: 1.1 },
-                  tap: { scale: 0.95 }
-                }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
+                transition={SIDEBAR_TRANSITION}
               >
-                {isPinned ? (
-                  <PinOff className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                ) : (
-                  <Pin className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                )}
+                <motion.div
+                  variants={{
+                    initial: { scale: 1 },
+                    hover: { scale: 1.1 },
+                    tap: { scale: 0.95 }
+                  }}
+                  transition={ICON_SPRING}
+                >
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={isPinned ? 'pinoff' : 'pin'}
+                      className="flex"
+                      initial={{ opacity: 0, rotate: -40, scale: 0.7 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: 40, scale: 0.7 }}
+                      transition={ICON_SPRING}
+                    >
+                      {isPinned ? (
+                        <PinOff className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                      ) : (
+                        <Pin className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                      )}
+                    </motion.span>
+                  </AnimatePresence>
+                </motion.div>
               </motion.div>
-              <AnimatePresence mode="wait">
+              <AnimatePresence initial={false}>
                 {isExpanded && (
                   <motion.span
                     key="pin-label"
                     initial={{ opacity: 0, width: 0 }}
                     animate={{ opacity: 1, width: 'auto' }}
                     exit={{ opacity: 0, width: 0 }}
-                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    transition={SIDEBAR_TRANSITION}
                     className="whitespace-nowrap overflow-hidden"
                   >
                     {isPinned ? 'Unpin' : 'Pin'}
@@ -516,7 +593,7 @@ export function AppLayout({
             </div>
           )}
         </div>
-      </aside>
+      </motion.aside>
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
