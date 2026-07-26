@@ -5,6 +5,7 @@ import { sendGuestMessage, getNewGuestMessages } from '@/modules/messaging/guest
 import { Send, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MessageItem } from '@/modules/messaging/components/thread/MessageItem';
 
 export function GuestChatUI({ token, conversation }: { token: string, conversation: any }) {
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -21,6 +22,7 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
     if (!isJoined) return;
     
     const interval = setInterval(async () => {
+      if (document.hidden) return;
       const afterDate = messages.length > 0 ? messages[messages.length - 1].createdAt : conversation.createdAt;
       
       try {
@@ -104,56 +106,39 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
 
   return (
     <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950/50">
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto space-y-1 py-4">
         {messages.length === 0 ? (
           <div className="text-center text-zinc-500 my-10 text-sm">
             No messages yet. Send a message to start the conversation!
           </div>
         ) : (
-          messages.map((msg: any) => {
-            const isMe = msg.isGuest;
-            return (
-              <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                  isMe 
-                    ? 'bg-indigo-600 text-white rounded-br-none' 
-                    : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-bl-none'
-                }`}>
-                  {!isMe && msg.sender && (
-                    <div className="text-xs font-medium text-indigo-600 dark:text-indigo-400 mb-1">
-                      {msg.sender.firstName} {msg.sender.lastName}
-                    </div>
-                  )}
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {msg.content}
-                  </div>
-                  <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-indigo-200' : 'text-zinc-400'}`}>
-                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          messages.map((msg: any) => (
+            <MessageItem
+              key={msg.id || msg.createdAt}
+              msg={msg}
+              currentUserId={null}
+              conversation={conversation}
+              isAdmin={false}
+            />
+          ))
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="flex-none p-4 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
+      <div className="flex-none p-2 sm:p-4 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
         <form onSubmit={handleSend} className="flex gap-2">
           <Input 
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Type your message..."
-            className="flex-1 rounded-full px-4"
+            className="flex-1 rounded-full px-4 bg-zinc-50 dark:bg-zinc-800"
             disabled={isSending}
           />
           <Button 
             type="submit" 
             disabled={!content.trim() || isSending}
             size="icon"
-            className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
+            className="rounded-full shrink-0"
           >
             <Send className="w-4 h-4" />
           </Button>

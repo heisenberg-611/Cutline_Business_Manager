@@ -108,10 +108,10 @@ function formatMessageContent(text: string) {
 
 export interface MessageItemProps {
   msg: any
-  currentUserId: string
+  currentUserId: string | null
   conversation: any
   isAdmin: boolean
-  onDeleteMessage: (msgId: string) => void
+  onDeleteMessage?: (msgId: string) => void
 }
 
 export const MessageItem = React.memo(function MessageItem({
@@ -121,7 +121,7 @@ export const MessageItem = React.memo(function MessageItem({
   isAdmin,
   onDeleteMessage
 }: MessageItemProps) {
-  const isMine = msg.senderId === currentUserId
+  const isMine = currentUserId ? msg.senderId === currentUserId : msg.isGuest === true;
   
   const isGroup = conversation?.type === 'GROUP'
   const isBroadcast = conversation?.type === 'BROADCAST'
@@ -164,7 +164,7 @@ export const MessageItem = React.memo(function MessageItem({
                 variant="ghost"
                 size="icon"
                 className="text-red-500 hover:text-red-600 h-6 w-6 rounded-full"
-                onClick={() => onDeleteMessage(msg.id)}
+                onClick={() => onDeleteMessage?.(msg.id)}
                 title="Delete Message"
               >
                 <Trash2 className="w-3.5 h-3.5" />
