@@ -9,6 +9,9 @@ import { MessageList } from '@/modules/messaging/components/thread/MessageList';
 import { ThreadHeader } from '@/modules/messaging/components/thread/ThreadHeader';
 import { MessageComposer } from '@/modules/messaging/components/thread/MessageComposer';
 import { VirtuosoHandle } from 'react-virtuoso';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
 
 export function GuestChatUI({ token, conversation }: { token: string, conversation: any }) {
   const virtuosoRef = useRef<VirtuosoHandle>(null);
@@ -86,34 +89,37 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
 
   if (!isJoined) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-6">
-        <div className="w-full max-w-sm bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
-          <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
-            <User className="w-6 h-6" />
+      <QueryClientProvider client={queryClient}>
+        <div className="flex flex-col items-center justify-center h-full p-6">
+          <div className="w-full max-w-sm bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
+            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
+              <User className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Welcome to {conversation.business.name}</h2>
+            <p className="text-sm text-zinc-500 mb-6">Please enter your name to start chatting.</p>
+            
+            <form onSubmit={handleJoin} className="space-y-4">
+              <Input 
+                placeholder="Your Name" 
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                required
+                autoFocus
+                className="text-center"
+              />
+              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                Start Chat
+              </Button>
+            </form>
           </div>
-          <h2 className="text-xl font-bold mb-2">Welcome to {conversation.business.name}</h2>
-          <p className="text-sm text-zinc-500 mb-6">Please enter your name to start chatting.</p>
-          
-          <form onSubmit={handleJoin} className="space-y-4">
-            <Input 
-              placeholder="Your Name" 
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              required
-              autoFocus
-              className="text-center"
-            />
-            <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
-              Start Chat
-            </Button>
-          </form>
         </div>
-      </div>
+      </QueryClientProvider>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950/50">
+    <QueryClientProvider client={queryClient}>
+      <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950/50">
       <ThreadHeader
         conversation={conversation}
         currentUserId={null}
@@ -143,5 +149,6 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
         scrollToBottom={() => virtuosoRef.current?.scrollToIndex({ index: 'LAST', behavior: 'smooth' })}
       />
     </div>
+    </QueryClientProvider>
   );
 }
