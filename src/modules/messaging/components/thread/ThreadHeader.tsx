@@ -49,7 +49,7 @@ export function ThreadHeader({
     }
     headerSubtitle = `${conversation.participants?.length || 0} members`
   } else if (isGuest) {
-    headerTitle = conversation.guestName || conversation.client?.displayName || 'Client/Guest Chat'
+    headerTitle = conversation.title || conversation.guestName || conversation.client?.displayName || 'Client/Guest Chat'
     headerSubtitle = 'Temporary External Chat'
   }
 

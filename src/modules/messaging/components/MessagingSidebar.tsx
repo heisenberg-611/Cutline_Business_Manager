@@ -65,7 +65,7 @@ export function MessagingSidebar({ currentUserId, isAdmin }: { currentUserId: st
                 title = names || 'Group Chat'
               }
             } else if (isGuest) {
-              title = conv.guestName || conv.client?.displayName || 'Client/Guest Chat'
+              title = conv.title || conv.guestName || conv.client?.displayName || 'Client/Guest Chat'
             } else if (otherParticipant) {
               title = `${otherParticipant.firstName} ${otherParticipant.lastName}`
             }
