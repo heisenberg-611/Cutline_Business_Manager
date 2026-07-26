@@ -11,7 +11,12 @@ export default async function GuestChatPage({ params }: { params: Promise<{ toke
   const res = await getGuestChatByToken(token);
   
   if (!res.success || !res.conversation) {
-    return notFound();
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center p-4 text-center">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">Chat Link Expired</h1>
+        <p className="text-zinc-500">This chat box has expired or been deleted by the business.</p>
+      </div>
+    );
   }
   
   return (

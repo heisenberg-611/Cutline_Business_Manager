@@ -77,7 +77,13 @@ export function ThreadHeader({
 
   const handleDeleteChat = async () => {
     if (!conversation) return
-    const confirmed = confirm('Are you sure you want to delete this chat? This cannot be undone.')
+    
+    let promptMsg = 'Are you sure you want to delete this chat? This cannot be undone.'
+    if (isAdmin && isGuest) {
+      promptMsg = 'Are you sure you want to permanently delete this guest chat? The guest will no longer be able to access the link.'
+    }
+    
+    const confirmed = confirm(promptMsg)
     if (!confirmed) return
     
     setIsDeletingChat(true)

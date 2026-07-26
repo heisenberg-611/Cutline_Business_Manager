@@ -464,15 +464,31 @@ export async function createBusinessGuestChatLink() {
   const { v4: uuidv4 } = await import('uuid')
   const token = uuidv4()
   
+  // Get creator info
+  const creator = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { firstName: true, lastName: true }
+  })
+  const creatorName = [creator?.firstName, creator?.lastName].filter(Boolean).join(' ') || 'Member'
+  
+  // Get all admins in the org
+  const admins = await prisma.businessMembership.findMany({
+    where: { businessId: orgId, role: 'org:admin' },
+    select: { userId: true }
+  })
+  
+  // Ensure uniqueness of participants
+  const participantIds = new Set([userId, ...admins.map(a => a.userId)])
+
   const conversation = await prisma.conversation.create({
     data: {
       businessId: orgId,
       type: 'GUEST_LINK',
       guestToken: token,
       createdBy: userId,
-      title: 'Temporary Client Chat',
+      title: `Guest Chat (created by ${creatorName})`,
       participants: {
-        create: { userId } // Add creator as a participant to see it in their sidebar
+        create: Array.from(participantIds).map(id => ({ userId: id }))
       }
     }
   })
