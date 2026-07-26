@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { sendGuestMessage, getNewGuestMessages } from '@/modules/messaging/guest-actions';
-import { Send, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { MessageItem } from '@/modules/messaging/components/thread/MessageItem';
+import { MessageList } from '@/modules/messaging/components/thread/MessageList';
+import { ThreadHeader } from '@/modules/messaging/components/thread/ThreadHeader';
+import { MessageComposer } from '@/modules/messaging/components/thread/MessageComposer';
+import { VirtuosoHandle } from 'react-virtuoso';
 
 export function GuestChatUI({ token, conversation }: { token: string, conversation: any }) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const [content, setContent] = useState('');
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
   const [isSending, setIsSending] = useState(false);
   
   const hasIdentity = !!conversation.guestName || !!conversation.client;
@@ -42,10 +44,7 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
     return () => clearInterval(interval);
   }, [isJoined, token, messages, conversation.createdAt]);
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,23 +53,32 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
     }
   };
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim() || isSending) return;
-
-    const messageContent = content;
-    setContent('');
+  const handleSend = async (text: string) => {
     setIsSending(true);
 
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      content: text,
+      createdAt: new Date().toISOString(),
+      isGuest: true,
+      senderId: null,
+      isOptimistic: true
+    };
+    
+    setMessages(prev => [...prev, optimisticMsg]);
+
     try {
-      const res = await sendGuestMessage(token, messageContent, guestName);
+      const res = await sendGuestMessage(token, text, guestName);
       if (res.success && res.message) {
-        setMessages(prev => [...prev, { ...res.message, isOptimistic: true }]);
+        setMessages(prev => prev.map(m => m.id === tempId ? res.message : m));
+      } else {
+        throw new Error('Failed to send');
       }
     } catch (err) {
       console.error(err);
-      // fallback if action fails, restore content
-      setContent(messageContent);
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      throw err;
     } finally {
       setIsSending(false);
     }
@@ -106,44 +114,34 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
 
   return (
     <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950/50">
-      <div className="flex-1 overflow-y-auto space-y-1 py-4">
-        {messages.length === 0 ? (
-          <div className="text-center text-zinc-500 my-10 text-sm">
-            No messages yet. Send a message to start the conversation!
-          </div>
-        ) : (
-          messages.map((msg: any) => (
-            <MessageItem
-              key={msg.id || msg.createdAt}
-              msg={msg}
-              currentUserId={null}
-              conversation={conversation}
-              isAdmin={false}
-            />
-          ))
-        )}
-        <div ref={bottomRef} />
-      </div>
+      <ThreadHeader
+        conversation={conversation}
+        currentUserId={null}
+        isAdmin={false}
+        isUpdatingSlowMode={false}
+        updateSlowMode={() => {}}
+      />
 
-      <div className="flex-none p-2 sm:p-4 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">
-        <form onSubmit={handleSend} className="flex gap-2">
-          <Input 
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 rounded-full px-4 bg-zinc-50 dark:bg-zinc-800"
-            disabled={isSending}
-          />
-          <Button 
-            type="submit" 
-            disabled={!content.trim() || isSending}
-            size="icon"
-            className="rounded-full shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </form>
-      </div>
+      <MessageList
+        messages={messages}
+        currentUserId={null}
+        conversation={conversation}
+        isAdmin={false}
+        virtuosoRef={virtuosoRef}
+        hasNextPage={false}
+        isFetchingNextPage={false}
+        fetchNextPage={() => {}}
+        onDeleteMessage={() => {}}
+      />
+
+      <MessageComposer
+        onSend={handleSend}
+        isSending={isSending}
+        cooldownRemaining={0}
+        isBroadcast={false}
+        isAdmin={false}
+        scrollToBottom={() => virtuosoRef.current?.scrollToIndex({ index: 'LAST', behavior: 'smooth' })}
+      />
     </div>
   );
 }

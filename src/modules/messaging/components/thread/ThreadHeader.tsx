@@ -9,7 +9,7 @@ import { toggleMuteConversation, deleteConversation } from '../../actions'
 
 export interface ThreadHeaderProps {
   conversation: any
-  currentUserId: string
+  currentUserId: string | null
   isAdmin: boolean
   isUpdatingSlowMode: boolean
   updateSlowMode: (data: { enabled: boolean, cooldown: number }) => void
@@ -49,8 +49,13 @@ export function ThreadHeader({
     }
     headerSubtitle = `${conversation.participants?.length || 0} members`
   } else if (isGuest) {
-    headerTitle = conversation.guestName || conversation.client?.displayName || conversation.title || 'Client/Guest Chat'
-    headerSubtitle = 'Temporary External Chat'
+    if (!currentUserId && conversation.business?.name) {
+      headerTitle = conversation.business.name
+      headerSubtitle = 'Support & Feedback Chat'
+    } else {
+      headerTitle = conversation.guestName || conversation.client?.displayName || conversation.title || 'Client/Guest Chat'
+      headerSubtitle = 'Temporary External Chat'
+    }
   }
 
   const handleToggleMute = async () => {
@@ -100,14 +105,16 @@ export function ThreadHeader({
   return (
     <div className="p-3 sm:p-4 border-b flex items-center justify-between bg-background shrink-0">
       <div className="flex items-center gap-3">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => router.push('/dashboard/messages')} 
-          className="md:hidden mr-0 -ml-2 h-8 w-8"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </Button>
+        {currentUserId && (
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => router.push('/dashboard/messages')} 
+            className="md:hidden mr-0 -ml-2 h-8 w-8"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </Button>
+        )}
         <div className={cn(
           "w-10 h-10 rounded-full flex items-center justify-center",
           isBroadcast ? "bg-blue-500/10 text-blue-500" : isGroup ? "bg-green-500/10 text-green-600" : isGuest ? "bg-purple-500/10 text-purple-600" : "bg-primary/10 text-primary"

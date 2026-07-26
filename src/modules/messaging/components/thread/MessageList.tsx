@@ -5,7 +5,7 @@ import { MessageItem } from './MessageItem'
 
 export interface MessageListProps {
   messages: any[]
-  currentUserId: string
+  currentUserId: string | null
   conversation: any
   isAdmin: boolean
   virtuosoRef: React.Ref<VirtuosoHandle>
