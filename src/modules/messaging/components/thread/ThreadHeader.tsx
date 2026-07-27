@@ -54,7 +54,17 @@ export function ThreadHeader({
       headerSubtitle = 'Support & Feedback Chat'
     } else {
       headerTitle = conversation.guestName || conversation.client?.displayName || conversation.title || 'Client/Guest Chat'
-      headerSubtitle = 'Temporary External Chat'
+      
+      const creatorMatch = conversation.title?.match(/\(created by (.*?)\)/i)
+      if (creatorMatch) {
+        headerSubtitle = `Temporary External Chat • Created by ${creatorMatch[1]}`
+        // Optionally clean up the title if we extracted the creator and fell back to conversation.title
+        if (headerTitle === conversation.title) {
+          headerTitle = 'Guest Chat'
+        }
+      } else {
+        headerSubtitle = 'Temporary External Chat'
+      }
     }
   }
 
