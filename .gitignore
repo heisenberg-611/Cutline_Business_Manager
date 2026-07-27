@@ -47,3 +47,6 @@ user-data-export.json
 
 # Linter output
 lint.json
+
+# Agents
+.agents/
