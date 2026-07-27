@@ -49,7 +49,13 @@ The application is built as a Modular Monolith, leveraging Server Components and
 | **ORM** | [Prisma](https://www.prisma.io/) | Schema management, migrations, and direct database querying (with Prisma Accelerate as an edge-caching backup). |
 | **Auth & Identity** | [Clerk](https://clerk.com/) | B2B multi-tenant organization management and secure Role-Based Access Control (RBAC). |
 | **Styling & UI** | [Tailwind CSS v4](https://tailwindcss.com/) | Utility-first styling paired with unstyled [shadcn/ui](https://ui.shadcn.com/) primitives. |
+| **Forms & Validation** | React Hook Form + [Zod](https://zod.dev/) | Type-safe form handling and schema validation. |
+| **Data Fetching** | [TanStack Query](https://tanstack.com/query) | Client-side caching and state synchronization. |
 | **Email Delivery** | [Resend](https://resend.com/) | Transactional email delivery via React-based email templates (`@react-email`). |
+| **Background Jobs** | [Upstash QStash](https://upstash.com/qstash) | Scheduled and deferred job processing (e.g. analytics rollups). |
+| **File Storage** | [Vercel Blob](https://vercel.com/storage/blob) | Asset and attachment storage. |
+| **Push Notifications** | [OneSignal](https://onesignal.com/) | Web push notifications for workflow alerts. |
+| **PWA** | [Serwist](https://serwist.pages.dev/) | Installable, offline-capable service worker. |
 
 ### Core Architectural Decisions
 
@@ -87,6 +93,11 @@ The application is built as a Modular Monolith, leveraging Server Components and
 - **Direct & Group Chats:** Seamlessly communicate with team members in 1-on-1 direct messages or multi-participant group chats.
 - **Admin Broadcasts:** Dedicated announcement channels where admins can blast updates to the entire organization (read-only for members).
 - **Smart Chat Management:** Features include mute notifications, soft-deletion for members (hides history until new message), and hard-deletion capabilities for admins.
+
+### 6. Client-Facing Public Portals
+- **Guest Chat, Feedback & Review Links:** Secure, token-based links let clients join a conversation thread, submit feedback, or leave a testimonial without needing an account.
+- **Client Intake Forms:** Public intake forms automatically create pipeline projects in the correct business workspace.
+- **Installable & Offline-Ready:** A Serwist-powered service worker enables PWA installation and web push notifications (OneSignal) for real-time workflow alerts.
 
 ## ⚡ Performance & Benchmarks
 
@@ -168,6 +179,7 @@ DIRECT_URL="postgresql://user:pass@host:port/db?sslmode=require"
 # Clerk Authentication
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
 CLERK_SECRET_KEY="sk_test_..."
+CLERK_WEBHOOK_SECRET="whsec_..." # From Clerk Dashboard > Webhooks, used to verify inbound events
 
 # Routing Defaults
 NEXT_PUBLIC_CLERK_SIGN_IN_URL="/login"
@@ -178,6 +190,18 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_OUT_URL="/login"
 
 # Resend Mailer
 RESEND_API_KEY="re_..."
+RESEND_WEBHOOK_SECRET="whsec_..." # Verifies inbound email webhooks
+
+# App URL (used to build absolute links in emails/webhooks)
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# Optional integrations
+QSTASH_TOKEN="..."                     # Upstash QStash, required for background jobs
+UPSTASH_REDIS_REST_URL="..."           # Upstash Redis, enables API rate limiting
+UPSTASH_REDIS_REST_TOKEN="..."
+NEXT_PUBLIC_ONESIGNAL_APP_ID="..."     # Web push notifications
+ONESIGNAL_REST_API_KEY="..."
+NEXT_PUBLIC_GIPHY_API_KEY="..."        # GIF picker in chat
 ```
 
 ### 3. Database Initialization
@@ -185,9 +209,6 @@ RESEND_API_KEY="re_..."
 ```bash
 # Push the schema and apply migrations
 npx prisma migrate dev
-
-# (Optional) Seed the database for testing
-npm run seed
 ```
 
 *Note: You must route Clerk webhooks locally to sync Organization data. Use the [Svix CLI](https://docs.svix.com/cli):*
@@ -211,14 +232,19 @@ The codebase follows a Domain-Driven Design approach within the Next.js `app` di
 src/
 ├── app/                  # Next.js App Router (Layouts & Routes)
 ├── components/           # Global UI components (shadcn/ui primitives)
-├── lib/                  # Shared utilities (PDF gen, email services)
+├── lib/                  # Shared utilities (PDF gen, email services, background jobs)
 └── modules/              # Core Domain Modules
+    ├── analytics/        # Dashboarding & revenue/DSO aggregation
     ├── assets/           # Asset & licensing tracking
     ├── clients/          # Client CRM operations
     ├── core/             # Auth helpers & database configuration
+    ├── feedback/         # Client feedback requests & responses
     ├── financials/       # Invoicing & payment ledgers
+    ├── messaging/        # Internal team chat & broadcasts
+    ├── notifications/    # In-app notification hub
     ├── projects/         # Kanban pipeline & task management
-    └── settings/         # Tenant configurations & RBAC
+    ├── settings/         # Tenant configurations & RBAC
+    └── workflow/         # Configurable pipeline stage templates
 ```
 
 ## 🤝 Contributing
