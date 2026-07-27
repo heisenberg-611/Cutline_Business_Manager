@@ -63,3 +63,20 @@ export async function sendGuestMessage(token: string, content: string, guestName
 
   return { success: true, message };
 }
+
+export async function saveGuestName(token: string, name: string) {
+  const conversation = await prisma.conversation.findUnique({
+    where: { guestToken: token }
+  });
+  
+  if (!conversation) return { success: false, error: 'Chat not found' };
+  
+  if (name && conversation.guestName !== name) {
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: { guestName: name }
+    });
+  }
+  
+  return { success: true };
+}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { sendGuestMessage, getNewGuestMessages } from '@/modules/messaging/guest-actions';
+import { sendGuestMessage, getNewGuestMessages, saveGuestName } from '@/modules/messaging/guest-actions';
 import { User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,7 +52,15 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (guestName.trim()) {
-      setIsJoined(true);
+      setIsSending(true);
+      try {
+        await saveGuestName(token, guestName);
+        setIsJoined(true);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
