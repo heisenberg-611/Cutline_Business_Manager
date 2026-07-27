@@ -211,7 +211,7 @@ export function ThreadHeader({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {isGroup && (
+        {currentUserId && isGroup && (
           <Button 
             variant="ghost" 
             size="icon" 
@@ -223,7 +223,7 @@ export function ThreadHeader({
             {isMuting ? <Loader2 className="w-4 h-4 animate-spin" /> : conversation.myParticipantRecord?.isMuted ? <BellOff className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </Button>
         )}
-        {isGuest && conversation.guestToken && (
+        {currentUserId && isGuest && conversation.guestToken && (
           <Button
             variant="ghost"
             size="icon"
@@ -238,7 +238,7 @@ export function ThreadHeader({
             <Copy className="w-4 h-4" />
           </Button>
         )}
-        {!isBroadcast && (
+        {currentUserId && !isBroadcast && (
           <Button
             variant="ghost"
             size="icon"
