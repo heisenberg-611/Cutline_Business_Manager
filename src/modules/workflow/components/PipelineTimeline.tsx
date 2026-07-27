@@ -4,7 +4,8 @@ import React from 'react'
 import Link from 'next/link'
 import { format, isBefore, startOfToday, isThisWeek, isSameWeek, addWeeks } from 'date-fns'
 import { Badge } from "@/components/ui/badge"
-import { CalendarClock, AlertCircle } from 'lucide-react'
+import { CalendarClock, AlertCircle, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type Project = {
   id: string
@@ -39,14 +40,24 @@ export function PipelineTimeline({ projects, stages }: { projects: Project[], st
   const nextWeekDate = addWeeks(today, 1)
 
   // Grouping logic
+  const completed: Project[] = []
   const overdue: Project[] = []
   const thisWeek: Project[] = []
   const nextWeek: Project[] = []
   const later: Project[] = []
   const noDeadline: Project[] = []
 
+  const maxOrder = stages.length > 0 ? Math.max(...stages.map(s => s.orderIndex)) : -1
+  const isProjectCompleted = (stageId: string | null) => {
+    if (!stageId || maxOrder === -1) return false
+    const stage = stages.find(s => s.id === stageId)
+    return stage?.orderIndex === maxOrder
+  }
+
   projects.forEach(project => {
-    if (!project.deadline) {
+    if (isProjectCompleted(project.statusStageId)) {
+      completed.push(project)
+    } else if (!project.deadline) {
       noDeadline.push(project)
     } else {
       const date = new Date(project.deadline)
@@ -68,13 +79,15 @@ export function PipelineTimeline({ projects, stages }: { projects: Project[], st
   thisWeek.sort(sortByDate)
   nextWeek.sort(sortByDate)
   later.sort(sortByDate)
+  completed.sort(sortByDate)
 
   const groups: TimeGroup[] = [
     { id: 'overdue', title: 'Overdue', color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20', projects: overdue },
     { id: 'this-week', title: 'This Week', color: 'text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20', projects: thisWeek },
     { id: 'next-week', title: 'Next Week', color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20', projects: nextWeek },
     { id: 'later', title: 'Later', color: 'text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700', projects: later },
-    { id: 'no-deadline', title: 'No Deadline', color: 'text-zinc-500 bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800', projects: noDeadline }
+    { id: 'no-deadline', title: 'No Deadline', color: 'text-zinc-500 bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800', projects: noDeadline },
+    { id: 'completed', title: 'Completed', color: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-500/20', projects: completed }
   ]
 
   return (
@@ -121,9 +134,9 @@ export function PipelineTimeline({ projects, stages }: { projects: Project[], st
 
                 {project.deadline && (
                   <div className="pt-3 mt-auto border-t border-zinc-100 dark:border-zinc-800 flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
-                      {group.id === 'overdue' ? <AlertCircle className="w-3.5 h-3.5 text-red-500" /> : <CalendarClock className="w-3.5 h-3.5" />}
-                      <span className={group.id === 'overdue' ? 'text-red-600 dark:text-red-400 font-medium' : ''}>
+                    <div className={cn("flex items-center gap-1.5", group.id === 'overdue' ? "text-red-600 dark:text-red-400" : "text-zinc-600 dark:text-zinc-400")}>
+                      {group.id === 'overdue' ? <AlertCircle className="w-3.5 h-3.5" /> : group.id === 'completed' ? <Check className="w-3.5 h-3.5" /> : <CalendarClock className="w-3.5 h-3.5" />}
+                      <span className={group.id === 'overdue' ? 'font-medium' : ''}>
                         {format(new Date(project.deadline), 'MMM d, yyyy')}
                       </span>
                     </div>
