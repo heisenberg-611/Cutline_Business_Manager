@@ -2,8 +2,8 @@ name: Daily Supabase Backup & Aiven Sync
 
 on:
   schedule:
-    # Runs at 02:00 UTC every day
-    - cron: '0 2 * * *'
+    # Runs every 6 hours
+    - cron: '0 */6 * * *'
   workflow_dispatch: # Allows manual trigger from the Actions tab
 
 jobs:
