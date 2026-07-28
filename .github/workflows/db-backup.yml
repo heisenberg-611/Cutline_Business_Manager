@@ -9,19 +9,24 @@ on:
 jobs:
   backup_and_sync:
     runs-on: ubuntu-latest
+    env:
+      FILENAME: ""
 
     steps:
-      - name: Install PostgreSQL Client
+      - name: Install PostgreSQL 17 Client
         run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
           sudo apt-get update
-          sudo apt-get install -y postgresql-client
+          sudo apt-get install -y postgresql-client-17
 
       - name: Dump Database from Supabase
         env:
           SUPABASE_DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
         run: |
-          # Generate filename with current date
-          FILENAME="supabase_backup_$(date +'%Y-%m-%d').sql"
+          # Generate filename with current date and time
+          FILENAME="supabase_backup_$(date +'%Y-%m-%d_%H-%M-%S').sql"
           echo "FILENAME=$FILENAME" >> $GITHUB_ENV
           
           # Dump ONLY the public schema, and ensure we drop tables before recreating them
@@ -34,7 +39,7 @@ jobs:
         run: |
           # Push the clean dump straight into Aiven.
           # -v ON_ERROR_STOP=1 ensures the script fails immediately if Aiven rejects it
-          psql -v ON_ERROR_STOP=1 "$AIVEN_DIRECT_URL" -f "${{ env.FILENAME }}"
+          psql -v ON_ERROR_STOP=1 "$AIVEN_DIRECT_URL" -f "$FILENAME"
 
       - name: Encrypt Backup Archive
         env:
@@ -42,10 +47,10 @@ jobs:
         run: |
           # Encrypt the raw SQL file with military-grade AES-256
           # --batch and --yes prevent interactive prompts in the action
-          gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase "$BACKUP_PASSWORD" -o "${{ env.FILENAME }}.gpg" "${{ env.FILENAME }}"
+          gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase "$BACKUP_PASSWORD" -o "$FILENAME.gpg" "$FILENAME"
           
           # Delete the unencrypted raw file immediately
-          rm "${{ env.FILENAME }}"
+          rm "$FILENAME"
 
       - name: Upload Encrypted Artifact
         uses: actions/upload-artifact@v4
