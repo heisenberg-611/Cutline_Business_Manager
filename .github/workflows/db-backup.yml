@@ -44,6 +44,14 @@ jobs:
           # -v ON_ERROR_STOP=1 ensures the script fails immediately if Aiven rejects it
           psql -v ON_ERROR_STOP=1 "$AIVEN_DIRECT_URL" -f "$FILENAME"
 
+      - name: Restore to Neon (Live Standby)
+        env:
+          NEON_DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          # Push the clean dump straight into Neon.
+          # -v ON_ERROR_STOP=1 ensures the script fails immediately if Neon rejects it
+          psql -v ON_ERROR_STOP=1 "$NEON_DIRECT_URL" -f "$FILENAME"
+
       - name: Encrypt Backup Archive
         env:
           BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
