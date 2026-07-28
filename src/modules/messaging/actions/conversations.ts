@@ -83,7 +83,7 @@ export async function getOrCreateDirectConversation(targetUserId: string) {
  * Updates the slow mode settings for a conversation (Admins only)
  */
 export async function updateSlowMode(conversationId: string, enabled: boolean, cooldown: number) {
-  const { userId, orgRole, conversation } = await authorizeConversationWrite(conversationId)
+  const { userId, orgId, orgRole, conversation } = await authorizeConversationWrite(conversationId)
   
   const isAdmin = orgRole === 'org:admin'
   
@@ -92,7 +92,7 @@ export async function updateSlowMode(conversationId: string, enabled: boolean, c
   }
 
   await prisma.conversation.update({
-    where: { id: conversationId },
+    where: { id: conversationId, businessId: orgId },
     data: {
       slowModeEnabled: enabled,
       slowModeCooldown: cooldown

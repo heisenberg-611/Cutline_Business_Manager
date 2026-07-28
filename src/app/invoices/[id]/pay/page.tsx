@@ -8,8 +8,18 @@ export default async function InvoicePayPage({ params }: { params: Promise<{ id:
   const invoice = await prisma.invoice.findUnique({
     where: { id: resolvedParams.id },
     include: {
-      business: true,
-      client: true,
+      business: {
+        select: {
+          name: true,
+          paymentInstructions: true
+        }
+      },
+      client: {
+        select: {
+          displayName: true,
+          companyName: true
+        }
+      },
       lineItems: true
     }
   })

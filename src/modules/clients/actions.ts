@@ -118,6 +118,14 @@ export async function deleteClient(clientId: string) {
   })
   if (!client) throw new Error('Client not found')
 
+  const invoiceCount = await prisma.invoice.count({
+    where: { clientId, businessId: orgId }
+  })
+
+  if (invoiceCount > 0) {
+    throw new Error(`Cannot delete client. This client has ${invoiceCount} invoice${invoiceCount === 1 ? '' : 's'}. Please archive the client or void the invoices first.`)
+  }
+
   await prisma.client.deleteMany({
     where: { id: clientId, businessId: orgId }
   })
