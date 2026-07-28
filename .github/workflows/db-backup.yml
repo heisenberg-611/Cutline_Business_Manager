@@ -1,0 +1,55 @@
+name: Daily Supabase Backup & Aiven Sync
+
+on:
+  schedule:
+    # Runs at 02:00 UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allows manual trigger from the Actions tab
+
+jobs:
+  backup_and_sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install PostgreSQL Client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Dump Database from Supabase
+        env:
+          SUPABASE_DIRECT_URL: ${{ secrets.SUPABASE_DIRECT_URL }}
+        run: |
+          # Generate filename with current date
+          FILENAME="supabase_backup_$(date +'%Y-%m-%d').sql"
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+          
+          # Dump ONLY the public schema, and ensure we drop tables before recreating them
+          # --no-owner and --no-privileges ensure we don't try to assign roles that don't exist on Aiven
+          pg_dump --schema=public --clean --if-exists --no-owner --no-privileges "$SUPABASE_DIRECT_URL" > "$FILENAME"
+
+      - name: Restore to Aiven (Live Standby)
+        env:
+          AIVEN_DIRECT_URL: ${{ secrets.AIVEN_DIRECT_URL }}
+        run: |
+          # Push the clean dump straight into Aiven.
+          # -v ON_ERROR_STOP=1 ensures the script fails immediately if Aiven rejects it
+          psql -v ON_ERROR_STOP=1 "$AIVEN_DIRECT_URL" -f "${{ env.FILENAME }}"
+
+      - name: Encrypt Backup Archive
+        env:
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: |
+          # Encrypt the raw SQL file with military-grade AES-256
+          # --batch and --yes prevent interactive prompts in the action
+          gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase "$BACKUP_PASSWORD" -o "${{ env.FILENAME }}.gpg" "${{ env.FILENAME }}"
+          
+          # Delete the unencrypted raw file immediately
+          rm "${{ env.FILENAME }}"
+
+      - name: Upload Encrypted Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILENAME }}-gpg
+          path: ${{ env.FILENAME }}.gpg
+          retention-days: 90
