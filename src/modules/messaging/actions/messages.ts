@@ -2,10 +2,10 @@
 
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
+import * as Ably from 'ably'
 import { authorizeConversationRead, authorizeConversationWrite } from '../auth'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
-import { sendPushNotification } from '@/lib/onesignal'
-
+import { createManyNotifications } from '@/modules/notifications/services'
 
 /**
  * Sends a message to a conversation.
@@ -46,31 +46,51 @@ export async function sendMessage(conversationId: string, content: string) {
       conversationId,
       senderId: userId,
       content: content.trim()
+    },
+    include: {
+      sender: {
+        include: {
+          memberships: {
+            where: { businessId: orgId }
+          }
+        }
+      }
     }
   })
+
+  if (process.env.ABLY_API_KEY) {
+    try {
+      const ably = new Ably.Rest(process.env.ABLY_API_KEY);
+      
+      const channel = ably.channels.get(`conversation-${conversationId}`);
+      await channel.publish('new-message', message);
+
+      const businessChannel = ably.channels.get(`business-${orgId}`);
+      await businessChannel.publish('sidebar-update', {
+        conversationId,
+        message,
+        timestamp: new Date()
+      });
+    } catch (e) {
+      console.error('Ably publish error:', e);
+    }
+  }
 
   // Group 7: Notifications
   if (conversation.type === 'DIRECT' || conversation.type === 'GROUP') {
     const recipients = conversation.participants.filter(p => p.userId !== userId && !p.isMuted)
     
     if (recipients.length > 0) {
-      await prisma.notification.createMany({
-        data: recipients.map(recipient => ({
+      await createManyNotifications(
+        recipients.map(r => r.userId),
+        {
           businessId: orgId,
-          userId: recipient.userId,
           title: conversation.type === 'GROUP' ? `New Message in ${conversation.title || 'Group'}` : 'New Direct Message',
           message: 'You have received a new message.',
           type: 'message',
           actionUrl: `/dashboard/messages/${conversationId}`
-        }))
-      })
-
-      await sendPushNotification(
-        conversation.type === 'GROUP' ? `New Message in ${conversation.title || 'Group'}` : 'New Direct Message',
-        'You have received a new message.',
-        recipients.map(r => r.userId),
-        `/dashboard/messages/${conversationId}`
-      ).catch(console.error)
+        }
+      )
     }
   }
 
@@ -124,34 +144,6 @@ export async function getMessages(conversationId: string, cursor?: string, take 
   }
 }
 
-/**
- * Fetches only new messages created after a specific date.
- */
-export async function getNewMessages(conversationId: string, afterDate: Date) {
-  const { userId, conversation } = await authorizeConversationRead(conversationId)
-
-  const participant = conversation.participants.find(p => p.userId === userId)
-  const deletedAt = participant?.deletedAt
-  
-  // If they soft-deleted, we only fetch messages after deletedAt OR afterDate (whichever is newer)
-  const effectiveAfterDate = deletedAt && deletedAt > afterDate ? deletedAt : afterDate
-
-  const messages = await prisma.message.findMany({
-    where: { 
-      conversationId, 
-      deletedAt: null,
-      createdAt: {
-        gt: effectiveAfterDate
-      }
-    },
-    orderBy: { createdAt: 'asc' }, // Get them oldest first so they append correctly
-    include: {
-      sender: true
-    }
-  })
-
-  return messages
-}
 
 /**
  * Admins can delete specific messages (mainly used for broadcast messages).

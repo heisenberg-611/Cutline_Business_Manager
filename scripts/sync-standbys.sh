@@ -23,7 +23,7 @@ export $(grep -v '^#' .env | xargs)
 echo "--- Syncing Neon ---"
 if [ -n "$NEON_DIRECT_URL" ]; then
   echo "Resolving baseline..."
-  DATABASE_URL="$NEON_DIRECT_URL" DIRECT_URL="$NEON_DIRECT_URL" npx prisma migrate resolve --applied 0_init
+  DATABASE_URL="$NEON_DIRECT_URL" DIRECT_URL="$NEON_DIRECT_URL" npx prisma migrate resolve --applied 0_init || true
   
   echo "Deploying schema hardening..."
   DATABASE_URL="$NEON_DIRECT_URL" DIRECT_URL="$NEON_DIRECT_URL" npx prisma migrate deploy
@@ -34,7 +34,7 @@ fi
 echo "--- Syncing Aiven ---"
 if [ -n "$AIVEN_DIRECT_URL" ]; then
   echo "Resolving baseline..."
-  DATABASE_URL="$AIVEN_DIRECT_URL" DIRECT_URL="$AIVEN_DIRECT_URL" npx prisma migrate resolve --applied 0_init
+  DATABASE_URL="$AIVEN_DIRECT_URL" DIRECT_URL="$AIVEN_DIRECT_URL" npx prisma migrate resolve --applied 0_init || true
   
   echo "Deploying schema hardening..."
   DATABASE_URL="$AIVEN_DIRECT_URL" DIRECT_URL="$AIVEN_DIRECT_URL" npx prisma migrate deploy

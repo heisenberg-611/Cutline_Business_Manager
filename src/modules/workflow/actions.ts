@@ -3,7 +3,7 @@
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
-import { sendPushNotification } from '@/lib/onesignal'
+import { createManyNotifications } from '@/modules/notifications/services'
 
 const DEFAULT_STAGES = [
   { name: 'Idea / Discovery', orderIndex: 0 },
@@ -162,23 +162,16 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
         const memberName = member ? `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email : 'A team member'
         
         if (admins.length > 0) {
-          await prisma.notification.createMany({
-            data: admins.map(admin => ({
+          await createManyNotifications(
+            admins.map(a => a.userId),
+            {
               businessId: orgId,
-              userId: admin.userId,
               title: 'Project Ready for Review',
               message: `Project "${project.title}" is ready for review by ${memberName}.`,
               type: 'project',
               actionUrl: `/dashboard/projects/${projectId}`
-            }))
-          })
-
-          await sendPushNotification(
-            'Project Ready for Review',
-            `Project "${project.title}" is ready for review by ${memberName}.`,
-            admins.map(a => a.userId),
-            `/dashboard/projects/${projectId}`
-          ).catch(console.error)
+            }
+          )
         }
       }
     }
@@ -252,23 +245,16 @@ export async function updateProjectOrder(updates: { id: string, statusStageId: s
             const memberName = member ? `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email : 'A team member'
             
             if (admins.length > 0) {
-              await prisma.notification.createMany({
-                data: admins.map(admin => ({
+              await createManyNotifications(
+                admins.map(a => a.userId),
+                {
                   businessId: orgId,
-                  userId: admin.userId,
                   title: 'Project Ready for Review',
                   message: `Project "${project.title}" is ready for review by ${memberName}.`,
                   type: 'project',
                   actionUrl: `/dashboard/projects/${project.id}`
-                }))
-              })
-
-              await sendPushNotification(
-                'Project Ready for Review',
-                `Project "${project.title}" is ready for review by ${memberName}.`,
-                admins.map(a => a.userId),
-                `/dashboard/projects/${project.id}`
-              ).catch(console.error)
+                }
+              )
             }
           }
         }
@@ -319,23 +305,16 @@ export async function submitMemberDelivery(projectId: string, driveLink: string)
       const memberName = member ? `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email : 'A team member'
       
       if (admins.length > 0) {
-        await prisma.notification.createMany({
-          data: admins.map(admin => ({
+        await createManyNotifications(
+          admins.map(a => a.userId),
+          {
             businessId: orgId,
-            userId: admin.userId,
             title: 'Delivery Link Submitted',
             message: `${memberName} has attached a delivery link for "${project.title}".`,
             type: 'project',
             actionUrl: `/dashboard/projects/${project.id}`
-          }))
-        })
-
-        await sendPushNotification(
-          'Delivery Link Submitted',
-          `${memberName} has attached a delivery link for "${project.title}".`,
-          admins.map(a => a.userId),
-          `/dashboard/projects/${project.id}`
-        ).catch(console.error)
+          }
+        )
       }
     }
   }

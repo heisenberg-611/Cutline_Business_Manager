@@ -12,7 +12,6 @@ export {
 
 export {
   getMessages,
-  getNewMessages,
   sendMessage,
   deleteMessage
 } from './actions/messages'

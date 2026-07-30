@@ -33,6 +33,7 @@ export function MessageList({
         data={messages}
         initialTopMostItemIndex={messages.length - 1}
         firstItemIndex={0}
+        followOutput="smooth"
         startReached={() => {
           if (hasNextPage && !isFetchingNextPage) {
             fetchNextPage()

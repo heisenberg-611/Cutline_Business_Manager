@@ -4,8 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { authorizeConversationRead, authorizeConversationWrite } from '../auth'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
-import { sendPushNotification } from '@/lib/onesignal'
-
+import { createManyNotifications } from '@/modules/notifications/services'
 
 /**
  * Gets or creates a DIRECT conversation between the current user and a target user.
@@ -340,24 +339,17 @@ export async function createBroadcast(content: string) {
     })
 
     // Group 7: Notifications (notify all members who received it)
-    await tx.notification.createMany({
-      data: members.map(m => ({
+    await createManyNotifications(
+      members.map(m => m.userId),
+      {
         businessId: orgId,
-        userId: m.userId,
         title: 'New Broadcast Announcement',
         message: 'A new announcement has been posted.',
         type: 'message',
         actionUrl: `/dashboard/messages/${conversation.id}`
-      }))
-    })
-
-    // Group 7 (Push)
-    await sendPushNotification(
-      'New Broadcast Announcement',
-      'A new announcement has been posted.',
-      members.map(m => m.userId),
-      `/dashboard/messages/${conversation.id}`
-    ).catch(console.error)
+      },
+      tx
+    )
 
     return { conversation, message }
   })

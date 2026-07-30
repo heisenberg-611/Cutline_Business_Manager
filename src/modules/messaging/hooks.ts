@@ -2,27 +2,78 @@
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
+import { useAblyClient } from './components/AblyProvider'
 import { 
   getConversations, 
   getMessages, 
-  getNewMessages,
   sendMessage, 
   markConversationRead,
   updateSlowMode
 } from './actions'
-import { useMessagingConfig } from './components/QueryProvider'
+
+
+import { useAuth } from '@clerk/nextjs'
 
 /**
  * Polls the conversation list every 15 seconds to keep unread counts fresh.
  */
 export function useConversations() {
-  const { realtimeEnabled } = useMessagingConfig()
+  const ably = useAblyClient();
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['conversations'],
     queryFn: () => getConversations(),
-    refetchInterval: realtimeEnabled ? 15000 : false, // 15 seconds or manual
   })
+
+  // Real-time global sidebar updates
+  useEffect(() => {
+    if (!orgId || !ably) return;
+
+    const channelName = `business-${orgId}`;
+    const channel = ably.channels.get(channelName);
+
+    const onSidebarUpdate = (message: any) => {
+      const data = message.data; // { conversationId, message, timestamp }
+      
+      queryClient.setQueryData(['conversations'], (oldConvs: any[]) => {
+        if (!oldConvs) return oldConvs;
+        
+        let found = false;
+        const updated = oldConvs.map(conv => {
+          if (conv.id === data.conversationId) {
+            found = true;
+            return {
+              ...conv,
+              lastActivity: data.timestamp,
+              messages: [data.message]
+            };
+          }
+          return conv;
+        });
+
+        // If it's a new conversation not in our list, we should ideally refetch, 
+        // but sorting what we have is good enough for now.
+        if (!found) {
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          return oldConvs;
+        }
+
+        return updated.sort((a, b) => {
+          if (a.type === 'BROADCAST' && b.type !== 'BROADCAST') return -1;
+          if (b.type === 'BROADCAST' && a.type !== 'BROADCAST') return 1;
+          return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+        });
+      });
+    };
+
+    channel.subscribe('sidebar-update', onSidebarUpdate);
+
+    return () => {
+      channel.unsubscribe('sidebar-update', onSidebarUpdate);
+    };
+  }, [orgId, ably, queryClient]);
 
   return {
     ...query,
@@ -35,7 +86,6 @@ export function useConversations() {
  */
 export function useConversationMessages(conversationId: string | null, currentUserId?: string) {
   const queryClient = useQueryClient()
-  const { realtimeEnabled } = useMessagingConfig()
   
   const query = useInfiniteQuery({
     queryKey: ['messages', conversationId],
@@ -48,44 +98,57 @@ export function useConversationMessages(conversationId: string | null, currentUs
     enabled: !!conversationId
   })
 
-  // Real-time polling
-  useEffect(() => {
-    if (!realtimeEnabled || !conversationId) return
-    
-    const interval = setInterval(async () => {
-      const currentData = queryClient.getQueryData<any>(['messages', conversationId])
-      if (!currentData || !currentData.pages || currentData.pages.length === 0) return
-      
-      // Page 0 contains the newest messages
-      const firstPage = currentData.pages[0]
-      if (!firstPage.messages || firstPage.messages.length === 0) return
-      
-      const realMessages = firstPage.messages.filter((m: any) => !m.isOptimistic)
-      if (realMessages.length === 0) return
-      
-      const latestMessage = realMessages[realMessages.length - 1]
-      try {
-        const newMessages = await getNewMessages(conversationId, latestMessage.createdAt)
-        if (newMessages.length > 0) {
-          queryClient.setQueryData(['messages', conversationId], (old: any) => {
-            if (!old || !old.pages) return old
-            const newPages = [...old.pages]
-            newPages[0] = {
-              ...newPages[0],
-              messages: [...newPages[0].messages, ...newMessages.filter((m: any) => !m.isOptimistic)]
-            }
-            return { ...old, pages: newPages }
-          })
-        }
-      } catch (e) {
-        // ignore
-      }
-    }, 5000)
-    
-    return () => clearInterval(interval)
-  }, [realtimeEnabled, conversationId, queryClient])
+  const ably = useAblyClient();
 
-  // Mutation to send a message optimistically or invalidate
+  // Real-time via Ably WebSockets
+  useEffect(() => {
+    if (!conversationId || !ably) return;
+    
+    const channelName = `conversation-${conversationId}`;
+    const channel = ably.channels.get(channelName);
+    
+      const onMessage = (message: any) => {
+        const newMsg = message.data;
+        console.log('Admin received Ably message:', newMsg);
+        
+        queryClient.setQueryData(['messages', conversationId], (old: any) => {
+          if (!old || !old.pages) return old;
+          
+          // Check if message already exists
+          const exists = old.pages.some((p: any) => 
+            p.messages.some((m: any) => m.id === newMsg.id)
+          );
+          if (exists) return old;
+
+          const newPages = [...old.pages];
+          
+          // Anti-jitter: If Ably delivers our own message before the API resolves, swap the temp message!
+          if (newMsg.senderId === currentUserId) {
+            const optimisticIndex = newPages[0].messages.findIndex((m: any) => m.isOptimistic && m.content === newMsg.content);
+            if (optimisticIndex !== -1) {
+              const nextMessages = [...newPages[0].messages];
+              nextMessages[optimisticIndex] = newMsg;
+              newPages[0] = { ...newPages[0], messages: nextMessages };
+              return { ...old, pages: newPages };
+            }
+          }
+
+          newPages[0] = {
+            ...newPages[0],
+            messages: [...newPages[0].messages, newMsg]
+          };
+          return { ...old, pages: newPages };
+        });
+      };
+
+    channel.subscribe('new-message', onMessage);
+
+    return () => {
+      channel.unsubscribe('new-message', onMessage);
+    };
+  }, [conversationId, ably, queryClient, currentUserId]);
+
+  // Mutation to send a message optimistically
   const sendMutation = useMutation({
     mutationFn: (content: string) => {
       if (!conversationId) throw new Error('No active conversation')
@@ -95,15 +158,13 @@ export function useConversationMessages(conversationId: string | null, currentUs
       if (!conversationId) return
 
       await queryClient.cancelQueries({ queryKey: ['messages', conversationId] })
-      await queryClient.cancelQueries({ queryKey: ['conversations'] })
-
       const previousMessages = queryClient.getQueryData<any>(['messages', conversationId])
-      const previousConversations = queryClient.getQueryData<any[]>(['conversations'])
+      const tempId = `temp-${Date.now()}`;
 
       // Optimistically update messages
       if (previousMessages && previousMessages.pages && previousMessages.pages.length > 0) {
         const optimisticMessage = {
-          id: `temp-${Date.now()}`,
+          id: tempId,
           conversationId,
           senderId: currentUserId || 'optimistic',
           content,
@@ -123,41 +184,31 @@ export function useConversationMessages(conversationId: string | null, currentUs
         })
       }
 
-      // Optimistically update conversations list (sidebar)
-      if (previousConversations) {
-        queryClient.setQueryData(['conversations'], previousConversations.map(conv => {
-          if (conv.id === conversationId) {
-            return {
-              ...conv,
-              lastActivity: new Date(),
-              messages: [{
-                id: `temp-${Date.now()}`,
-                content,
-                createdAt: new Date()
-              }]
-            }
-          }
-          return conv
-        }).sort((a, b) => {
-          if (a.type === 'BROADCAST' && b.type !== 'BROADCAST') return -1;
-          if (b.type === 'BROADCAST' && a.type !== 'BROADCAST') return 1;
-          return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
-        }))
-      }
-
-      return { previousMessages, previousConversations }
+      return { previousMessages, tempId }
+    },
+    onSuccess: (realMessage, variables, context) => {
+      if (!realMessage) return;
+      // Replace the temp message with the real one, unless Ably already delivered it
+      queryClient.setQueryData(['messages', conversationId], (old: any) => {
+        if (!old || !old.pages) return old;
+        const newPages = [...old.pages];
+        
+        const ablyAlreadyDelivered = newPages.some(p => p.messages.some((m: any) => m.id === realMessage.id));
+        
+        newPages[0] = {
+          ...newPages[0],
+          messages: ablyAlreadyDelivered 
+            ? newPages[0].messages.filter((m: any) => m.id !== context?.tempId)
+            : newPages[0].messages.map((m: any) => m.id === context?.tempId ? realMessage : m)
+        };
+        return { ...old, pages: newPages };
+      });
     },
     onError: (err, newContent, context) => {
+      console.error('Failed to send message:', err)
       if (context?.previousMessages) {
         queryClient.setQueryData(['messages', conversationId], context.previousMessages)
       }
-      if (context?.previousConversations) {
-        queryClient.setQueryData(['conversations'], context.previousConversations)
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
-      queryClient.invalidateQueries({ queryKey: ['conversations'] })
     }
   })
 

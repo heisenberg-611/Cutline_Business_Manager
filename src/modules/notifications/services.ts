@@ -145,3 +145,40 @@ export async function broadcastNotification(data: {
     })
   }
 }
+
+export async function createManyNotifications(
+  userIds: string[],
+  data: {
+    businessId: string
+    title: string
+    message: string
+    type?: string
+    actionUrl?: string
+  },
+  tx?: any
+) {
+  if (userIds.length === 0) return;
+  
+  const client = tx || prisma;
+
+  await client.notification.createMany({
+    data: userIds.map(userId => ({
+      userId,
+      businessId: data.businessId,
+      title: data.title,
+      message: data.message,
+      type: data.type || "system",
+      actionUrl: data.actionUrl,
+      isRead: false
+    }))
+  })
+
+  await sendPushNotification(
+    data.title,
+    data.message,
+    userIds,
+    data.actionUrl
+  ).catch((err) => {
+    console.error("Failed to push notifications:", err)
+  })
+}

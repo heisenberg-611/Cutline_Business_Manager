@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { sendGuestMessage, getNewGuestMessages, saveGuestName } from '@/modules/messaging/guest-actions';
+import { sendGuestMessage, saveGuestName } from '@/modules/messaging/guest-actions';
 import { User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,31 +21,71 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
   const [guestName, setGuestName] = useState(conversation.guestName || '');
   const [isJoined, setIsJoined] = useState(hasIdentity);
   const [messages, setMessages] = useState<any[]>(conversation.messages || []);
+  const latestMessageDateRef = useRef<Date | string>(
+    messages.length > 0 ? messages[messages.length - 1].createdAt : conversation.createdAt
+  );
 
-  // Poll for new messages every 5 seconds (lightweight, no full page reload)
+  useEffect(() => {
+    if (messages.length > 0) {
+      latestMessageDateRef.current = messages[messages.length - 1].createdAt;
+    }
+  }, [messages]);
+
+  // Real-time via Ably WebSockets
   useEffect(() => {
     if (!isJoined) return;
     
-    const interval = setInterval(async () => {
-      if (document.hidden) return;
-      const afterDate = messages.length > 0 ? messages[messages.length - 1].createdAt : conversation.createdAt;
-      
-      try {
-        const res = await getNewGuestMessages(token, afterDate);
-        if (res.success && res.messages && res.messages.length > 0) {
-          setMessages(prev => {
-            const newMsgs = res.messages.filter((nm: any) => !prev.some(pm => pm.id === nm.id));
-            if (newMsgs.length === 0) return prev;
-            return [...prev, ...newMsgs];
-          });
-        }
-      } catch (err) {
-        // Silent fail
-      }
-    }, 5000);
+    let isSubscribed = true;
+    let clientRef: any = null;
+    let channelRef: any = null;
+    let onMessageRef: any = null;
     
-    return () => clearInterval(interval);
-  }, [isJoined, token, messages, conversation.createdAt]);
+    // We import ably dynamically so it doesn't break SSR
+    import('ably').then((AblyModule) => {
+      if (!isSubscribed) return;
+      
+      const Ably = AblyModule.default || AblyModule;
+      clientRef = new Ably.Realtime({ 
+        authUrl: `/api/ably/auth-guest?guestToken=${token}` 
+      });
+      
+      const channelName = `conversation-${conversation.id}`;
+      channelRef = clientRef.channels.get(channelName);
+      
+      onMessageRef = (message: any) => {
+        const newMsg = message.data;
+        setMessages(prev => {
+          // Prevent duplicates
+          if (prev.some(pm => pm.id === newMsg.id)) return prev;
+          
+          // Anti-jitter: If Ably delivers our own message before the API resolves, swap the temp message!
+          if (newMsg.isGuest && !newMsg.senderId) {
+            const optimisticIndex = prev.findIndex(m => m.isOptimistic && m.content === newMsg.content);
+            if (optimisticIndex !== -1) {
+              const next = [...prev];
+              next[optimisticIndex] = newMsg;
+              return next;
+            }
+          }
+          
+          return [...prev, newMsg];
+        });
+      };
+      
+      channelRef.subscribe('new-message', onMessageRef);
+      
+    });
+    
+    return () => {
+      isSubscribed = false;
+      if (channelRef && onMessageRef) {
+        channelRef.unsubscribe('new-message', onMessageRef);
+      }
+      if (clientRef) {
+        clientRef.close();
+      }
+    };
+  }, [isJoined, token, conversation.id]);
 
 
 
@@ -82,14 +122,20 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
     try {
       const res = await sendGuestMessage(token, text, guestName);
       if (res.success && res.message) {
-        setMessages(prev => prev.map(m => m.id === tempId ? res.message : m));
+        setMessages(prev => {
+          // If Ably already inserted the real message, remove our temp one
+          if (prev.some(m => m.id === res.message.id)) {
+            return prev.filter(m => m.id !== tempId);
+          }
+          // Otherwise, replace the temp one with the real one
+          return prev.map(m => m.id === tempId ? res.message : m);
+        });
       } else {
         throw new Error('Failed to send');
       }
     } catch (err) {
       console.error(err);
       setMessages(prev => prev.filter(m => m.id !== tempId));
-      throw err;
     } finally {
       setIsSending(false);
     }
