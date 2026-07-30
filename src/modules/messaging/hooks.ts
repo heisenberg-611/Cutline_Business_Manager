@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
-import { useChannel } from 'ably/react'
+import { useAblyClient } from './components/AblyProvider'
 import { 
   getConversations, 
   getMessages, 
@@ -48,51 +48,61 @@ export function useConversationMessages(conversationId: string | null, currentUs
     enabled: !!conversationId
   })
 
-  // Real-time via Ably WebSockets (only active if provider wraps it)
-  const { channel } = useChannel(`conversation-${conversationId}`, 'new-message', (message) => {
-    if (!realtimeEnabled || !conversationId) return;
+  const ably = useAblyClient();
+
+  // Real-time via Ably WebSockets
+  useEffect(() => {
+    if (!realtimeEnabled || !conversationId || !ably) return;
     
-    const newMsg = message.data;
+    const channelName = `conversation-${conversationId}`;
+    const channel = ably.channels.get(channelName);
     
-    queryClient.setQueryData(['messages', conversationId], (old: any) => {
-      if (!old || !old.pages) return old;
+    const onMessage = (message: any) => {
+      const newMsg = message.data;
       
-      // Check if message already exists (e.g. from optimistic update)
-      const exists = old.pages.some((p: any) => 
-        p.messages.some((m: any) => m.id === newMsg.id)
-      );
-      if (exists) return old;
+      queryClient.setQueryData(['messages', conversationId], (old: any) => {
+        if (!old || !old.pages) return old;
+        
+        // Check if message already exists (e.g. from optimistic update)
+        const exists = old.pages.some((p: any) => 
+          p.messages.some((m: any) => m.id === newMsg.id)
+        );
+        if (exists) return old;
 
-      const newPages = [...old.pages];
-      newPages[0] = {
-        ...newPages[0],
-        // Prepend because we store them oldest first within a page? Wait, page 0 contains newest messages.
-        // Actually earlier code did: `messages: [...newPages[0].messages, ...newMessages]` which appended it.
-        // But wait, the optimistic update does `messages: [...newPages[0].messages, optimisticMessage]`.
-        messages: [...newPages[0].messages, newMsg]
-      };
-      return { ...old, pages: newPages };
-    });
-
-    // Also update conversations list
-    queryClient.setQueryData(['conversations'], (oldConvs: any[]) => {
-      if (!oldConvs) return oldConvs;
-      return oldConvs.map(conv => {
-        if (conv.id === conversationId) {
-          return {
-            ...conv,
-            lastActivity: newMsg.createdAt,
-            messages: [newMsg]
-          };
-        }
-        return conv;
-      }).sort((a, b) => {
-        if (a.type === 'BROADCAST' && b.type !== 'BROADCAST') return -1;
-        if (b.type === 'BROADCAST' && a.type !== 'BROADCAST') return 1;
-        return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+        const newPages = [...old.pages];
+        newPages[0] = {
+          ...newPages[0],
+          messages: [...newPages[0].messages, newMsg]
+        };
+        return { ...old, pages: newPages };
       });
-    });
-  });
+
+      // Also update conversations list
+      queryClient.setQueryData(['conversations'], (oldConvs: any[]) => {
+        if (!oldConvs) return oldConvs;
+        return oldConvs.map(conv => {
+          if (conv.id === conversationId) {
+            return {
+              ...conv,
+              lastActivity: newMsg.createdAt,
+              messages: [newMsg]
+            };
+          }
+          return conv;
+        }).sort((a, b) => {
+          if (a.type === 'BROADCAST' && b.type !== 'BROADCAST') return -1;
+          if (b.type === 'BROADCAST' && a.type !== 'BROADCAST') return 1;
+          return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+        });
+      });
+    };
+
+    channel.subscribe('new-message', onMessage);
+
+    return () => {
+      channel.unsubscribe('new-message', onMessage);
+    };
+  }, [realtimeEnabled, conversationId, ably, queryClient]);
 
   // Mutation to send a message optimistically or invalidate
   const sendMutation = useMutation({

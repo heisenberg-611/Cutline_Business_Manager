@@ -13,21 +13,27 @@ interface GuestLinkFormProps {
 export function GuestLinkForm({ onBack, onClose, onSuccess }: GuestLinkFormProps) {
   const [isGenerating, setIsGenerating] = useState(true)
   const [generatedLink, setGeneratedLink] = useState('')
-  const hasRequested = useRef(false)
+  const promiseRef = useRef<Promise<{ conversationId: string; token: string }> | null>(null)
+  const onSuccessRef = useRef(onSuccess)
 
   useEffect(() => {
-    if (hasRequested.current) return
-    hasRequested.current = true
+    onSuccessRef.current = onSuccess
+  }, [onSuccess])
 
+  useEffect(() => {
     let mounted = true
     setIsGenerating(true)
     
-    createBusinessGuestChatLink()
+    if (!promiseRef.current) {
+      promiseRef.current = createBusinessGuestChatLink()
+    }
+
+    promiseRef.current
       .then(({ token }) => {
         if (!mounted) return
         const link = `${window.location.origin}/chat/${token}`
         setGeneratedLink(link)
-        onSuccess()
+        onSuccessRef.current()
       })
       .catch((e: unknown) => {
         if (!mounted) return
@@ -42,7 +48,7 @@ export function GuestLinkForm({ onBack, onClose, onSuccess }: GuestLinkFormProps
     return () => {
       mounted = false
     }
-  }, [onSuccess])
+  }, [])
 
   return (
     <div className="space-y-4 flex flex-col h-full justify-center min-h-[200px]">
