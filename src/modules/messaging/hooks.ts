@@ -6,12 +6,11 @@ import { useAblyClient } from './components/AblyProvider'
 import { 
   getConversations, 
   getMessages, 
-  getNewMessages,
   sendMessage, 
   markConversationRead,
   updateSlowMode
 } from './actions'
-import { useMessagingConfig } from './components/QueryProvider'
+
 
 import { useAuth } from '@clerk/nextjs'
 
@@ -19,7 +18,6 @@ import { useAuth } from '@clerk/nextjs'
  * Polls the conversation list every 15 seconds to keep unread counts fresh.
  */
 export function useConversations() {
-  const { realtimeEnabled } = useMessagingConfig()
   const ably = useAblyClient();
   const { orgId } = useAuth();
   const queryClient = useQueryClient();
@@ -31,7 +29,7 @@ export function useConversations() {
 
   // Real-time global sidebar updates
   useEffect(() => {
-    if (!realtimeEnabled || !orgId || !ably) return;
+    if (!orgId || !ably) return;
 
     const channelName = `business-${orgId}`;
     const channel = ably.channels.get(channelName);
@@ -75,7 +73,7 @@ export function useConversations() {
     return () => {
       channel.unsubscribe('sidebar-update', onSidebarUpdate);
     };
-  }, [realtimeEnabled, orgId, ably, queryClient]);
+  }, [orgId, ably, queryClient]);
 
   return {
     ...query,
@@ -88,7 +86,6 @@ export function useConversations() {
  */
 export function useConversationMessages(conversationId: string | null, currentUserId?: string) {
   const queryClient = useQueryClient()
-  const { realtimeEnabled } = useMessagingConfig()
   
   const query = useInfiniteQuery({
     queryKey: ['messages', conversationId],
@@ -105,13 +102,14 @@ export function useConversationMessages(conversationId: string | null, currentUs
 
   // Real-time via Ably WebSockets
   useEffect(() => {
-    if (!realtimeEnabled || !conversationId || !ably) return;
+    if (!conversationId || !ably) return;
     
     const channelName = `conversation-${conversationId}`;
     const channel = ably.channels.get(channelName);
     
       const onMessage = (message: any) => {
         const newMsg = message.data;
+        console.log('Admin received Ably message:', newMsg);
         
         queryClient.setQueryData(['messages', conversationId], (old: any) => {
           if (!old || !old.pages) return old;
@@ -148,7 +146,7 @@ export function useConversationMessages(conversationId: string | null, currentUs
     return () => {
       channel.unsubscribe('new-message', onMessage);
     };
-  }, [realtimeEnabled, conversationId, ably, queryClient]);
+  }, [conversationId, ably, queryClient, currentUserId]);
 
   // Mutation to send a message optimistically
   const sendMutation = useMutation({

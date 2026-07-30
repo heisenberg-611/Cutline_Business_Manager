@@ -6,7 +6,7 @@ import { useAuth } from '@clerk/nextjs';
 export const AblyContext = createContext<any>(null);
 
 export function AblyProvider({ children }: { children: React.ReactNode }) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   const [client, setClient] = useState<any>(null);
   
   useEffect(() => {
@@ -18,7 +18,11 @@ export function AblyProvider({ children }: { children: React.ReactNode }) {
         ablyClient = new Ably.Realtime({ 
           authCallback: async (tokenParams, callback) => {
             try {
-              const res = await fetch('/api/ably/auth');
+              const token = await getToken();
+              const res = await fetch('/api/ably/auth', {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+              });
+              
               if (!res.ok) {
                 throw new Error(`Auth failed with status ${res.status}`);
               }

@@ -1,6 +1,7 @@
 'use server';
 
 import prisma from '@/modules/core/db/prisma';
+import * as Ably from 'ably';
 
 export async function getGuestChatByToken(token: string) {
   const conversation = await prisma.conversation.findUnique({
@@ -20,21 +21,6 @@ export async function getGuestChatByToken(token: string) {
   if (!conversation) return { success: false, error: 'Chat not found' };
   
   return { success: true, conversation };
-}
-
-export async function getNewGuestMessages(token: string, afterDate: Date) {
-  const messages = await prisma.message.findMany({
-    where: { 
-      conversation: { guestToken: token },
-      createdAt: { gt: afterDate }
-    },
-    orderBy: { createdAt: 'asc' },
-    include: {
-      sender: { select: { firstName: true, lastName: true, imageUrl: true } }
-    }
-  });
-
-  return { success: true, messages };
 }
 
 export async function sendGuestMessage(token: string, content: string, guestName?: string) {
@@ -63,8 +49,6 @@ export async function sendGuestMessage(token: string, content: string, guestName
 
   if (process.env.ABLY_API_KEY) {
     try {
-      const AblyModule = await import('ably');
-      const Ably = AblyModule.default || AblyModule;
       const ably = new Ably.Rest(process.env.ABLY_API_KEY);
       
       const channel = ably.channels.get(`conversation-${conversation.id}`);

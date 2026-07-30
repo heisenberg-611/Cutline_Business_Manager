@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { sendGuestMessage, getNewGuestMessages, saveGuestName } from '@/modules/messaging/guest-actions';
+import { sendGuestMessage, saveGuestName } from '@/modules/messaging/guest-actions';
 import { User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,17 +74,6 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
       
       channelRef.subscribe('new-message', onMessageRef);
       
-      // We still do one initial fetch just in case we missed messages before WebSocket connected
-      getNewGuestMessages(token, new Date(latestMessageDateRef.current)).then(res => {
-        if (!isSubscribed) return;
-        if (res.success && res.messages && res.messages.length > 0) {
-          setMessages(prev => {
-            const newMsgs = res.messages.filter((nm: any) => !prev.some(pm => pm.id === nm.id));
-            if (newMsgs.length === 0) return prev;
-            return [...prev, ...newMsgs];
-          });
-        }
-      }).catch(() => {});
     });
     
     return () => {

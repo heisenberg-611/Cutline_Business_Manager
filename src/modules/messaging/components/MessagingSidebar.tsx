@@ -7,7 +7,7 @@ import { Plus, MessageSquare, Megaphone, Users, RefreshCcw } from 'lucide-react'
 import { NewMessageModal } from './NewMessageModal'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { useMessagingConfig } from './QueryProvider'
+
 
 export function MessagingSidebar({ currentUserId, isAdmin }: { currentUserId: string, isAdmin: boolean }) {
   const { data, isLoading, refetch, isFetching } = useConversations()
@@ -15,7 +15,6 @@ export function MessagingSidebar({ currentUserId, isAdmin }: { currentUserId: st
   const router = useRouter()
   const params = useParams()
   const activeId = params.id as string
-  const { realtimeEnabled } = useMessagingConfig()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -24,11 +23,6 @@ export function MessagingSidebar({ currentUserId, isAdmin }: { currentUserId: st
       <div className="p-4 border-b flex items-center justify-between bg-background">
         <div className="flex items-center gap-2">
           <h2 className="font-semibold text-lg tracking-tight">Messages</h2>
-          {!realtimeEnabled && (
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => refetch()} disabled={isFetching} title="Refresh Messages">
-              <RefreshCcw className={cn("w-3 h-3 text-muted-foreground", isFetching && "animate-spin")} />
-            </Button>
-          )}
         </div>
         {/* Allow all users to create group chats or DMs */}
         <Button size="icon" variant="ghost" onClick={() => setIsModalOpen(true)}>
