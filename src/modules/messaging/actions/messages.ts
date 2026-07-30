@@ -5,8 +5,7 @@ import prisma from '@/modules/core/db/prisma'
 import * as Ably from 'ably'
 import { authorizeConversationRead, authorizeConversationWrite } from '../auth'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
-import { sendPushNotification } from '@/lib/onesignal'
-
+import { createManyNotifications } from '@/modules/notifications/services'
 
 /**
  * Sends a message to a conversation.
@@ -82,23 +81,16 @@ export async function sendMessage(conversationId: string, content: string) {
     const recipients = conversation.participants.filter(p => p.userId !== userId && !p.isMuted)
     
     if (recipients.length > 0) {
-      await prisma.notification.createMany({
-        data: recipients.map(recipient => ({
+      await createManyNotifications(
+        recipients.map(r => r.userId),
+        {
           businessId: orgId,
-          userId: recipient.userId,
           title: conversation.type === 'GROUP' ? `New Message in ${conversation.title || 'Group'}` : 'New Direct Message',
           message: 'You have received a new message.',
           type: 'message',
           actionUrl: `/dashboard/messages/${conversationId}`
-        }))
-      })
-
-      await sendPushNotification(
-        conversation.type === 'GROUP' ? `New Message in ${conversation.title || 'Group'}` : 'New Direct Message',
-        'You have received a new message.',
-        recipients.map(r => r.userId),
-        `/dashboard/messages/${conversationId}`
-      ).catch(console.error)
+        }
+      )
     }
   }
 
