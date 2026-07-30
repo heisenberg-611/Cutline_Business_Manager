@@ -1,4 +1,4 @@
-name: Daily Supabase Backup & Aiven Sync
+name: Daily Supabase Encrypted Backup
 
 on:
   schedule:
@@ -35,14 +35,6 @@ jobs:
           # Dump ONLY the public schema, and ensure we drop tables before recreating them
           # --no-owner and --no-privileges ensure we don't try to assign roles that don't exist on Aiven
           pg_dump --schema=public --clean --if-exists --no-owner --no-privileges "$SUPABASE_DIRECT_URL" > "$FILENAME"
-
-      - name: Restore to Aiven (Live Standby)
-        env:
-          AIVEN_DIRECT_URL: ${{ secrets.AIVEN_DIRECT_URL }}
-        run: |
-          # Push the clean dump straight into Aiven.
-          # -v ON_ERROR_STOP=1 ensures the script fails immediately if Aiven rejects it
-          psql -v ON_ERROR_STOP=1 "$AIVEN_DIRECT_URL" -f "$FILENAME"
 
       - name: Restore to Neon (Live Standby)
         env:
