@@ -157,7 +157,7 @@ export const MessageItem = React.memo(function MessageItem({
           {formatMessageContent(msg.content)}
           {isBroadcast && isAdmin && (
             <div className={cn(
-              "absolute top-0 bottom-0 flex items-center opacity-0 group-hover/msg:opacity-100 transition-opacity",
+              "absolute top-0 bottom-0 flex items-center md:opacity-0 md:group-hover/msg:opacity-100 transition-opacity",
               isMine ? "-left-8" : "-right-8"
             )}>
               <Button

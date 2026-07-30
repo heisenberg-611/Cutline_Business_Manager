@@ -76,10 +76,13 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
     
     // Optimistically remove from UI
     queryClient.setQueryData(['messages', conversationId], (old: any) => {
-      if (!old) return old;
+      if (!old || !old.pages) return old;
       return {
         ...old,
-        messages: old.messages.filter((m: any) => m.id !== msgId)
+        pages: old.pages.map((page: any) => ({
+          ...page,
+          messages: page.messages.filter((m: any) => m.id !== msgId)
+        }))
       }
     })
 
