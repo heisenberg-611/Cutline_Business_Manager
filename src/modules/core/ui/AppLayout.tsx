@@ -823,10 +823,10 @@ export function AppLayout({
                         className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
                           isActive 
                             ? 'bg-primary border-primary text-primary-foreground shadow-sm font-medium' 
-                            : 'bg-muted/30 border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                            : 'bg-muted/30 border-transparent text-foreground hover:bg-muted/50 transition-colors'
                         }`}
                       >
-                        <item.icon className="w-5 h-5 shrink-0" />
+                        <item.icon className="w-5 h-5 shrink-0 text-muted-foreground" />
                         <span className="text-sm">{item.label}</span>
                       </Link>
                     )
@@ -843,7 +843,7 @@ export function AppLayout({
                       setIsMobileMenuOpen(false)
                       setIsCurrencyConverterOpen(true)
                     }}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent bg-muted/30 text-foreground hover:bg-muted/50 transition-colors"
                   >
                     <Calculator className="w-5 h-5 shrink-0 text-muted-foreground" />
                     <span className="text-sm font-medium">Currency Converter</span>
@@ -859,7 +859,7 @@ export function AppLayout({
                           setOptimisticPathname('/dashboard/settings')
                         }
                       }}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                      className="w-full flex items-center gap-3 p-3 rounded-xl border border-transparent bg-muted/30 text-foreground hover:bg-muted/50 transition-colors"
                     >
                       <Settings className="w-5 h-5 shrink-0 text-muted-foreground" />
                       <span className="text-sm font-medium">Settings</span>
