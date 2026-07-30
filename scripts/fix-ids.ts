@@ -1,3 +1,9 @@
+/**
+ * Script: fix-ids.ts
+ * Purpose: A one-off script to retroactively assign human-readable `displayId`s 
+ *          (e.g., CL-001, PRJ-001) to existing clients and projects that were 
+ *          created before the sequence numbering system was introduced.
+ */
 import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 

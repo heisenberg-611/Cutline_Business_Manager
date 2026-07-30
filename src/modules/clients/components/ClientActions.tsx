@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useState, useTransition, useCallback } from 'react'
-import { MoreHorizontal, Edit, Trash, AlertTriangle } from 'lucide-react'
+import { Archive, ArchiveRestore, MoreHorizontal, Edit, Trash, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { updateClient, deleteClient, updateClientRating, checkClientEmailExists } from '../actions'
+import { toast } from 'sonner'
+import { updateClient, deleteClient, updateClientRating, checkClientEmailExists, archiveClient } from '../actions'
 import { Star } from 'lucide-react'
 
 type Client = {
@@ -19,6 +20,7 @@ type Client = {
   industry: string
   preferredChannel: string
   internalRating?: number | null
+  isArchived: boolean
 }
 
 export function ClientActions({ client }: { client: Client }) {
@@ -72,15 +74,33 @@ export function ClientActions({ client }: { client: Client }) {
   }
 
   const handleDelete = () => {
-    if (confirm(`Are you sure you want to delete ${client.displayName}? This will delete all associated projects and data.`)) {
-      startTransition(async () => {
-        try {
-          await deleteClient(client.id)
-        } catch (err) {
-          alert("Failed to delete client")
+    startTransition(async () => {
+      try {
+        const res = await deleteClient(client.id)
+        if (res?.error) {
+          toast.error(res.error)
+        } else {
+          toast.success("Client deleted successfully")
         }
-      })
-    }
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to delete client")
+      }
+    })
+  }
+
+  const handleArchive = () => {
+    startTransition(async () => {
+      try {
+        const res = await archiveClient(client.id, !client.isArchived)
+        if (res?.error) {
+          toast.error(res.error)
+        } else {
+          toast.success(client.isArchived ? "Client unarchived" : "Client archived")
+        }
+      } catch (err: any) {
+        toast.error("Failed to update archive status")
+      }
+    })
   }
 
   function handleEditOpenChange(isOpen: boolean) {
@@ -100,6 +120,13 @@ export function ClientActions({ client }: { client: Client }) {
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setIsEditOpen(true)}>
             <Edit className="mr-2 h-4 w-4" /> Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleArchive}>
+            {client.isArchived ? (
+              <><ArchiveRestore className="mr-2 h-4 w-4" /> Unarchive</>
+            ) : (
+              <><Archive className="mr-2 h-4 w-4" /> Archive</>
+            )}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleDelete} className="text-red-600 focus:bg-red-50 dark:focus:bg-red-950">
             <Trash className="mr-2 h-4 w-4" /> Delete

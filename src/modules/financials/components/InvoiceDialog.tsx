@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { calculateTaxAmount, calculateInvoiceTotal } from '@/lib/invoices/calculations'
 
 type Client = { id: string, displayName: string }
-type Project = { id: string, title: string, clientId: string, assets?: { asset: { id: string, name: string, cost: number, type: string } }[] }
+type Project = { id: string, title: string, clientId: string, assets?: { asset: { id: string, name: string, costCents: number, type: string } }[] }
 
 export function InvoiceDialog({ 
   clients, 
@@ -101,8 +102,8 @@ export function InvoiceDialog({
   }, 0)
   
   const taxRateBps = Math.round((parseFloat(taxRatePct) || 0) * 100)
-  const taxAmountCents = Math.round(subtotalCents * (taxRateBps / 10000))
-  const totalCents = subtotalCents + taxAmountCents
+  const taxAmountCents = calculateTaxAmount(subtotalCents, taxRateBps)
+  const totalCents = calculateInvoiceTotal(subtotalCents, taxAmountCents)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -187,7 +188,7 @@ export function InvoiceDialog({
                   id: Date.now() + idx,
                   description: `${pa.asset.type}: ${pa.asset.name}`,
                   quantity: '1',
-                  amount: (pa.asset.cost / 100).toString()
+                  amount: (pa.asset.costCents / 100).toString()
                 }))
                 
                 // If the only line item is empty, replace it. Otherwise append.

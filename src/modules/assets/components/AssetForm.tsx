@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { format } from 'date-fns'
 import { AlertTriangle } from 'lucide-react'
+import type { AssetType } from '@prisma/client'
 
 type Asset = {
   id?: string
@@ -16,7 +17,7 @@ type Asset = {
   vendor: string | null
   licenseType: string | null
   expiresAt: Date | null
-  cost: number
+  costCents: number
 }
 
 const ASSET_TYPES = ['Music', 'Font', 'LUT', 'Plugin', 'Stock Footage', 'SFX', 'Motion Graphics']
@@ -33,7 +34,7 @@ export function AssetForm({ asset, onSuccess, currency = 'USD' }: { asset?: Asse
     vendor: asset?.vendor || '',
     licenseType: asset?.licenseType || '',
     expiresAt: asset?.expiresAt ? format(new Date(asset.expiresAt), 'yyyy-MM-dd') : '',
-    costDollar: asset?.cost ? (asset.cost / 100).toString() : '0'
+    costDollar: asset?.costCents ? (asset.costCents / 100).toString() : '0'
   })
 
   const getCurrencySymbol = (currencyCode: string) => {
@@ -57,7 +58,7 @@ export function AssetForm({ asset, onSuccess, currency = 'USD' }: { asset?: Asse
 
     setCheckingDuplicate(true)
     try {
-      const result = await checkAssetDuplicate(name, type, asset?.id)
+      const result = await checkAssetDuplicate(name, type as AssetType, asset?.id)
       if (result.exists) {
         setDuplicateWarning(`An asset named "${result.assetName}" of type "${type}" already exists.`)
       }
@@ -78,14 +79,14 @@ export function AssetForm({ asset, onSuccess, currency = 'USD' }: { asset?: Asse
         vendor: formData.vendor || null,
         licenseType: formData.licenseType || null,
         expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : null,
-        cost: Math.round(parseFloat(formData.costDollar || '0') * 100)
+        costCents: Math.round(parseFloat(formData.costDollar || '0') * 100)
       }
 
       try {
         if (asset?.id) {
-          await updateAsset(asset.id, dataToSubmit)
+          await updateAsset(asset.id, dataToSubmit as any)
         } else {
-          await createAsset(dataToSubmit)
+          await createAsset(dataToSubmit as any)
         }
         if (onSuccess) onSuccess()
       } catch (err: any) {

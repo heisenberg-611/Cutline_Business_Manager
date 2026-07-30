@@ -1,3 +1,14 @@
+/**
+ * Script: find-orphaned-businesses.ts
+ * Purpose: A diagnostic script to find Business records in the database that 
+ *          have zero linked users (memberships: none).
+ * 
+ * Why this exists:
+ * - Orphaned businesses can occur during failed signup flows or integration tests
+ *   that crash before cleanup. This script safely identifies them without deleting 
+ *   them, along with a count of their associated records (projects, invoices, etc) 
+ *   so you can manually verify if they contain real data before deciding to clean them up.
+ */
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
