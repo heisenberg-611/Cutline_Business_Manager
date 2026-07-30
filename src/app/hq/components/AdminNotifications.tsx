@@ -23,8 +23,16 @@ export function AdminNotifications() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000); // poll every 30s
-    return () => clearInterval(interval);
+    
+    // Listen for real-time push from OneSignal
+    const handlePushReceived = () => {
+      fetchNotifications()
+    }
+    window.addEventListener('onesignal-push-received', handlePushReceived)
+    
+    return () => {
+      window.removeEventListener('onesignal-push-received', handlePushReceived)
+    }
   }, []);
 
   const handleRead = async (id: string, actionUrl?: string | null) => {

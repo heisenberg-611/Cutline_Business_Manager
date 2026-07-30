@@ -81,15 +81,19 @@ export async function sendMessage(conversationId: string, content: string) {
   }
 
   // Group 7: Notifications
-  if (conversation.type === 'DIRECT' || conversation.type === 'GROUP') {
+  if (conversation.type === 'DIRECT' || conversation.type === 'GROUP' || conversation.type === 'BROADCAST') {
     const recipients = conversation.participants.filter(p => p.userId !== userId && !p.isMuted)
     
     if (recipients.length > 0) {
+      let title = 'New Direct Message';
+      if (conversation.type === 'GROUP') title = `New Message in ${conversation.title || 'Group'}`;
+      if (conversation.type === 'BROADCAST') title = 'New Broadcast Announcement';
+      
       await createManyNotifications(
         recipients.map(r => r.userId),
         {
           businessId: orgId,
-          title: conversation.type === 'GROUP' ? `New Message in ${conversation.title || 'Group'}` : 'New Direct Message',
+          title,
           message: 'You have received a new message.',
           type: 'message',
           actionUrl: `/dashboard/messages/${conversationId}`
