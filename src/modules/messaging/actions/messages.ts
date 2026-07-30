@@ -62,8 +62,16 @@ export async function sendMessage(conversationId: string, content: string) {
     try {
       const Ably = await import('ably');
       const ably = new Ably.Rest(process.env.ABLY_API_KEY);
+      
       const channel = ably.channels.get(`conversation-${conversationId}`);
       await channel.publish('new-message', message);
+
+      const businessChannel = ably.channels.get(`business-${orgId}`);
+      await businessChannel.publish('sidebar-update', {
+        conversationId,
+        message,
+        timestamp: new Date()
+      });
     } catch (e) {
       console.error('Ably publish error:', e);
     }

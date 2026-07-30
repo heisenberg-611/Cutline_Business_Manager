@@ -61,6 +61,25 @@ export async function sendGuestMessage(token: string, content: string, guestName
     }
   });
 
+  if (process.env.ABLY_API_KEY) {
+    try {
+      const Ably = await import('ably');
+      const ably = new Ably.Rest(process.env.ABLY_API_KEY);
+      
+      const channel = ably.channels.get(`conversation-${conversation.id}`);
+      await channel.publish('new-message', message);
+
+      const businessChannel = ably.channels.get(`business-${conversation.businessId}`);
+      await businessChannel.publish('sidebar-update', {
+        conversationId: conversation.id,
+        message,
+        timestamp: new Date()
+      });
+    } catch (e) {
+      console.error('Ably guest publish error:', e);
+    }
+  }
+
   return { success: true, message };
 }
 

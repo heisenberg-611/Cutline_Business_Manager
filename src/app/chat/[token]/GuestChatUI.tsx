@@ -21,17 +21,50 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
   const [guestName, setGuestName] = useState(conversation.guestName || '');
   const [isJoined, setIsJoined] = useState(hasIdentity);
   const [messages, setMessages] = useState<any[]>(conversation.messages || []);
+  const latestMessageDateRef = useRef<Date | string>(
+    messages.length > 0 ? messages[messages.length - 1].createdAt : conversation.createdAt
+  );
 
-  // Poll for new messages every 5 seconds (lightweight, no full page reload)
+  useEffect(() => {
+    if (messages.length > 0) {
+      latestMessageDateRef.current = messages[messages.length - 1].createdAt;
+    }
+  }, [messages]);
+
+  // Real-time via Ably WebSockets
   useEffect(() => {
     if (!isJoined) return;
     
-    const interval = setInterval(async () => {
-      if (document.hidden) return;
-      const afterDate = messages.length > 0 ? messages[messages.length - 1].createdAt : conversation.createdAt;
+    let isSubscribed = true;
+    let clientRef: any = null;
+    let channelRef: any = null;
+    let onMessageRef: any = null;
+    
+    // We import ably dynamically so it doesn't break SSR
+    import('ably').then((Ably) => {
+      if (!isSubscribed) return;
       
-      try {
-        const res = await getNewGuestMessages(token, afterDate);
+      clientRef = new Ably.Realtime({ 
+        authUrl: `/api/ably/auth-guest?guestToken=${token}` 
+      });
+      
+      const channelName = `conversation-${conversation.id}`;
+      channelRef = clientRef.channels.get(channelName);
+      
+      onMessageRef = (message: any) => {
+        const newMsg = message.data;
+        setMessages(prev => {
+          // Prevent duplicates (e.g. from optimistic updates)
+          if (prev.some(pm => pm.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
+      };
+      
+      channelRef.subscribe('new-message', onMessageRef);
+      
+      // We still do one initial fetch just in case we missed messages before WebSocket connected
+      getNewGuestMessages(token, new Date(latestMessageDateRef.current)).then(res => {
+        if (!isSubscribed) return;
         if (res.success && res.messages && res.messages.length > 0) {
           setMessages(prev => {
             const newMsgs = res.messages.filter((nm: any) => !prev.some(pm => pm.id === nm.id));
@@ -39,13 +72,19 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
             return [...prev, ...newMsgs];
           });
         }
-      } catch (err) {
-        // Silent fail
-      }
-    }, 5000);
+      }).catch(() => {});
+    });
     
-    return () => clearInterval(interval);
-  }, [isJoined, token, messages, conversation.createdAt]);
+    return () => {
+      isSubscribed = false;
+      if (channelRef && onMessageRef) {
+        channelRef.unsubscribe('new-message', onMessageRef);
+      }
+      if (clientRef) {
+        clientRef.close();
+      }
+    };
+  }, [isJoined, token, conversation.id]);
 
 
 
@@ -67,29 +106,14 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
   const handleSend = async (text: string) => {
     setIsSending(true);
 
-    const tempId = `temp-${Date.now()}`;
-    const optimisticMsg = {
-      id: tempId,
-      content: text,
-      createdAt: new Date().toISOString(),
-      isGuest: true,
-      senderId: null,
-      isOptimistic: true
-    };
-    
-    setMessages(prev => [...prev, optimisticMsg]);
-
     try {
       const res = await sendGuestMessage(token, text, guestName);
-      if (res.success && res.message) {
-        setMessages(prev => prev.map(m => m.id === tempId ? res.message : m));
-      } else {
+      if (!res.success || !res.message) {
         throw new Error('Failed to send');
       }
     } catch (err) {
       console.error(err);
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-      throw err;
+      // Ideally show a toast here
     } finally {
       setIsSending(false);
     }

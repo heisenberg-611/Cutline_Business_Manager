@@ -13,16 +13,69 @@ import {
 } from './actions'
 import { useMessagingConfig } from './components/QueryProvider'
 
+import { useAuth } from '@clerk/nextjs'
+
 /**
  * Polls the conversation list every 15 seconds to keep unread counts fresh.
  */
 export function useConversations() {
   const { realtimeEnabled } = useMessagingConfig()
+  const ably = useAblyClient();
+  const { orgId } = useAuth();
+  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['conversations'],
     queryFn: () => getConversations(),
   })
+
+  // Real-time global sidebar updates
+  useEffect(() => {
+    if (!realtimeEnabled || !orgId || !ably) return;
+
+    const channelName = `business-${orgId}`;
+    const channel = ably.channels.get(channelName);
+
+    const onSidebarUpdate = (message: any) => {
+      const data = message.data; // { conversationId, message, timestamp }
+      
+      queryClient.setQueryData(['conversations'], (oldConvs: any[]) => {
+        if (!oldConvs) return oldConvs;
+        
+        let found = false;
+        const updated = oldConvs.map(conv => {
+          if (conv.id === data.conversationId) {
+            found = true;
+            return {
+              ...conv,
+              lastActivity: data.timestamp,
+              messages: [data.message]
+            };
+          }
+          return conv;
+        });
+
+        // If it's a new conversation not in our list, we should ideally refetch, 
+        // but sorting what we have is good enough for now.
+        if (!found) {
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          return oldConvs;
+        }
+
+        return updated.sort((a, b) => {
+          if (a.type === 'BROADCAST' && b.type !== 'BROADCAST') return -1;
+          if (b.type === 'BROADCAST' && a.type !== 'BROADCAST') return 1;
+          return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+        });
+      });
+    };
+
+    channel.subscribe('sidebar-update', onSidebarUpdate);
+
+    return () => {
+      channel.unsubscribe('sidebar-update', onSidebarUpdate);
+    };
+  }, [realtimeEnabled, orgId, ably, queryClient]);
 
   return {
     ...query,
@@ -57,45 +110,26 @@ export function useConversationMessages(conversationId: string | null, currentUs
     const channelName = `conversation-${conversationId}`;
     const channel = ably.channels.get(channelName);
     
-    const onMessage = (message: any) => {
-      const newMsg = message.data;
-      
-      queryClient.setQueryData(['messages', conversationId], (old: any) => {
-        if (!old || !old.pages) return old;
+      const onMessage = (message: any) => {
+        const newMsg = message.data;
         
-        // Check if message already exists (e.g. from optimistic update)
-        const exists = old.pages.some((p: any) => 
-          p.messages.some((m: any) => m.id === newMsg.id)
-        );
-        if (exists) return old;
+        queryClient.setQueryData(['messages', conversationId], (old: any) => {
+          if (!old || !old.pages) return old;
+          
+          // Check if message already exists
+          const exists = old.pages.some((p: any) => 
+            p.messages.some((m: any) => m.id === newMsg.id)
+          );
+          if (exists) return old;
 
-        const newPages = [...old.pages];
-        newPages[0] = {
-          ...newPages[0],
-          messages: [...newPages[0].messages, newMsg]
-        };
-        return { ...old, pages: newPages };
-      });
-
-      // Also update conversations list
-      queryClient.setQueryData(['conversations'], (oldConvs: any[]) => {
-        if (!oldConvs) return oldConvs;
-        return oldConvs.map(conv => {
-          if (conv.id === conversationId) {
-            return {
-              ...conv,
-              lastActivity: newMsg.createdAt,
-              messages: [newMsg]
-            };
-          }
-          return conv;
-        }).sort((a, b) => {
-          if (a.type === 'BROADCAST' && b.type !== 'BROADCAST') return -1;
-          if (b.type === 'BROADCAST' && a.type !== 'BROADCAST') return 1;
-          return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+          const newPages = [...old.pages];
+          newPages[0] = {
+            ...newPages[0],
+            messages: [...newPages[0].messages, newMsg]
+          };
+          return { ...old, pages: newPages };
         });
-      });
-    };
+      };
 
     channel.subscribe('new-message', onMessage);
 
@@ -104,79 +138,15 @@ export function useConversationMessages(conversationId: string | null, currentUs
     };
   }, [realtimeEnabled, conversationId, ably, queryClient]);
 
-  // Mutation to send a message optimistically or invalidate
+  // Mutation to send a message (relying on Ably for UI updates)
   const sendMutation = useMutation({
     mutationFn: (content: string) => {
       if (!conversationId) throw new Error('No active conversation')
       return sendMessage(conversationId, content)
     },
-    onMutate: async (content: string) => {
-      if (!conversationId) return
-
-      await queryClient.cancelQueries({ queryKey: ['messages', conversationId] })
-      await queryClient.cancelQueries({ queryKey: ['conversations'] })
-
-      const previousMessages = queryClient.getQueryData<any>(['messages', conversationId])
-      const previousConversations = queryClient.getQueryData<any[]>(['conversations'])
-
-      // Optimistically update messages
-      if (previousMessages && previousMessages.pages && previousMessages.pages.length > 0) {
-        const optimisticMessage = {
-          id: `temp-${Date.now()}`,
-          conversationId,
-          senderId: currentUserId || 'optimistic',
-          content,
-          createdAt: new Date(),
-          sender: null,
-          isOptimistic: true
-        }
-        
-        queryClient.setQueryData(['messages', conversationId], (old: any) => {
-          if (!old) return old
-          const newPages = [...old.pages]
-          newPages[0] = {
-            ...newPages[0],
-            messages: [...newPages[0].messages, optimisticMessage]
-          }
-          return { ...old, pages: newPages }
-        })
-      }
-
-      // Optimistically update conversations list (sidebar)
-      if (previousConversations) {
-        queryClient.setQueryData(['conversations'], previousConversations.map(conv => {
-          if (conv.id === conversationId) {
-            return {
-              ...conv,
-              lastActivity: new Date(),
-              messages: [{
-                id: `temp-${Date.now()}`,
-                content,
-                createdAt: new Date()
-              }]
-            }
-          }
-          return conv
-        }).sort((a, b) => {
-          if (a.type === 'BROADCAST' && b.type !== 'BROADCAST') return -1;
-          if (b.type === 'BROADCAST' && a.type !== 'BROADCAST') return 1;
-          return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
-        }))
-      }
-
-      return { previousMessages, previousConversations }
-    },
-    onError: (err, newContent, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['messages', conversationId], context.previousMessages)
-      }
-      if (context?.previousConversations) {
-        queryClient.setQueryData(['conversations'], context.previousConversations)
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
-      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    onError: (err) => {
+      console.error('Failed to send message:', err)
+      // Ideally we'd show a toast here
     }
   })
 
