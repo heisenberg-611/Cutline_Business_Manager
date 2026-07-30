@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation'
 import { z } from 'zod'
 import { triggerPdfGeneration } from '@/lib/qstash/client'
 import { format, eachDayOfInterval } from 'date-fns'
+import { calculateTaxAmount, calculateInvoiceTotal, calculateInvoiceStatus } from '@/lib/invoices/calculations'
 
 // -----------------------------------------------------------------------------
 // HELPERS
@@ -89,8 +90,8 @@ export async function createInvoice(input: InvoiceInput) {
 
   // Calculate totals
   const subtotalCents = data.lineItems.reduce((sum, item) => sum + (item.amountCents * item.quantity), 0)
-  const taxAmountCents = Math.round(subtotalCents * (data.taxRateBps / 10000))
-  const totalCents = subtotalCents + taxAmountCents
+  const taxAmountCents = calculateTaxAmount(subtotalCents, data.taxRateBps)
+  const totalCents = calculateInvoiceTotal(subtotalCents, taxAmountCents)
 
   const invoice = await prisma.$transaction(async (tx) => {
     // 1. Generate sequential invoice number atomically
@@ -156,8 +157,8 @@ export async function updateInvoice(id: string, input: InvoiceInput) {
     if (existing.status !== 'DRAFT') throw new Error('Only DRAFT invoices can be updated')
 
     const subtotalCents = data.lineItems.reduce((sum, item) => sum + (item.amountCents * item.quantity), 0)
-    const taxAmountCents = Math.round(subtotalCents * (data.taxRateBps / 10000))
-    const totalCents = subtotalCents + taxAmountCents
+    const taxAmountCents = calculateTaxAmount(subtotalCents, data.taxRateBps)
+    const totalCents = calculateInvoiceTotal(subtotalCents, taxAmountCents)
 
     // Delete existing line items
     await tx.invoiceLineItem.deleteMany({ where: { invoiceId: id, invoice: { businessId: orgId } } })
@@ -303,9 +304,7 @@ export async function recordPayment(invoiceId: string, input: z.infer<typeof Pay
     const newPaid = invoice.amountPaidCents + data.amountCents
     const newDue = Math.max(0, invoice.totalCents - newPaid)
 
-    let newStatus = invoice.status
-    if (newDue === 0) newStatus = 'PAID'
-    else if (newPaid > 0) newStatus = 'PARTIALLY_PAID'
+    const newStatus = calculateInvoiceStatus(invoice.status, newDue, newPaid)
 
     await tx.invoice.update({
       where: { id: invoiceId, businessId: orgId },
