@@ -2,13 +2,14 @@
 
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
+import { AssetType } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 
 // -----------------------------------------------------------------------------
 // DUPLICATE CHECK QUERIES (for live form validation)
 // -----------------------------------------------------------------------------
 
-export async function checkAssetDuplicate(name: string, type: string, excludeAssetId?: string): Promise<{ exists: boolean; assetName?: string }> {
+export async function checkAssetDuplicate(name: string, type: AssetType, excludeAssetId?: string): Promise<{ exists: boolean; assetName?: string }> {
   const { orgId } = await auth()
   if (!orgId || !name || !type) return { exists: false }
 
@@ -29,7 +30,7 @@ export async function checkAssetDuplicate(name: string, type: string, excludeAss
 // MUTATIONS
 // -----------------------------------------------------------------------------
 
-export async function createAsset(data: { type: string, name: string, vendor: string | null, licenseType: string | null, expiresAt: Date | null, cost: number }) {
+export async function createAsset(data: { type: AssetType, name: string, vendor: string | null, licenseType: string | null, expiresAt: Date | null, costCents: number }) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
 
@@ -49,7 +50,7 @@ export async function createAsset(data: { type: string, name: string, vendor: st
   revalidatePath('/dashboard/assets')
 }
 
-export async function updateAsset(assetId: string, data: { type: string, name: string, vendor: string | null, licenseType: string | null, expiresAt: Date | null, cost: number }) {
+export async function updateAsset(assetId: string, data: { type: AssetType, name: string, vendor: string | null, licenseType: string | null, expiresAt: Date | null, costCents: number }) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
 

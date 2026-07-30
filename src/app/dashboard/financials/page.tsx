@@ -49,7 +49,7 @@ export default async function FinancialsPage({
         clientId: true,
         assets: {
           select: {
-            asset: { select: { id: true, name: true, cost: true, type: true } }
+            asset: { select: { id: true, name: true, costCents: true, type: true } }
           }
         }
       }

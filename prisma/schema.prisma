@@ -385,7 +385,7 @@ model Invoice {
   updatedAt DateTime @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   lineItems   InvoiceLineItem[]
@@ -408,7 +408,7 @@ model InvoiceLineItem {
   amountCents Int // Price per unit in cents
 
   // To trace back to origin
-  sourceType String? @default("manual") // manual, milestone, revision
+  sourceType LineItemSourceType? @default(manual)
   sourceId   String?
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
@@ -559,15 +559,23 @@ model TimeEntry {
 // ASSET & LICENSE MANAGEMENT
 // -----------------------------------------------------------------------------
 
+enum AssetType {
+  Music
+}
+
+enum LineItemSourceType {
+  manual
+}
+
 model Asset {
   id          String    @id @default(cuid())
   businessId  String
-  type        String // 'Music', 'Font', 'LUT', 'Plugin', 'Stock Footage', 'SFX', 'Motion Graphics'
+  type        AssetType
   name        String
   vendor      String?
   licenseType String?
   expiresAt   DateTime?
-  cost        Int       @default(0) // stored in cents
+  costCents   Int       @default(0) // stored in cents
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

@@ -126,9 +126,16 @@ export async function deleteClient(clientId: string) {
     throw new Error(`Cannot delete client. This client has ${invoiceCount} invoice${invoiceCount === 1 ? '' : 's'}. Please archive the client or void the invoices first.`)
   }
 
-  await prisma.client.deleteMany({
-    where: { id: clientId, businessId: orgId }
-  })
+  try {
+    await prisma.client.deleteMany({
+      where: { id: clientId, businessId: orgId }
+    })
+  } catch (err: any) {
+    if (err.code === 'P2003') {
+      throw new Error('Cannot delete client. They still have linked invoices or projects. Please archive the client instead.')
+    }
+    throw err
+  }
 
   revalidatePath('/dashboard/clients')
 }

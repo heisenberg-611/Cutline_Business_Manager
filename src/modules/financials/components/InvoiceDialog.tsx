@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { calculateTaxAmount, calculateInvoiceTotal } from '@/lib/invoices/calculations'
 
 type Client = { id: string, displayName: string }
-type Project = { id: string, title: string, clientId: string, assets?: { asset: { id: string, name: string, cost: number, type: string } }[] }
+type Project = { id: string, title: string, clientId: string, assets?: { asset: { id: string, name: string, costCents: number, type: string } }[] }
 
 export function InvoiceDialog({ 
   clients, 
@@ -188,7 +188,7 @@ export function InvoiceDialog({
                   id: Date.now() + idx,
                   description: `${pa.asset.type}: ${pa.asset.name}`,
                   quantity: '1',
-                  amount: (pa.asset.cost / 100).toString()
+                  amount: (pa.asset.costCents / 100).toString()
                 }))
                 
                 // If the only line item is empty, replace it. Otherwise append.

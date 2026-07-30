@@ -104,7 +104,7 @@ export default async function AssetsPage({
                     <div className="text-xs text-zinc-400">{asset.licenseType || 'Standard'}</div>
                   </TableCell>
                   <TableCell className="text-zinc-600 dark:text-zinc-400">
-                    {formatMoney(asset.cost, currency)}
+                    {formatMoney(asset.costCents, currency)}
                   </TableCell>
                   <TableCell>
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">
