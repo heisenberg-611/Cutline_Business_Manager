@@ -2,8 +2,8 @@ name: Daily Supabase Backup & Aiven Sync
 
 on:
   schedule:
-    # Runs once a day at 02:17 AM UTC (offset to avoid GitHub Actions queue delays)
-    - cron: '17 2 * * *'
+    # Scheduled 3 hours early (23:00 UTC) to offset GitHub's 3-hour queue delay
+    - cron: '0 23 * * *'
   workflow_dispatch: # Allows manual trigger from the Actions tab
 permissions:
   contents: read
