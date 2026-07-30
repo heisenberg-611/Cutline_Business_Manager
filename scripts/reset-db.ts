@@ -1,3 +1,12 @@
+/**
+ * Script: reset-db.ts
+ * Purpose: Completely wipes the connected database by deleting all rows in 
+ *          reverse-dependency order to satisfy foreign-key constraints.
+ * 
+ * Why this exists:
+ * - Used during early development or for resetting a local test database. 
+ * - WARNING: Do not run this against production, as it deletes all data.
+ */
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();

@@ -1,3 +1,15 @@
+/**
+ * Script: reconcile-invoices.ts
+ * Purpose: A read-only verification script that scans every invoice in the database, 
+ *          re-calculates the expected totals, sub-totals, and taxes from raw line items, 
+ *          and compares them against the cached/stored values on the Invoice record.
+ * 
+ * Why this exists:
+ * - This was written during Phase 1 (Verifiable Money Math) to mathematically prove 
+ *   that the inline calculation logic we extracted into `calculations.ts` exactly 
+ *   matched the historical data in the database, ensuring zero drift before we 
+ *   refactored the production code to use the new pure functions.
+ */
 import { PrismaClient } from '@prisma/client'
 
 // Read-only client approach

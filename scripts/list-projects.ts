@@ -1,3 +1,12 @@
+/**
+ * Script: list-projects.ts
+ * Purpose: A diagnostic script that queries and prints a human-readable summary 
+ *          of all businesses and their associated projects, including stage and client info.
+ * 
+ * Why this exists:
+ * - Used to quickly get a bird's-eye view of the database's project volume and 
+ *   status distribution via the terminal without needing to spin up Prisma Studio.
+ */
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();

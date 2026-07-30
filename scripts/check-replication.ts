@@ -1,3 +1,18 @@
+/**
+ * Script: check-replication.ts
+ * Purpose: Securely queries all three production databases (Supabase, Neon, Aiven) 
+ *          to determine their active logical replication topology.
+ * 
+ * Why this exists:
+ * - The original assumption was that these three databases formed a 
+ *   "zero-downtime failover" replication pipeline.
+ * - Before establishing the migration baseline, we needed to know if 
+ *   `_prisma_migrations` would be replicated automatically (which would cause 
+ *   collisions if we baselined them independently).
+ * - This script queries the raw PostgreSQL system tables (`pg_publication` and 
+ *   `pg_subscription`) to prove that no such replication pipeline actually exists,
+ *   meaning each database is entirely isolated.
+ */
 import { PrismaClient } from '@prisma/client';
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';

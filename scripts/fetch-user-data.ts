@@ -1,3 +1,12 @@
+/**
+ * Script: fetch-user-data.ts
+ * Purpose: A comprehensive data export script that fetches all users, their businesses, 
+ *          projects, clients, invoices, and assets, and writes them to a local JSON file.
+ * 
+ * Why this exists:
+ * - Useful for GDPR compliance (data export requests), local debugging of complex 
+ *   relational data, or creating a massive fixture file for integration testing.
+ */
 import { PrismaClient } from '@prisma/client'
 import fs from 'fs'
 

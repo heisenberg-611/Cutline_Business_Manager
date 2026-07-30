@@ -1,3 +1,14 @@
+/**
+ * Script: sync-clerk-db.ts
+ * Purpose: Polls the Clerk API for all registered users and upserts them into 
+ *          the connected database to ensure the DB `User` table is perfectly 
+ *          in sync with Clerk's authentication state.
+ * 
+ * Why this exists:
+ * - If the webhook that normally creates the DB user upon Clerk signup fails 
+ *   (or during local development when webhooks aren't hitting localhost), 
+ *   this script forces a manual reconciliation of the two systems.
+ */
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
 

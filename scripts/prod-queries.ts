@@ -1,9 +1,20 @@
+/**
+ * Script: prod-queries.ts
+ * Purpose: First attempt to query the production Supabase database for distinct 
+ *          enum values and replication topology. 
+ * 
+ * Why this exists:
+ * - This script proved that the production data was clean (`['Music']` and `['manual']`)
+ *   and that Supabase did not have a Postgres-level logical replication pipeline.
+ * - WARNING: This script originally hardcoded the production database credential. 
+ *   It has been redacted. Use `check-replication.ts` which securely uses `.env`.
+ */
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: "postgresql://postgres.zvgqgtdpejmlniidxygx:oYwZXWaUAZl6has9@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
+      url: "postgresql://postgres.zvgqgtdpejmlniidxygx:[REDACTED]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres"
     }
   }
 })
