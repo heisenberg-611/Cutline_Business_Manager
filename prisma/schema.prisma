@@ -180,6 +180,7 @@ model Client {
   preferredChannel        String?
   preferredDeliveryMethod String?
   internalRating          Int?     @default(0) // 1-5 stars
+  isArchived              Boolean  @default(false)
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 

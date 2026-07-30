@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
@@ -67,9 +68,12 @@ export default async function ClientsPage({
             </TableHeader>
             <TableBody>
               {clients.map((client) => (
-                <TableRow key={client.id}>
+                <TableRow key={client.id} className={client.isArchived ? "opacity-60 bg-zinc-50 dark:bg-zinc-900/50" : ""}>
                   <TableCell className="font-medium">
-                    <div>{client.displayName}</div>
+                    <div className="flex items-center gap-2">
+                      {client.displayName}
+                      {client.isArchived && <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-medium bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border-none hover:bg-zinc-200 dark:hover:bg-zinc-800">Archived</Badge>}
+                    </div>
                     {client.companyName && (
                       <div className="text-xs text-zinc-500">{client.companyName}</div>
                     )}
@@ -89,7 +93,8 @@ export default async function ClientsPage({
                         phone: client.phone || '',
                         industry: client.industry || '',
                         preferredChannel: client.preferredChannel || '',
-                        internalRating: client.internalRating
+                        internalRating: client.internalRating,
+                        isArchived: client.isArchived
                       }} />
                     </div>
                   </TableCell>

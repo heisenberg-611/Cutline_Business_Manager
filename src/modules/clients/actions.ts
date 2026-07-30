@@ -116,14 +116,14 @@ export async function deleteClient(clientId: string) {
   const client = await prisma.client.findFirst({
     where: { id: clientId, businessId: orgId }
   })
-  if (!client) throw new Error('Client not found')
+  if (!client) return { error: 'Client not found' }
 
   const invoiceCount = await prisma.invoice.count({
     where: { clientId, businessId: orgId }
   })
 
   if (invoiceCount > 0) {
-    throw new Error(`Cannot delete client. This client has ${invoiceCount} invoice${invoiceCount === 1 ? '' : 's'}. Please archive the client or void the invoices first.`)
+    return { error: `Cannot delete client. This client has ${invoiceCount} invoice${invoiceCount === 1 ? '' : 's'}. Please archive the client or void the invoices first.` }
   }
 
   try {
@@ -132,12 +132,35 @@ export async function deleteClient(clientId: string) {
     })
   } catch (err: any) {
     if (err.code === 'P2003') {
-      throw new Error('Cannot delete client. They still have linked invoices or projects. Please archive the client instead.')
+      return { error: 'Cannot delete client. They still have linked invoices or projects. Please archive the client instead.' }
     }
-    throw err
+    return { error: 'An unexpected error occurred while deleting the client.' }
   }
 
   revalidatePath('/dashboard/clients')
+  return { success: true }
+}
+
+export async function archiveClient(clientId: string, isArchived: boolean) {
+  const { orgId } = await requireAdmin()
+
+  // Verify ownership
+  const client = await prisma.client.findFirst({
+    where: { id: clientId, businessId: orgId }
+  })
+  if (!client) return { error: 'Client not found' }
+
+  try {
+    await prisma.client.update({
+      where: { id: clientId, businessId: orgId },
+      data: { isArchived }
+    })
+  } catch (err: any) {
+    return { error: 'An unexpected error occurred while updating the client archive status.' }
+  }
+
+  revalidatePath('/dashboard/clients')
+  return { success: true }
 }
 
 export async function updateClientRating(clientId: string, rating: number) {
@@ -170,6 +193,7 @@ export async function getClients(orgId: string) {
       businessId: orgId
     },
     orderBy: [
+      { isArchived: 'asc' },
       { internalRating: 'desc' },
       { createdAt: 'desc' }
     ]
