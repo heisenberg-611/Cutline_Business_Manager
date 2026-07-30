@@ -60,7 +60,8 @@ export async function sendMessage(conversationId: string, content: string) {
 
   if (process.env.ABLY_API_KEY) {
     try {
-      const Ably = await import('ably');
+      const AblyModule = await import('ably');
+      const Ably = AblyModule.default || AblyModule;
       const ably = new Ably.Rest(process.env.ABLY_API_KEY);
       
       const channel = ably.channels.get(`conversation-${conversationId}`);

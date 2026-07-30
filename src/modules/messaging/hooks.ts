@@ -123,6 +123,18 @@ export function useConversationMessages(conversationId: string | null, currentUs
           if (exists) return old;
 
           const newPages = [...old.pages];
+          
+          // Anti-jitter: If Ably delivers our own message before the API resolves, swap the temp message!
+          if (newMsg.senderId === currentUserId) {
+            const optimisticIndex = newPages[0].messages.findIndex((m: any) => m.isOptimistic && m.content === newMsg.content);
+            if (optimisticIndex !== -1) {
+              const nextMessages = [...newPages[0].messages];
+              nextMessages[optimisticIndex] = newMsg;
+              newPages[0] = { ...newPages[0], messages: nextMessages };
+              return { ...old, pages: newPages };
+            }
+          }
+
           newPages[0] = {
             ...newPages[0],
             messages: [...newPages[0].messages, newMsg]
@@ -138,15 +150,67 @@ export function useConversationMessages(conversationId: string | null, currentUs
     };
   }, [realtimeEnabled, conversationId, ably, queryClient]);
 
-  // Mutation to send a message (relying on Ably for UI updates)
+  // Mutation to send a message optimistically
   const sendMutation = useMutation({
     mutationFn: (content: string) => {
       if (!conversationId) throw new Error('No active conversation')
       return sendMessage(conversationId, content)
     },
-    onError: (err) => {
+    onMutate: async (content: string) => {
+      if (!conversationId) return
+
+      await queryClient.cancelQueries({ queryKey: ['messages', conversationId] })
+      const previousMessages = queryClient.getQueryData<any>(['messages', conversationId])
+      const tempId = `temp-${Date.now()}`;
+
+      // Optimistically update messages
+      if (previousMessages && previousMessages.pages && previousMessages.pages.length > 0) {
+        const optimisticMessage = {
+          id: tempId,
+          conversationId,
+          senderId: currentUserId || 'optimistic',
+          content,
+          createdAt: new Date(),
+          sender: null,
+          isOptimistic: true
+        }
+        
+        queryClient.setQueryData(['messages', conversationId], (old: any) => {
+          if (!old) return old
+          const newPages = [...old.pages]
+          newPages[0] = {
+            ...newPages[0],
+            messages: [...newPages[0].messages, optimisticMessage]
+          }
+          return { ...old, pages: newPages }
+        })
+      }
+
+      return { previousMessages, tempId }
+    },
+    onSuccess: (realMessage, variables, context) => {
+      if (!realMessage) return;
+      // Replace the temp message with the real one, unless Ably already delivered it
+      queryClient.setQueryData(['messages', conversationId], (old: any) => {
+        if (!old || !old.pages) return old;
+        const newPages = [...old.pages];
+        
+        const ablyAlreadyDelivered = newPages.some(p => p.messages.some((m: any) => m.id === realMessage.id));
+        
+        newPages[0] = {
+          ...newPages[0],
+          messages: ablyAlreadyDelivered 
+            ? newPages[0].messages.filter((m: any) => m.id !== context?.tempId)
+            : newPages[0].messages.map((m: any) => m.id === context?.tempId ? realMessage : m)
+        };
+        return { ...old, pages: newPages };
+      });
+    },
+    onError: (err, newContent, context) => {
       console.error('Failed to send message:', err)
-      // Ideally we'd show a toast here
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', conversationId], context.previousMessages)
+      }
     }
   })
 

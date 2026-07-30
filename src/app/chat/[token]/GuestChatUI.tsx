@@ -41,9 +41,10 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
     let onMessageRef: any = null;
     
     // We import ably dynamically so it doesn't break SSR
-    import('ably').then((Ably) => {
+    import('ably').then((AblyModule) => {
       if (!isSubscribed) return;
       
+      const Ably = AblyModule.default || AblyModule;
       clientRef = new Ably.Realtime({ 
         authUrl: `/api/ably/auth-guest?guestToken=${token}` 
       });
@@ -54,8 +55,19 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
       onMessageRef = (message: any) => {
         const newMsg = message.data;
         setMessages(prev => {
-          // Prevent duplicates (e.g. from optimistic updates)
+          // Prevent duplicates
           if (prev.some(pm => pm.id === newMsg.id)) return prev;
+          
+          // Anti-jitter: If Ably delivers our own message before the API resolves, swap the temp message!
+          if (newMsg.isGuest && !newMsg.senderId) {
+            const optimisticIndex = prev.findIndex(m => m.isOptimistic && m.content === newMsg.content);
+            if (optimisticIndex !== -1) {
+              const next = [...prev];
+              next[optimisticIndex] = newMsg;
+              return next;
+            }
+          }
+          
           return [...prev, newMsg];
         });
       };
@@ -106,14 +118,35 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
   const handleSend = async (text: string) => {
     setIsSending(true);
 
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg = {
+      id: tempId,
+      content: text,
+      createdAt: new Date().toISOString(),
+      isGuest: true,
+      senderId: null,
+      isOptimistic: true
+    };
+    
+    setMessages(prev => [...prev, optimisticMsg]);
+
     try {
       const res = await sendGuestMessage(token, text, guestName);
-      if (!res.success || !res.message) {
+      if (res.success && res.message) {
+        setMessages(prev => {
+          // If Ably already inserted the real message, remove our temp one
+          if (prev.some(m => m.id === res.message.id)) {
+            return prev.filter(m => m.id !== tempId);
+          }
+          // Otherwise, replace the temp one with the real one
+          return prev.map(m => m.id === tempId ? res.message : m);
+        });
+      } else {
         throw new Error('Failed to send');
       }
     } catch (err) {
       console.error(err);
-      // Ideally show a toast here
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setIsSending(false);
     }
