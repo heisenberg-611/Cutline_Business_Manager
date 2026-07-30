@@ -83,6 +83,9 @@ export function OneSignalInit() {
           } : undefined,
           duration: 8000,
         });
+        
+        // Dispatch event so NotificationCenter can instantly refresh
+        window.dispatchEvent(new CustomEvent('onesignal-push-received', { detail: notification }));
       });
 
       const changeHandler = () => {

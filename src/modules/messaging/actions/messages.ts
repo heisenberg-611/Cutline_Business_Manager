@@ -49,9 +49,13 @@ export async function sendMessage(conversationId: string, content: string) {
     },
     include: {
       sender: {
-        include: {
+        select: {
+          firstName: true,
+          lastName: true,
+          email: true,
           memberships: {
-            where: { businessId: orgId }
+            where: { businessId: orgId },
+            select: { role: true }
           }
         }
       }
@@ -122,9 +126,13 @@ export async function getMessages(conversationId: string, cursor?: string, take 
     orderBy: { createdAt: 'desc' },
     include: {
       sender: {
-        include: {
+        select: {
+          firstName: true,
+          lastName: true,
+          email: true,
           memberships: {
-            where: { businessId: orgId }
+            where: { businessId: orgId },
+            select: { role: true }
           }
         }
       }

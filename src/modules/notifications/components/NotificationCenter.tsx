@@ -133,7 +133,17 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
   React.useEffect(() => {
     fetchNotifications()
     const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
+    
+    // Listen for real-time push from OneSignal
+    const handlePushReceived = () => {
+      fetchNotifications()
+    }
+    window.addEventListener('onesignal-push-received', handlePushReceived)
+    
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('onesignal-push-received', handlePushReceived)
+    }
   }, [])
 
   const unreadCount = notifications.filter(n => !n.isRead).length

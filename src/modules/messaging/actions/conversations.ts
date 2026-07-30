@@ -153,12 +153,13 @@ export async function getConversations() {
       conversation: {
         include: {
           participants: {
-            include: { 
+            select: {
+              userId: true,
               user: {
-                include: {
-                  memberships: {
-                    where: { businessId: orgId }
-                  }
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  email: true
                 }
               }
             }
