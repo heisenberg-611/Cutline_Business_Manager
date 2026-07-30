@@ -1,4 +1,4 @@
-import { POST } from './src/app/api/webhooks/resend-inbound/route';
+import { POST } from '../src/app/api/webhooks/resend-inbound/route';
 import { NextRequest } from 'next/server';
 
 const payload = {

@@ -29,7 +29,7 @@ export function AblyProvider({ children }: { children: React.ReactNode }) {
               const tokenRequestData = await res.json();
               callback(null, tokenRequestData);
             } catch (err) {
-              callback(err, null);
+              callback(err as any, null);
             }
           }
         });
