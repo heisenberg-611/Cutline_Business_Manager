@@ -46,8 +46,28 @@ export async function sendMessage(conversationId: string, content: string) {
       conversationId,
       senderId: userId,
       content: content.trim()
+    },
+    include: {
+      sender: {
+        include: {
+          memberships: {
+            where: { businessId: orgId }
+          }
+        }
+      }
     }
   })
+
+  if (process.env.ABLY_API_KEY) {
+    try {
+      const Ably = await import('ably');
+      const ably = new Ably.Rest(process.env.ABLY_API_KEY);
+      const channel = ably.channels.get(`conversation-${conversationId}`);
+      await channel.publish('new-message', message);
+    } catch (e) {
+      console.error('Ably publish error:', e);
+    }
+  }
 
   // Group 7: Notifications
   if (conversation.type === 'DIRECT' || conversation.type === 'GROUP') {

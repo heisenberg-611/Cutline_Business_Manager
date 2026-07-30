@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
+import { useChannel } from 'ably/react'
 import { 
   getConversations, 
   getMessages, 
@@ -21,7 +22,6 @@ export function useConversations() {
   const query = useQuery({
     queryKey: ['conversations'],
     queryFn: () => getConversations(),
-    refetchInterval: realtimeEnabled ? 15000 : false, // 15 seconds or manual
   })
 
   return {
@@ -48,42 +48,51 @@ export function useConversationMessages(conversationId: string | null, currentUs
     enabled: !!conversationId
   })
 
-  // Real-time polling
-  useEffect(() => {
-    if (!realtimeEnabled || !conversationId) return
+  // Real-time via Ably WebSockets (only active if provider wraps it)
+  const { channel } = useChannel(`conversation-${conversationId}`, 'new-message', (message) => {
+    if (!realtimeEnabled || !conversationId) return;
     
-    const interval = setInterval(async () => {
-      const currentData = queryClient.getQueryData<any>(['messages', conversationId])
-      if (!currentData || !currentData.pages || currentData.pages.length === 0) return
+    const newMsg = message.data;
+    
+    queryClient.setQueryData(['messages', conversationId], (old: any) => {
+      if (!old || !old.pages) return old;
       
-      // Page 0 contains the newest messages
-      const firstPage = currentData.pages[0]
-      if (!firstPage.messages || firstPage.messages.length === 0) return
-      
-      const realMessages = firstPage.messages.filter((m: any) => !m.isOptimistic)
-      if (realMessages.length === 0) return
-      
-      const latestMessage = realMessages[realMessages.length - 1]
-      try {
-        const newMessages = await getNewMessages(conversationId, latestMessage.createdAt)
-        if (newMessages.length > 0) {
-          queryClient.setQueryData(['messages', conversationId], (old: any) => {
-            if (!old || !old.pages) return old
-            const newPages = [...old.pages]
-            newPages[0] = {
-              ...newPages[0],
-              messages: [...newPages[0].messages, ...newMessages.filter((m: any) => !m.isOptimistic)]
-            }
-            return { ...old, pages: newPages }
-          })
+      // Check if message already exists (e.g. from optimistic update)
+      const exists = old.pages.some((p: any) => 
+        p.messages.some((m: any) => m.id === newMsg.id)
+      );
+      if (exists) return old;
+
+      const newPages = [...old.pages];
+      newPages[0] = {
+        ...newPages[0],
+        // Prepend because we store them oldest first within a page? Wait, page 0 contains newest messages.
+        // Actually earlier code did: `messages: [...newPages[0].messages, ...newMessages]` which appended it.
+        // But wait, the optimistic update does `messages: [...newPages[0].messages, optimisticMessage]`.
+        messages: [...newPages[0].messages, newMsg]
+      };
+      return { ...old, pages: newPages };
+    });
+
+    // Also update conversations list
+    queryClient.setQueryData(['conversations'], (oldConvs: any[]) => {
+      if (!oldConvs) return oldConvs;
+      return oldConvs.map(conv => {
+        if (conv.id === conversationId) {
+          return {
+            ...conv,
+            lastActivity: newMsg.createdAt,
+            messages: [newMsg]
+          };
         }
-      } catch (e) {
-        // ignore
-      }
-    }, 5000)
-    
-    return () => clearInterval(interval)
-  }, [realtimeEnabled, conversationId, queryClient])
+        return conv;
+      }).sort((a, b) => {
+        if (a.type === 'BROADCAST' && b.type !== 'BROADCAST') return -1;
+        if (b.type === 'BROADCAST' && a.type !== 'BROADCAST') return 1;
+        return new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime();
+      });
+    });
+  });
 
   // Mutation to send a message optimistically or invalidate
   const sendMutation = useMutation({
