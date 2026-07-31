@@ -5,6 +5,7 @@ import { useOrganization } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Loader2, Check } from 'lucide-react'
+import { toast } from 'sonner'
 import { syncBusinessName } from '../actions'
 
 export function BusinessNameEditor({ currentName }: { currentName: string }) {
@@ -19,18 +20,19 @@ export function BusinessNameEditor({ currentName }: { currentName: string }) {
     try {
       await organization.update({ name: name.trim() })
       await syncBusinessName(name.trim()) // Immediately force DB sync to fix PDF/email lag locally
+      toast.success('Business name updated')
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (error) {
       console.error('Failed to update organization name:', error)
-      alert('Failed to update studio name. Please try again.')
+      toast.error('Failed to update studio name. Please try again.')
     } finally {
       setIsSaving(false)
     }
   }
 
   return (
-    <div className="flex items-center gap-3 max-w-sm">
+    <div className="flex items-center gap-3 w-full sm:w-72">
       <Input 
         value={name} 
         onChange={(e) => setName(e.target.value)} 

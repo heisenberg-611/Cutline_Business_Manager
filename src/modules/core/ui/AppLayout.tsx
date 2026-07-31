@@ -70,9 +70,9 @@ const ICON_SPRING = { type: 'spring' as const, stiffness: 300, damping: 20 }
 // variant propagation — this object is identical everywhere it's used and
 // worth naming once rather than re-typing at every row.
 const HOVER_TAP_VARIANTS = {
-  initial: { scale: 1 },
-  hover: { scale: 1.1 },
-  tap: { scale: 0.95 },
+  initial: (isCollapsed: boolean) => ({ scale: isCollapsed ? 1.125 : 1 }),
+  hover: (isCollapsed: boolean) => ({ scale: (isCollapsed ? 1.125 : 1) * 1.1 }),
+  tap: (isCollapsed: boolean) => ({ scale: (isCollapsed ? 1.125 : 1) * 0.95 }),
 }
 
 export function AppLayout({
@@ -343,90 +343,86 @@ export function AppLayout({
             sit above the nav list rather than buried in the bottom stack. */}
         <div className="px-3 py-3 space-y-1 border-b border-sidebar-border shrink-0">
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-              <motion.div initial="initial" whileHover="hover" whileTap="tap">
-                <button
-                  onClick={togglePin}
-                  aria-label={isPinned ? 'Collapse sidebar' : 'Expand sidebar'}
-                  className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
-                >
-                  <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.span
-                        key={isPinned ? 'chevron-left' : 'chevron-right'}
-                        className="flex"
-                        initial={{ opacity: 0, rotate: -40, scale: 0.7 }}
-                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                        exit={{ opacity: 0, rotate: 40, scale: 0.7 }}
-                        transition={ICON_SPRING}
-                      >
-                        {isPinned ? (
-                          <ChevronLeft className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                        )}
-                      </motion.span>
-                    </AnimatePresence>
-                  </motion.div>
-                  <AnimatePresence initial={false}>
-                    {!isCollapsed && (
-                      <motion.span
-                        key="toggle-label"
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
-                        exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
-                        className="whitespace-nowrap overflow-hidden"
-                      >
-                        {isPinned ? 'Collapse Sidebar' : 'Expand Sidebar'}
-                      </motion.span>
-                    )}
+            <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
+              <button
+                onClick={togglePin}
+                aria-label={isPinned ? 'Collapse sidebar' : 'Expand sidebar'}
+                className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+              >
+                <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.span
+                      key={isPinned ? 'chevron-left' : 'chevron-right'}
+                      className="flex"
+                      initial={{ opacity: 0, rotate: -40, scale: 0.7 }}
+                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                      exit={{ opacity: 0, rotate: 40, scale: 0.7 }}
+                      transition={ICON_SPRING}
+                    >
+                      {isPinned ? (
+                        <ChevronLeft className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                      )}
+                    </motion.span>
                   </AnimatePresence>
-                </button>
-              </motion.div>
+                </motion.div>
+                <AnimatePresence initial={false}>
+                  {!isCollapsed && (
+                    <motion.span
+                      key="toggle-label"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                      exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
+                      className="whitespace-nowrap overflow-hidden"
+                    >
+                      {isPinned ? 'Collapse Sidebar' : 'Expand Sidebar'}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
             </TooltipTrigger>
             <TooltipContent side="right">{isPinned ? 'Collapse sidebar' : 'Expand sidebar'}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-              <motion.div initial="initial" whileHover="hover" whileTap="tap">
-                <button
-                  onClick={() => setIsCommandOpen(true)}
-                  className="group relative z-0 w-full flex items-center justify-between px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                      <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                    </motion.div>
-                    <AnimatePresence initial={false}>
-                      {!isCollapsed && (
-                        <motion.span
-                          key="search-text"
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
-                          exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
-                          className="whitespace-nowrap overflow-hidden"
-                        >
-                          Search...
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </div>
+            <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
+              <button
+                onClick={() => setIsCommandOpen(true)}
+                className="group relative z-0 w-full flex items-center justify-between px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+              >
+                <div className="flex items-center gap-2.5">
+                  <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                    <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                  </motion.div>
                   <AnimatePresence initial={false}>
                     {!isCollapsed && (
                       <motion.span
-                        key="search-badge"
-                        initial={{ opacity: 0, scale: 0.8, x: -10 }}
-                        animate={{ opacity: 1, scale: 1, x: 0, transition: LABEL_ENTER_TRANSITION }}
-                        exit={{ opacity: 0, scale: 0.8, x: -10, transition: LABEL_TRANSITION }}
-                        className="flex items-center text-xs opacity-50 bg-muted/50 border border-border px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 font-normal"
+                        key="search-text"
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                        exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
+                        className="whitespace-nowrap overflow-hidden"
                       >
-                        <CmdIcon className="h-3 w-3 mr-0.5 shrink-0" /> K
+                        Search...
                       </motion.span>
                     )}
                   </AnimatePresence>
-                </button>
-              </motion.div>
+                </div>
+                <AnimatePresence initial={false}>
+                  {!isCollapsed && (
+                    <motion.span
+                      key="search-badge"
+                      initial={{ opacity: 0, scale: 0.8, x: -10 }}
+                      animate={{ opacity: 1, scale: 1, x: 0, transition: LABEL_ENTER_TRANSITION }}
+                      exit={{ opacity: 0, scale: 0.8, x: -10, transition: LABEL_TRANSITION }}
+                      className="flex items-center text-xs opacity-50 bg-muted/50 border border-border px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 font-normal"
+                    >
+                      <CmdIcon className="h-3 w-3 mr-0.5 shrink-0" /> K
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
             </TooltipTrigger>
             <TooltipContent side="right">Search (⌘K)</TooltipContent>
           </Tooltip>
@@ -471,59 +467,53 @@ export function AppLayout({
                   const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href))
                   return (
                     <Tooltip key={item.href}>
-                      <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-                        <motion.div
-                          initial="initial"
-                          whileHover="hover"
-                          whileTap="tap"
+                      <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
+                        <Link
+                          href={item.href}
+                          onClick={() => {
+                            // Only trigger the instant skeleton if navigating to a different route
+                            if (pathname !== item.href) {
+                              setIsNavigating(true)
+                              setOptimisticPathname(item.href)
+                            }
+                          }}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`group relative z-0 flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${isActive
+                              ? 'text-foreground font-semibold'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60'
+                            }`}
                         >
-                          <Link
-                            href={item.href}
-                            onClick={() => {
-                              // Only trigger the instant skeleton if navigating to a different route
-                              if (pathname !== item.href) {
-                                setIsNavigating(true)
-                                setOptimisticPathname(item.href)
-                              }
-                            }}
-                            aria-current={isActive ? 'page' : undefined}
-                            className={`group relative z-0 flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${isActive
-                                ? 'text-foreground font-semibold'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60'
-                              }`}
-                          >
-                            {isActive && (
-                              <>
-                                <motion.div
-                                  layoutId="activeNavPill"
-                                  className="absolute inset-0 bg-sidebar-accent rounded-lg -z-10"
-                                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                                />
-                                <motion.div
-                                  layoutId="activeNavIndicator"
-                                  className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-indigo-500 dark:bg-indigo-400"
-                                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                                />
-                              </>
+                          {isActive && (
+                            <>
+                              <motion.div
+                                layoutId="activeNavPill"
+                                className="absolute inset-0 bg-sidebar-accent rounded-lg -z-10"
+                                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                              />
+                              <motion.div
+                                layoutId="activeNavIndicator"
+                                className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-indigo-500 dark:bg-indigo-400"
+                                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                              />
+                            </>
+                          )}
+                          <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                            <item.icon className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                          </motion.div>
+                          <AnimatePresence initial={false}>
+                            {!isCollapsed && (
+                              <motion.span
+                                key="nav-label"
+                                initial={{ opacity: 0, width: 0 }}
+                                animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                                exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
+                                className="whitespace-nowrap overflow-hidden"
+                              >
+                                {item.label}
+                              </motion.span>
                             )}
-                            <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                              <item.icon className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                            </motion.div>
-                            <AnimatePresence initial={false}>
-                              {!isCollapsed && (
-                                <motion.span
-                                  key="nav-label"
-                                  initial={{ opacity: 0, width: 0 }}
-                                  animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
-                                  exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
-                                  className="whitespace-nowrap overflow-hidden"
-                                >
-                                  {item.label}
-                                </motion.span>
-                              )}
-                            </AnimatePresence>
-                          </Link>
-                        </motion.div>
+                          </AnimatePresence>
+                        </Link>
                       </TooltipTrigger>
                       <TooltipContent side="right">{item.label}</TooltipContent>
                     </Tooltip>
@@ -537,79 +527,75 @@ export function AppLayout({
         {/* Bottom Actions */}
         <div className="p-3 border-t border-sidebar-border space-y-1 shrink-0">
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-              <motion.div initial="initial" whileHover="hover" whileTap="tap">
-                <button
-                  onClick={() => setIsCurrencyConverterOpen(true)}
-                  className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
-                >
-                  <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                    <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                  </motion.div>
-                  <AnimatePresence initial={false}>
-                    {!isCollapsed && (
-                      <motion.span
-                        key="currency-label"
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
-                        exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
-                        className="whitespace-nowrap overflow-hidden"
-                      >
-                        Currency Converter
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </button>
-              </motion.div>
+            <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
+              <button
+                onClick={() => setIsCurrencyConverterOpen(true)}
+                className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
+              >
+                <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                  <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                </motion.div>
+                <AnimatePresence initial={false}>
+                  {!isCollapsed && (
+                    <motion.span
+                      key="currency-label"
+                      initial={{ opacity: 0, width: 0 }}
+                      animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                      exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
+                      className="whitespace-nowrap overflow-hidden"
+                    >
+                      Currency Converter
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
             </TooltipTrigger>
             <TooltipContent side="right">Currency Converter</TooltipContent>
           </Tooltip>
 
           {isAdmin && (
             <Tooltip>
-              <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-                <motion.div initial="initial" whileHover="hover" whileTap="tap">
-                  <Link
-                    href="/dashboard/settings"
-                    aria-current={(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? 'page' : undefined}
-                    className={`group relative z-0 flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${
-                      (optimisticPathname || pathname)?.startsWith('/dashboard/settings')
-                        ? 'text-foreground font-semibold'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60'
-                    }`}
-                  >
-                    {(optimisticPathname || pathname)?.startsWith('/dashboard/settings') && (
-                      <>
-                        <motion.div
-                          layoutId="activeNavPill"
-                          className="absolute inset-0 bg-sidebar-accent rounded-lg -z-10"
-                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        />
-                        <motion.div
-                          layoutId="activeNavIndicator"
-                          className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-indigo-500 dark:bg-indigo-400"
-                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        />
-                      </>
+              <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
+                <Link
+                  href="/dashboard/settings"
+                  aria-current={(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? 'page' : undefined}
+                  className={`group relative z-0 flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${
+                    (optimisticPathname || pathname)?.startsWith('/dashboard/settings')
+                      ? 'text-foreground font-semibold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60'
+                  }`}
+                >
+                  {(optimisticPathname || pathname)?.startsWith('/dashboard/settings') && (
+                    <>
+                      <motion.div
+                        layoutId="activeNavPill"
+                        className="absolute inset-0 bg-sidebar-accent rounded-lg -z-10"
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      />
+                      <motion.div
+                        layoutId="activeNavIndicator"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-indigo-500 dark:bg-indigo-400"
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      />
+                    </>
+                  )}
+                  <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                    <Settings className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                  </motion.div>
+                  <AnimatePresence initial={false}>
+                    {!isCollapsed && (
+                      <motion.span
+                        key="settings-label"
+                        initial={{ opacity: 0, width: 0 }}
+                        animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                        exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
+                        className="whitespace-nowrap overflow-hidden"
+                      >
+                        Settings
+                      </motion.span>
                     )}
-                    <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                      <Settings className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                    </motion.div>
-                    <AnimatePresence initial={false}>
-                      {!isCollapsed && (
-                        <motion.span
-                          key="settings-label"
-                          initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
-                          exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
-                          className="whitespace-nowrap overflow-hidden"
-                        >
-                          Settings
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </Link>
-                </motion.div>
+                  </AnimatePresence>
+                </Link>
               </TooltipTrigger>
               <TooltipContent side="right">Settings</TooltipContent>
             </Tooltip>

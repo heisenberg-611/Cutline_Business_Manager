@@ -28,7 +28,7 @@ export async function updateBusinessCurrency(currency: string) {
     data: { defaultCurrency: currency },
   })
 
-  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/settings', 'layout')
   revalidatePath('/dashboard')
 }
 
@@ -66,7 +66,7 @@ export async function updateInvoiceSettings(data: {
     data,
   })
 
-  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/settings', 'layout')
   revalidatePath('/dashboard/settings/invoice')
 }
 
@@ -94,7 +94,7 @@ export async function addWorkflowStage(name: string, icon?: string | null) {
     },
   })
 
-  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/settings', 'layout')
   revalidatePath('/dashboard/pipeline')
 }
 
@@ -115,7 +115,7 @@ export async function updateWorkflowStage(stageId: string, updates: { name?: str
     data: updates,
   })
 
-  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/settings', 'layout')
   revalidatePath('/dashboard/pipeline')
 }
 
@@ -147,7 +147,7 @@ export async function deleteWorkflowStage(stageId: string) {
 
   await prisma.workflowStage.deleteMany({ where: { id: stageId, template: { businessId: orgId } } })
 
-  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/settings', 'layout')
   revalidatePath('/dashboard/pipeline')
 }
 
@@ -180,7 +180,7 @@ export async function reorderWorkflowStages(stageIds: string[]) {
     )
   )
 
-  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/settings', 'layout')
   revalidatePath('/dashboard/pipeline')
 }
 
