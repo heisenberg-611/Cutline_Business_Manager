@@ -343,13 +343,14 @@ export function AppLayout({
             sit above the nav list rather than buried in the bottom stack. */}
         <div className="px-3 py-3 space-y-1 border-b border-sidebar-border shrink-0">
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
-              <button
-                onClick={togglePin}
-                aria-label={isPinned ? 'Collapse sidebar' : 'Expand sidebar'}
+            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+              <motion.div initial="initial" whileHover="hover" whileTap="tap">
+                <button
+                  onClick={togglePin}
+                  aria-label={isPinned ? 'Collapse sidebar' : 'Expand sidebar'}
                 className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
               >
-                <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                <motion.div custom={isCollapsed} variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
                   <AnimatePresence mode="wait" initial={false}>
                     <motion.span
                       key={isPinned ? 'chevron-left' : 'chevron-right'}
@@ -380,19 +381,21 @@ export function AppLayout({
                     </motion.span>
                   )}
                 </AnimatePresence>
-              </button>
+                </button>
+              </motion.div>
             </TooltipTrigger>
             <TooltipContent side="right">{isPinned ? 'Collapse sidebar' : 'Expand sidebar'}</TooltipContent>
           </Tooltip>
 
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
-              <button
-                onClick={() => setIsCommandOpen(true)}
+            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+              <motion.div initial="initial" whileHover="hover" whileTap="tap">
+                <button
+                  onClick={() => setIsCommandOpen(true)}
                 className="group relative z-0 w-full flex items-center justify-between px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
               >
                 <div className="flex items-center gap-2.5">
-                  <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                  <motion.div custom={isCollapsed} variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
                     <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                   </motion.div>
                   <AnimatePresence initial={false}>
@@ -422,7 +425,8 @@ export function AppLayout({
                     </motion.span>
                   )}
                 </AnimatePresence>
-              </button>
+                </button>
+              </motion.div>
             </TooltipTrigger>
             <TooltipContent side="right">Search (⌘K)</TooltipContent>
           </Tooltip>
@@ -467,9 +471,10 @@ export function AppLayout({
                   const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href))
                   return (
                     <Tooltip key={item.href}>
-                      <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
-                        <Link
-                          href={item.href}
+                      <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+                        <motion.div initial="initial" whileHover="hover" whileTap="tap">
+                          <Link
+                            href={item.href}
                           onClick={() => {
                             // Only trigger the instant skeleton if navigating to a different route
                             if (pathname !== item.href) {
@@ -497,7 +502,7 @@ export function AppLayout({
                               />
                             </>
                           )}
-                          <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                          <motion.div custom={isCollapsed} variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
                             <item.icon className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                           </motion.div>
                           <AnimatePresence initial={false}>
@@ -513,7 +518,8 @@ export function AppLayout({
                               </motion.span>
                             )}
                           </AnimatePresence>
-                        </Link>
+                          </Link>
+                        </motion.div>
                       </TooltipTrigger>
                       <TooltipContent side="right">{item.label}</TooltipContent>
                     </Tooltip>
@@ -527,12 +533,13 @@ export function AppLayout({
         {/* Bottom Actions */}
         <div className="p-3 border-t border-sidebar-border space-y-1 shrink-0">
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
-              <button
-                onClick={() => setIsCurrencyConverterOpen(true)}
+            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+              <motion.div initial="initial" whileHover="hover" whileTap="tap">
+                <button
+                  onClick={() => setIsCurrencyConverterOpen(true)}
                 className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
               >
-                <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                <motion.div custom={isCollapsed} variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
                   <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                 </motion.div>
                 <AnimatePresence initial={false}>
@@ -548,16 +555,18 @@ export function AppLayout({
                     </motion.span>
                   )}
                 </AnimatePresence>
-              </button>
+                </button>
+              </motion.div>
             </TooltipTrigger>
             <TooltipContent side="right">Currency Converter</TooltipContent>
           </Tooltip>
 
           {isAdmin && (
             <Tooltip>
-              <TooltipTrigger disabled={!isCollapsed} render={<motion.div initial="initial" whileHover="hover" whileTap="tap" />}>
-                <Link
-                  href="/dashboard/settings"
+              <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+                <motion.div initial="initial" whileHover="hover" whileTap="tap">
+                  <Link
+                    href="/dashboard/settings"
                   aria-current={(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? 'page' : undefined}
                   className={`group relative z-0 flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${
                     (optimisticPathname || pathname)?.startsWith('/dashboard/settings')
@@ -579,7 +588,7 @@ export function AppLayout({
                       />
                     </>
                   )}
-                  <motion.div custom={isCollapsed} animate="initial" variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                  <motion.div custom={isCollapsed} variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
                     <Settings className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                   </motion.div>
                   <AnimatePresence initial={false}>
@@ -595,7 +604,8 @@ export function AppLayout({
                       </motion.span>
                     )}
                   </AnimatePresence>
-                </Link>
+                  </Link>
+                </motion.div>
               </TooltipTrigger>
               <TooltipContent side="right">Settings</TooltipContent>
             </Tooltip>
