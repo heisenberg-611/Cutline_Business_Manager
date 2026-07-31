@@ -75,6 +75,12 @@ const HOVER_TAP_VARIANTS = {
   tap: (isCollapsed: boolean) => ({ scale: (isCollapsed ? 1.125 : 1) * 0.95 }),
 }
 
+const ROW_HOVER_VARIANTS = {
+  initial: { scale: 1 },
+  hover: { scale: 1.02 },
+  tap: { scale: 0.98 },
+}
+
 export function AppLayout({
   children,
   initialNavPreferences,
@@ -344,7 +350,7 @@ export function AppLayout({
         <div className="px-3 py-3 space-y-1 border-b border-sidebar-border shrink-0">
           <Tooltip>
             <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-              <motion.div initial="initial" whileHover="hover" whileTap="tap">
+              <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                 <button
                   onClick={togglePin}
                   aria-label={isPinned ? 'Collapse sidebar' : 'Expand sidebar'}
@@ -389,7 +395,7 @@ export function AppLayout({
 
           <Tooltip>
             <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-              <motion.div initial="initial" whileHover="hover" whileTap="tap">
+              <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                 <button
                   onClick={() => setIsCommandOpen(true)}
                 className="group relative z-0 w-full flex items-center justify-between px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
@@ -472,7 +478,7 @@ export function AppLayout({
                   return (
                     <Tooltip key={item.href}>
                       <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-                        <motion.div initial="initial" whileHover="hover" whileTap="tap">
+                        <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                           <Link
                             href={item.href}
                           onClick={() => {
@@ -534,7 +540,7 @@ export function AppLayout({
         <div className="p-3 border-t border-sidebar-border space-y-1 shrink-0">
           <Tooltip>
             <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-              <motion.div initial="initial" whileHover="hover" whileTap="tap">
+              <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                 <button
                   onClick={() => setIsCurrencyConverterOpen(true)}
                 className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
@@ -564,7 +570,7 @@ export function AppLayout({
           {isAdmin && (
             <Tooltip>
               <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-                <motion.div initial="initial" whileHover="hover" whileTap="tap">
+                <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                   <Link
                     href="/dashboard/settings"
                   aria-current={(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? 'page' : undefined}
