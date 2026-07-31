@@ -31,8 +31,8 @@ import {
   Settings,
   Search,
   Command as CmdIcon,
-  ChevronLeft,
-  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Calculator,
   Menu,
@@ -357,9 +357,9 @@ export function AppLayout({
                 className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
               >
                 <motion.div custom={isCollapsed} variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                  <AnimatePresence mode="wait" initial={false}>
+                  <AnimatePresence mode="popLayout" initial={false}>
                     <motion.span
-                      key={isPinned ? 'chevron-left' : 'chevron-right'}
+                      key={isPinned ? 'panel-close' : 'panel-open'}
                       className="flex"
                       initial={{ opacity: 0, rotate: -40, scale: 0.7 }}
                       animate={{ opacity: 1, rotate: 0, scale: 1 }}
@@ -367,9 +367,9 @@ export function AppLayout({
                       transition={ICON_SPRING}
                     >
                       {isPinned ? (
-                        <ChevronLeft className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                        <PanelLeftClose className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                       ) : (
-                        <ChevronRight className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                        <PanelLeftOpen className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                       )}
                     </motion.span>
                   </AnimatePresence>
