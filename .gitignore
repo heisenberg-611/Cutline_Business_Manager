@@ -50,3 +50,4 @@ lint.json
 
 # Agents
 .agents/
+.claude
