@@ -43,6 +43,12 @@ import {
 // container, the icon repositioning, and every label fade stay in lockstep
 // instead of drifting apart on separate timings.
 const SIDEBAR_TRANSITION = { duration: 0.3, ease: [0.65, 0, 0.35, 1] as const }
+// Labels fade/shrink faster than the rail resizes and only reappear once the
+// rail is most of the way open — hiding content disappears instantly instead
+// of visibly getting squeezed, and incoming content doesn't pop in ahead of
+// the row having space for it.
+const LABEL_TRANSITION = { duration: 0.15, ease: [0.65, 0, 0.35, 1] as const }
+const LABEL_ENTER_TRANSITION = { duration: 0.2, ease: [0.65, 0, 0.35, 1] as const, delay: 0.1 }
 const ICON_SPRING = { type: 'spring' as const, stiffness: 300, damping: 20 }
 // Rows always render left-aligned (icon at the row's start) — no
 // justify-content toggle. That's not a compromise: the icon sits inside two
@@ -54,18 +60,15 @@ const ICON_SPRING = { type: 'spring' as const, stiffness: 300, damping: 20 }
 // FLIP re-measures the DOM as the sibling label's own width tween plays out,
 // which fights any in-progress interpolation and snaps at the end.)
 
-// Collapsed (icon-only) rows get a deliberate size bump — h-4 (16px) reads as
-// visually equivalent to h-5 (20px), a 1.25x scale — so the icon carries more
-// weight once the label's gone. Driven as an explicit `scale` tween on
-// isCollapsed (own transition, own timing) rather than swapping Tailwind size
-// classes, which would jump in a single frame with nothing in between. It's a
-// pure transform (no layout impact), so the 4px of overflow past the 16px
-// content box on each axis is safe — nothing in the row or nav clips it.
-const ICON_COLLAPSED_SCALE = 1.25
-// Shared hover/tap micro-interaction for every icon — the ancestor row's
-// `motion.div initial="initial" whileHover="hover" whileTap="tap"` drives
-// this via variant propagation, so this object is identical everywhere it's
-// used and worth naming once rather than re-typing at every row.
+// Icons stay a single, constant size across collapsed/expanded states —
+// resizing the icon itself (however smoothly) reads as the row "jumping"
+// every time the rail toggles, since it's the one element competing with the
+// rail-width tween for the eye's attention. Weight in icon-only mode instead
+// comes from the row's own centering, not a size change. Hover/tap keep their
+// own springy micro-interaction, driven by the ancestor row's
+// `motion.div initial="initial" whileHover="hover" whileTap="tap"` via
+// variant propagation — this object is identical everywhere it's used and
+// worth naming once rather than re-typing at every row.
 const HOVER_TAP_VARIANTS = {
   initial: { scale: 1 },
   hover: { scale: 1.1 },
@@ -273,7 +276,7 @@ export function AppLayout({
         animate={{ width: isExpanded ? 256 : 64 }}
         transition={SIDEBAR_TRANSITION}
         style={{ willChange: 'width' }}
-        className="hidden md:flex border-r border-sidebar-border bg-sidebar flex-col z-20"
+        className="hidden md:flex border-r border-sidebar-border bg-sidebar flex-col z-20 overflow-hidden"
       >
         {/* Business Switcher Top Header */}
         <div className={`h-14 flex items-center border-b border-sidebar-border overflow-hidden shrink-0 relative transition-[padding] duration-300 ${isCollapsed ? 'px-0 justify-center' : 'px-4'}`}>
@@ -347,37 +350,31 @@ export function AppLayout({
                   aria-label={isPinned ? 'Collapse sidebar' : 'Expand sidebar'}
                   className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
                 >
-                  <motion.div
-                    animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
-                    transition={SIDEBAR_TRANSITION}
-                  >
-                    <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                      <AnimatePresence mode="wait" initial={false}>
-                        <motion.span
-                          key={isPinned ? 'chevron-left' : 'chevron-right'}
-                          className="flex"
-                          initial={{ opacity: 0, rotate: -40, scale: 0.7 }}
-                          animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                          exit={{ opacity: 0, rotate: 40, scale: 0.7 }}
-                          transition={ICON_SPRING}
-                        >
-                          {isPinned ? (
-                            <ChevronLeft className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                          )}
-                        </motion.span>
-                      </AnimatePresence>
-                    </motion.div>
+                  <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                    <AnimatePresence mode="wait" initial={false}>
+                      <motion.span
+                        key={isPinned ? 'chevron-left' : 'chevron-right'}
+                        className="flex"
+                        initial={{ opacity: 0, rotate: -40, scale: 0.7 }}
+                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                        exit={{ opacity: 0, rotate: 40, scale: 0.7 }}
+                        transition={ICON_SPRING}
+                      >
+                        {isPinned ? (
+                          <ChevronLeft className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+                        )}
+                      </motion.span>
+                    </AnimatePresence>
                   </motion.div>
                   <AnimatePresence initial={false}>
                     {!isCollapsed && (
                       <motion.span
                         key="toggle-label"
                         initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: 'auto' }}
-                        exit={{ opacity: 0, width: 0 }}
-                        transition={SIDEBAR_TRANSITION}
+                        animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                        exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
                         className="whitespace-nowrap overflow-hidden"
                       >
                         {isPinned ? 'Collapse Sidebar' : 'Expand Sidebar'}
@@ -398,22 +395,16 @@ export function AppLayout({
                   className="group relative z-0 w-full flex items-center justify-between px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
                 >
                   <div className="flex items-center gap-2.5">
-                    <motion.div
-                      animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
-                      transition={SIDEBAR_TRANSITION}
-                    >
-                      <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                        <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                      </motion.div>
+                    <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                      <Search className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                     </motion.div>
                     <AnimatePresence initial={false}>
                       {!isCollapsed && (
                         <motion.span
                           key="search-text"
                           initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: 'auto' }}
-                          exit={{ opacity: 0, width: 0 }}
-                          transition={SIDEBAR_TRANSITION}
+                          animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                          exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
                           className="whitespace-nowrap overflow-hidden"
                         >
                           Search...
@@ -426,9 +417,8 @@ export function AppLayout({
                       <motion.span
                         key="search-badge"
                         initial={{ opacity: 0, scale: 0.8, x: -10 }}
-                        animate={{ opacity: 1, scale: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.8, x: -10 }}
-                        transition={SIDEBAR_TRANSITION}
+                        animate={{ opacity: 1, scale: 1, x: 0, transition: LABEL_ENTER_TRANSITION }}
+                        exit={{ opacity: 0, scale: 0.8, x: -10, transition: LABEL_TRANSITION }}
                         className="flex items-center text-xs opacity-50 bg-muted/50 border border-border px-1.5 py-0.5 rounded whitespace-nowrap shrink-0 font-normal"
                       >
                         <CmdIcon className="h-3 w-3 mr-0.5 shrink-0" /> K
@@ -516,22 +506,16 @@ export function AppLayout({
                                 />
                               </>
                             )}
-                            <motion.div
-                              animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
-                              transition={SIDEBAR_TRANSITION}
-                            >
-                              <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                                <item.icon className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                              </motion.div>
+                            <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                              <item.icon className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                             </motion.div>
                             <AnimatePresence initial={false}>
                               {!isCollapsed && (
                                 <motion.span
                                   key="nav-label"
                                   initial={{ opacity: 0, width: 0 }}
-                                  animate={{ opacity: 1, width: 'auto' }}
-                                  exit={{ opacity: 0, width: 0 }}
-                                  transition={SIDEBAR_TRANSITION}
+                                  animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                                  exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
                                   className="whitespace-nowrap overflow-hidden"
                                 >
                                   {item.label}
@@ -559,22 +543,16 @@ export function AppLayout({
                   onClick={() => setIsCurrencyConverterOpen(true)}
                   className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
                 >
-                  <motion.div
-                    animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
-                    transition={SIDEBAR_TRANSITION}
-                  >
-                    <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                      <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                    </motion.div>
+                  <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                    <Calculator className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                   </motion.div>
                   <AnimatePresence initial={false}>
                     {!isCollapsed && (
                       <motion.span
                         key="currency-label"
                         initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: 'auto' }}
-                        exit={{ opacity: 0, width: 0 }}
-                        transition={SIDEBAR_TRANSITION}
+                        animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                        exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
                         className="whitespace-nowrap overflow-hidden"
                       >
                         Currency Converter
@@ -614,22 +592,16 @@ export function AppLayout({
                         />
                       </>
                     )}
-                    <motion.div
-                      animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
-                      transition={SIDEBAR_TRANSITION}
-                    >
-                      <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                        <Settings className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                      </motion.div>
+                    <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+                      <Settings className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
                     </motion.div>
                     <AnimatePresence initial={false}>
                       {!isCollapsed && (
                         <motion.span
                           key="settings-label"
                           initial={{ opacity: 0, width: 0 }}
-                          animate={{ opacity: 1, width: 'auto' }}
-                          exit={{ opacity: 0, width: 0 }}
-                          transition={SIDEBAR_TRANSITION}
+                          animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                          exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
                           className="whitespace-nowrap overflow-hidden"
                         >
                           Settings
@@ -645,19 +617,31 @@ export function AppLayout({
 
           <ThemeToggle isCollapsed={isCollapsed} />
 
-          {globalSettings && (!isCollapsed) && (
-            <div className="pt-3 mt-3 border-t border-sidebar-border flex flex-wrap gap-x-3 gap-y-1 px-3 text-[10px] text-muted-foreground/70 uppercase tracking-wider">
-              {globalSettings.supportEmail && (
-                <a href={`mailto:${globalSettings.supportEmail}`} className="hover:text-foreground transition-colors">Support</a>
-              )}
-              {globalSettings.termsUrl && (
-                <a href={globalSettings.termsUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Terms</a>
-              )}
-              {globalSettings.privacyUrl && (
-                <a href={globalSettings.privacyUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Privacy</a>
-              )}
-            </div>
-          )}
+          {/* Collapses via height (not conditional unmount) so it eases shut
+              in lockstep with the rail instead of vanishing in one frame. */}
+          <AnimatePresence initial={false}>
+            {globalSettings && !isCollapsed && (
+              <motion.div
+                key="footer-links"
+                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 12, transition: LABEL_ENTER_TRANSITION }}
+                exit={{ opacity: 0, height: 0, marginTop: 0, transition: LABEL_TRANSITION }}
+                className="overflow-hidden"
+              >
+                <div className="pt-3 border-t border-sidebar-border flex flex-wrap gap-x-3 gap-y-1 px-3 text-[10px] text-muted-foreground/70 uppercase tracking-wider">
+                  {globalSettings.supportEmail && (
+                    <a href={`mailto:${globalSettings.supportEmail}`} className="hover:text-foreground transition-colors">Support</a>
+                  )}
+                  {globalSettings.termsUrl && (
+                    <a href={globalSettings.termsUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Terms</a>
+                  )}
+                  {globalSettings.privacyUrl && (
+                    <a href={globalSettings.privacyUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Privacy</a>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.aside>
 

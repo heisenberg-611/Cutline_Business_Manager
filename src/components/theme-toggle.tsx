@@ -6,13 +6,13 @@ import { useTheme } from "next-themes"
 import { AnimatePresence, motion } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
-// Matches AppLayout's SIDEBAR_TRANSITION so the theme row's collapse/expand
+// Matches AppLayout's label transitions so the theme row's collapse/expand
 // motion lines up with every other sidebar row instead of snapping on its own.
-const SIDEBAR_TRANSITION = { duration: 0.3, ease: [0.65, 0, 0.35, 1] as const }
+// Exit is fast (label disappears instantly rather than visibly squeezing);
+// enter is delayed until the rail has room, so text doesn't pop in early.
+const LABEL_ENTER_TRANSITION = { duration: 0.2, ease: [0.65, 0, 0.35, 1] as const, delay: 0.1 }
+const LABEL_TRANSITION = { duration: 0.15, ease: [0.65, 0, 0.35, 1] as const }
 const ICON_SPRING = { type: 'spring' as const, stiffness: 300, damping: 20 }
-// See AppLayout's ICON_COLLAPSED_SCALE: collapsed rows get a deliberate,
-// animated size bump instead of an instant Tailwind size-class swap.
-const ICON_COLLAPSED_SCALE = 1.25
 const HOVER_TAP_VARIANTS = {
   initial: { scale: 1 },
   hover: { scale: 1.1 },
@@ -79,26 +79,20 @@ export function ThemeToggle({ isCollapsed, variant = 'sidebar' }: { isCollapsed?
             onClick={toggleTheme}
             className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"
           >
-            <motion.div
-              animate={{ scale: isCollapsed ? ICON_COLLAPSED_SCALE : 1 }}
-              transition={SIDEBAR_TRANSITION}
-            >
-              <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
-                {isDark ? (
-                  <Sun className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                ) : (
-                  <Moon className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
-                )}
-              </motion.div>
+            <motion.div variants={HOVER_TAP_VARIANTS} transition={ICON_SPRING}>
+              {isDark ? (
+                <Sun className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+              ) : (
+                <Moon className="h-4 w-4 shrink-0 transition-colors group-hover:text-indigo-500 dark:group-hover:text-indigo-400" />
+              )}
             </motion.div>
             <AnimatePresence initial={false}>
               {!isCollapsed && (
                 <motion.span
                   key="theme-label"
                   initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: 'auto' }}
-                  exit={{ opacity: 0, width: 0 }}
-                  transition={SIDEBAR_TRANSITION}
+                  animate={{ opacity: 1, width: 'auto', transition: LABEL_ENTER_TRANSITION }}
+                  exit={{ opacity: 0, width: 0, transition: LABEL_TRANSITION }}
                   className="whitespace-nowrap overflow-hidden"
                 >
                   {isDark ? "Light Mode" : "Dark Mode"}
