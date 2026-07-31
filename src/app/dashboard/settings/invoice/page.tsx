@@ -16,24 +16,22 @@ export default async function InvoiceSettingsPage() {
 
   const business = await prisma.business.findUnique({
     where: { id: orgId },
+    select: { 
+      name: true,
+      invoicePrefix: true, 
+      invoiceSeparator: true, 
+      invoiceSequence: true,
+      emailSubjectTemplate: true, 
+      emailBodyTemplate: true, 
+      paymentInstructions: true, 
+      feedbackEmailSubjectTemplate: true, 
+      feedbackEmailBodyTemplate: true 
+    }
   })
 
   if (!business) {
     redirect('/dashboard/select-business')
   }
 
-  return (
-    <div className="w-full space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold leading-6 text-zinc-900 dark:text-zinc-100">
-          Invoice & Email Settings
-        </h3>
-        <p className="mt-2 text-sm text-zinc-500">
-          Manage how your invoices are numbered and customize the email template sent to clients.
-        </p>
-      </div>
-      
-      <InvoiceSettingsForm business={business} />
-    </div>
-  )
+  return <InvoiceSettingsForm business={business} />
 }
