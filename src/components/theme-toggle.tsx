@@ -19,6 +19,12 @@ const HOVER_TAP_VARIANTS = {
   tap: { scale: 0.95 },
 }
 
+const ROW_HOVER_VARIANTS = {
+  initial: { scale: 1 },
+  hover: { scale: 1.02 },
+  tap: { scale: 0.98 },
+}
+
 export function ThemeToggle({ isCollapsed, variant = 'sidebar' }: { isCollapsed?: boolean, variant?: 'sidebar' | 'icon' }) {
   const { setTheme, theme, resolvedTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
@@ -73,8 +79,8 @@ export function ThemeToggle({ isCollapsed, variant = 'sidebar' }: { isCollapsed?
 
   return (
     <Tooltip>
-      <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
-        <motion.div initial="initial" whileHover="hover" whileTap="tap">
+      <TooltipTrigger disabled={!isCollapsed} render={<div className="w-full" />}>
+        <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
           <button
             onClick={toggleTheme}
             className="group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60"

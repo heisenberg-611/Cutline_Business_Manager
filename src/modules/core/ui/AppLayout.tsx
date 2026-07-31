@@ -349,7 +349,7 @@ export function AppLayout({
             sit above the nav list rather than buried in the bottom stack. */}
         <div className="px-3 py-3 space-y-1 border-b border-sidebar-border shrink-0">
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+            <TooltipTrigger disabled={!isCollapsed} render={<div className="w-full" />}>
               <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                 <button
                   onClick={togglePin}
@@ -394,7 +394,7 @@ export function AppLayout({
           </Tooltip>
 
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+            <TooltipTrigger disabled={!isCollapsed} render={<div className="w-full" />}>
               <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                 <button
                   onClick={() => setIsCommandOpen(true)}
@@ -477,7 +477,7 @@ export function AppLayout({
                   const isActive = currentPath === item.href || (item.href !== '/dashboard' && currentPath.startsWith(item.href))
                   return (
                     <Tooltip key={item.href}>
-                      <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+                      <TooltipTrigger disabled={!isCollapsed} render={<div className="w-full" />}>
                         <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                           <Link
                             href={item.href}
@@ -539,7 +539,7 @@ export function AppLayout({
         {/* Bottom Actions */}
         <div className="p-3 border-t border-sidebar-border space-y-1 shrink-0">
           <Tooltip>
-            <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+            <TooltipTrigger disabled={!isCollapsed} render={<div className="w-full" />}>
               <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                 <button
                   onClick={() => setIsCurrencyConverterOpen(true)}
@@ -569,7 +569,7 @@ export function AppLayout({
 
           {isAdmin && (
             <Tooltip>
-              <TooltipTrigger disabled={!isCollapsed} render={<span className="contents" />}>
+              <TooltipTrigger disabled={!isCollapsed} render={<div className="w-full" />}>
                 <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                   <Link
                     href="/dashboard/settings"
@@ -626,8 +626,8 @@ export function AppLayout({
               <motion.div
                 key="footer-links"
                 initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginTop: 12, transition: LABEL_ENTER_TRANSITION }}
-                exit={{ opacity: 0, height: 0, marginTop: 0, transition: LABEL_TRANSITION }}
+                animate={{ opacity: 1, height: 'auto', marginTop: 12, transition: SIDEBAR_TRANSITION }}
+                exit={{ opacity: 0, height: 0, marginTop: 0, transition: SIDEBAR_TRANSITION }}
                 className="overflow-hidden"
               >
                 <div className="pt-3 border-t border-sidebar-border flex flex-wrap gap-x-3 gap-y-1 px-3 text-[10px] text-muted-foreground/70 uppercase tracking-wider">
