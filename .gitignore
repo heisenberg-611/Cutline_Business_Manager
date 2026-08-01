@@ -49,5 +49,4 @@ user-data-export.json
 lint.json
 
 # Agents
-.agents/
 .claude

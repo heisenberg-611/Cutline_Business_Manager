@@ -574,7 +574,7 @@ export function AppLayout({
                   <Link
                     href="/dashboard/settings"
                   aria-current={(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? 'page' : undefined}
-                  className={`group relative z-0 flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${
+                  className={`group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${
                     (optimisticPathname || pathname)?.startsWith('/dashboard/settings')
                       ? 'text-foreground font-semibold'
                       : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60'
@@ -630,15 +630,15 @@ export function AppLayout({
                 exit={{ opacity: 0, height: 0, marginTop: 0, transition: SIDEBAR_TRANSITION }}
                 className="overflow-hidden"
               >
-                <div className="pt-3 border-t border-sidebar-border flex flex-wrap gap-x-3 gap-y-1 px-3 text-[10px] text-muted-foreground/70 uppercase tracking-wider">
+                <div className="pt-3 border-t border-sidebar-border flex flex-nowrap whitespace-nowrap overflow-hidden gap-3 px-3 text-[10px] text-muted-foreground/70 uppercase tracking-wider">
                   {globalSettings.supportEmail && (
-                    <a href={`mailto:${globalSettings.supportEmail}`} className="hover:text-foreground transition-colors">Support</a>
+                    <a href={`mailto:${globalSettings.supportEmail}`} className="hover:text-foreground transition-colors shrink-0">Support</a>
                   )}
                   {globalSettings.termsUrl && (
-                    <a href={globalSettings.termsUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Terms</a>
+                    <a href={globalSettings.termsUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors shrink-0">Terms</a>
                   )}
                   {globalSettings.privacyUrl && (
-                    <a href={globalSettings.privacyUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Privacy</a>
+                    <a href={globalSettings.privacyUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors shrink-0">Privacy</a>
                   )}
                 </div>
               </motion.div>
