@@ -38,6 +38,10 @@ export async function updateGlobalSettings(data: {
   try {
     const admin = await requireAdmin(); // SECURITY CHECK
     
+    const oldSettings = await prisma.globalSettings.findUnique({
+      where: { id: 'default' }
+    });
+
     await prisma.globalSettings.upsert({
       where: { id: 'default' },
       update: { ...data },
@@ -47,14 +51,58 @@ export async function updateGlobalSettings(data: {
       }
     });
 
-    await prisma.adminAuditLog.create({
-      data: {
-        adminEmail: admin.email,
-        action: 'UPDATE_GLOBAL_SETTINGS',
-        targetId: 'default',
-        metadata: data as any
+    const changedCategories = new Set<string>();
+    const changesByCat: Record<string, any> = {};
+
+    const categories = {
+      BILLING: ['paymentMethods', 'defaultTrialDays', 'defaultPlanId', 'freeTierProjectLimit', 'proTierProjectLimit'],
+      SECURITY: ['maintenanceMode', 'allowNewSignups', 'maxFailedLogins', 'sessionTimeoutMinutes'],
+      SUPPORT: ['supportEmail', 'replyToEmail', 'termsUrl', 'privacyUrl']
+    };
+
+    if (oldSettings) {
+      for (const field of Object.keys(data)) {
+        const oldVal = JSON.stringify((oldSettings as any)[field]);
+        const newVal = JSON.stringify((data as any)[field]);
+        
+        if (oldVal !== newVal) {
+          let cat = 'GENERAL';
+          for (const [c, fields] of Object.entries(categories)) {
+            if (fields.includes(field)) {
+              cat = c;
+              break;
+            }
+          }
+          
+          changedCategories.add(cat);
+          if (!changesByCat[cat]) changesByCat[cat] = {};
+          changesByCat[cat][field] = { old: (oldSettings as any)[field], new: (data as any)[field] };
+        }
       }
-    });
+    } else {
+      changedCategories.add('BILLING');
+      changedCategories.add('SECURITY');
+      changedCategories.add('SUPPORT');
+      changedCategories.add('GENERAL');
+      changesByCat['BILLING'] = { note: 'Initial setup' };
+      changesByCat['SECURITY'] = { note: 'Initial setup' };
+      changesByCat['SUPPORT'] = { note: 'Initial setup' };
+      changesByCat['GENERAL'] = { note: 'Initial setup' };
+    }
+
+    if (changedCategories.size > 0) {
+      const auditPromises = Array.from(changedCategories).map(cat => 
+        prisma.adminAuditLog.create({
+          data: {
+            adminEmail: admin.email,
+            action: `UPDATE_GLOBAL_SETTINGS_${cat}`,
+            targetId: 'default',
+            metadata: changesByCat[cat]
+          }
+        })
+      );
+      await Promise.all(auditPromises);
+    }
     
     revalidatePath('/hq/settings');
     revalidatePath('/dashboard/settings/billing/checkout');

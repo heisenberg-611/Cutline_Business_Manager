@@ -489,7 +489,7 @@ export function AppLayout({
                             }
                           }}
                           aria-current={isActive ? 'page' : undefined}
-                          className={`group relative z-0 flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${isActive
+                          className={`group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${isActive
                               ? 'text-foreground font-semibold'
                               : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/60'
                             }`}
