@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Bell, Check, ExternalLink } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { getUnreadAdminNotifications, markAdminNotificationRead, markAllAdminNotificationsRead } from '../actions/notifications';
+import { getAdminNotifications, markAdminNotificationRead, markAllAdminNotificationsRead } from '../actions/notifications';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -14,7 +14,7 @@ export function AdminNotifications() {
 
   const fetchNotifications = async () => {
     try {
-      const data = await getUnreadAdminNotifications();
+      const data = await getAdminNotifications();
       setNotifications(data);
     } catch (e) {
       console.error(e);
@@ -37,7 +37,7 @@ export function AdminNotifications() {
 
   const handleRead = async (id: string, actionUrl?: string | null) => {
     try {
-      setNotifications(prev => prev.filter(n => n.id !== id));
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
       await markAdminNotificationRead(id);
       if (actionUrl) {
         setIsOpen(false);
@@ -51,7 +51,7 @@ export function AdminNotifications() {
 
   const handleMarkAllRead = async () => {
     try {
-      setNotifications([]);
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       await markAllAdminNotificationsRead();
       setIsOpen(false);
     } catch (e) {
@@ -72,9 +72,9 @@ export function AdminNotifications() {
       >
         <div className="relative pointer-events-none">
           <Bell className="w-5 h-5 shrink-0" />
-          {notifications.length > 0 && (
+          {notifications.filter(n => !n.isRead).length > 0 && (
             <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-background">
-              {notifications.length > 99 ? '99+' : notifications.length}
+              {notifications.filter(n => !n.isRead).length > 99 ? '99+' : notifications.filter(n => !n.isRead).length}
             </span>
           )}
         </div>
@@ -83,7 +83,7 @@ export function AdminNotifications() {
       <PopoverContent className="w-80 p-0 mr-4 md:mr-0 z-50 mb-2 md:mb-0 md:ml-4" align="end" side="right">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
           <h3 className="font-semibold text-sm">Notifications</h3>
-          {notifications.length > 0 && (
+          {notifications.filter(n => !n.isRead).length > 0 && (
             <button
               onClick={handleMarkAllRead}
               className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
@@ -103,22 +103,27 @@ export function AdminNotifications() {
                 <div
                   key={n.id}
                   onClick={() => handleRead(n.id, n.actionUrl)}
-                  className="px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer group"
+                  className={`px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer group flex gap-3 ${!n.isRead ? 'bg-muted/10' : ''}`}
                 >
-                  <div className="flex justify-between items-start mb-1 gap-2">
-                    <p className="text-sm font-medium leading-none group-hover:text-primary transition-colors">
-                      {n.title}
+                  {!n.isRead && (
+                    <div className="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-primary" />
+                  )}
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-1 gap-2">
+                      <p className={`text-sm leading-none group-hover:text-primary transition-colors ${!n.isRead ? 'font-semibold' : 'font-medium text-muted-foreground'}`}>
+                        {n.title}
+                      </p>
+                      {n.actionUrl && (
+                        <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
+                    </div>
+                    <p className={`text-xs line-clamp-2 mt-1.5 leading-snug ${!n.isRead ? 'text-foreground/80' : 'text-muted-foreground'}`}>
+                      {n.message}
                     </p>
-                    {n.actionUrl && (
-                      <ExternalLink className="w-3 h-3 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
+                    <p className="text-[10px] text-muted-foreground/70 mt-2">
+                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mt-1.5 leading-snug">
-                    {n.message}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-2">
-                    {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                  </p>
                 </div>
               ))}
             </div>

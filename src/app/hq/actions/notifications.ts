@@ -4,11 +4,11 @@ import prisma from '@/modules/core/db/prisma';
 import { requireAdmin } from '../actions';
 import { revalidatePath } from 'next/cache';
 
-export async function getUnreadAdminNotifications() {
+export async function getAdminNotifications() {
   await requireAdmin();
   const notifications = await prisma.adminNotification.findMany({
-    where: { isRead: false },
     orderBy: { createdAt: 'desc' },
+    take: 50,
   });
   return notifications;
 }
