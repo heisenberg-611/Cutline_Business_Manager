@@ -36,7 +36,7 @@ export async function updateGlobalSettings(data: {
   sessionTimeoutMinutes: number;
 }) {
   try {
-    await requireAdmin(); // SECURITY CHECK
+    const admin = await requireAdmin(); // SECURITY CHECK
     
     await prisma.globalSettings.upsert({
       where: { id: 'default' },
@@ -44,6 +44,15 @@ export async function updateGlobalSettings(data: {
       create: {
         id: 'default',
         ...data
+      }
+    });
+
+    await prisma.adminAuditLog.create({
+      data: {
+        adminEmail: admin.email,
+        action: 'UPDATE_GLOBAL_SETTINGS',
+        targetId: 'default',
+        metadata: data as any
       }
     });
     

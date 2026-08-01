@@ -6,11 +6,20 @@ import { revalidatePath } from 'next/cache';
 
 export async function updateBusinessCustomLimit(businessId: string, customProjectLimit: number | null) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
     
     await prisma.business.update({
       where: { id: businessId },
       data: { customProjectLimit }
+    });
+
+    await prisma.adminAuditLog.create({
+      data: {
+        adminEmail: admin.email,
+        action: 'UPDATE_BUSINESS_LIMIT',
+        targetId: businessId,
+        metadata: { customProjectLimit }
+      }
     });
     
     revalidatePath('/hq/users');

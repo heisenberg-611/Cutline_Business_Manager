@@ -68,29 +68,64 @@ export async function loginAdmin(email: string, password: string) {
     maxAge: timeoutMinutes * 60,
   });
 
+  await prisma.adminAuditLog.create({
+    data: {
+      adminEmail: email,
+      action: 'ADMIN_LOGIN',
+      targetId: email,
+      metadata: { ip }
+    }
+  });
+
   revalidatePath('/hq');
   return { success: true };
 }
 
 export async function logoutAdmin() {
+  const admin = await verifyAdminSession();
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAME);
+  
+  if (admin) {
+    await prisma.adminAuditLog.create({
+      data: {
+        adminEmail: admin.email,
+        action: 'ADMIN_LOGOUT',
+        targetId: admin.email,
+      }
+    });
+  }
+  
   revalidatePath('/hq');
 }
 
 export async function addAdmin(email: string) {
-  await requireAdmin(); // SECURITY CHECK
+  const admin = await requireAdmin(); // SECURITY CHECK
   await prisma.globalAdmin.create({
     data: { email },
+  });
+  await prisma.adminAuditLog.create({
+    data: {
+      adminEmail: admin.email,
+      action: 'ADD_ADMIN',
+      targetId: email,
+    }
   });
   revalidatePath('/hq/admins');
   return { success: true };
 }
 
 export async function removeAdmin(email: string) {
-  await requireAdmin(); // SECURITY CHECK
+  const admin = await requireAdmin(); // SECURITY CHECK
   await prisma.globalAdmin.delete({
     where: { email },
+  });
+  await prisma.adminAuditLog.create({
+    data: {
+      adminEmail: admin.email,
+      action: 'REMOVE_ADMIN',
+      targetId: email,
+    }
   });
   revalidatePath('/hq/admins');
   return { success: true };

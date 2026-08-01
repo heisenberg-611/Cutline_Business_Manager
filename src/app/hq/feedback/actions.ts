@@ -6,11 +6,20 @@ import { revalidatePath } from 'next/cache';
 
 export async function updateFeedbackStatus(id: string, status: string) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
     
     await prisma.platformFeedback.update({
       where: { id },
       data: { status },
+    });
+
+    await prisma.adminAuditLog.create({
+      data: {
+        adminEmail: admin.email,
+        action: 'UPDATE_FEEDBACK_STATUS',
+        targetId: id,
+        metadata: { status }
+      }
     });
     
     revalidatePath('/hq/feedback');
@@ -23,10 +32,18 @@ export async function updateFeedbackStatus(id: string, status: string) {
 
 export async function deleteFeedback(id: string) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
     
     await prisma.platformFeedback.delete({
       where: { id },
+    });
+
+    await prisma.adminAuditLog.create({
+      data: {
+        adminEmail: admin.email,
+        action: 'DELETE_FEEDBACK',
+        targetId: id,
+      }
     });
     
     revalidatePath('/hq/feedback');

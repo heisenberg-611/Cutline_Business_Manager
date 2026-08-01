@@ -5,11 +5,19 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '../actions';
 
 export async function markMessageAsRead(id: string) {
-  await requireAdmin(); // SECURITY CHECK
+  const admin = await requireAdmin(); // SECURITY CHECK
   
   await prisma.systemContactMessage.update({
     where: { id },
     data: { isRead: true },
+  });
+
+  await prisma.adminAuditLog.create({
+    data: {
+      adminEmail: admin.email,
+      action: 'MARK_MESSAGE_READ',
+      targetId: id,
+    }
   });
   
   revalidatePath('/hq/messages');
