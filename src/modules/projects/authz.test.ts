@@ -8,7 +8,13 @@ vi.mock('@clerk/nextjs/server', () => ({
 
 const mockPrisma = {
   project: { findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn() },
-  projectMember: { findUnique: vi.fn(), findMany: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
+  projectMember: {
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    upsert: vi.fn(),
+    updateMany: vi.fn(),
+    deleteMany: vi.fn(),
+  },
 }
 vi.mock('@/modules/core/db/prisma', () => ({ default: mockPrisma }))
 
@@ -180,29 +186,40 @@ describe('syncAssigneeMembership', () => {
         update: { role: 'OWNER' },
       })
     )
+    expect(mockPrisma.projectMember.updateMany).not.toHaveBeenCalled()
+  })
+
+  // Handover, not eviction: the outgoing assignee keeps read/write so work in
+  // flight can still be finished, but loses manage.
+  it('demotes the outgoing assignee to COLLABORATOR on reassignment', async () => {
+    await syncAssigneeMembership('proj_1', 'user_new', 'user_old', 'user_admin')
+    expect(mockPrisma.projectMember.updateMany).toHaveBeenCalledWith({
+      where: { projectId: 'proj_1', userId: 'user_old', role: 'OWNER' },
+      data: { role: 'COLLABORATOR' },
+    })
     expect(mockPrisma.projectMember.deleteMany).not.toHaveBeenCalled()
   })
 
-  // Reassigning previously revoked the old assignee outright, because access
-  // *was* the pointer. That behaviour is preserved.
-  it('revokes the outgoing assignee on reassignment', async () => {
-    await syncAssigneeMembership('proj_1', 'user_new', 'user_old', 'user_admin')
-    expect(mockPrisma.projectMember.deleteMany).toHaveBeenCalledWith({
-      where: { projectId: 'proj_1', userId: 'user_old', role: 'OWNER' },
-    })
-  })
-
-  it('only revokes the OWNER row, leaving explicit collaborators intact', async () => {
+  it('demotes the outgoing assignee even when the project is left unassigned', async () => {
     await syncAssigneeMembership('proj_1', null, 'user_old', 'user_admin')
-    expect(mockPrisma.projectMember.deleteMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ role: 'OWNER' }) })
+    expect(mockPrisma.projectMember.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { role: 'COLLABORATOR' } })
     )
     expect(mockPrisma.projectMember.upsert).not.toHaveBeenCalled()
   })
 
+  // Scoping the update to role: 'OWNER' is what stops an explicitly added
+  // WATCHER from being silently promoted to COLLABORATOR.
+  it('only touches the OWNER row, leaving explicit member roles intact', async () => {
+    await syncAssigneeMembership('proj_1', 'user_new', 'user_old', 'user_admin')
+    expect(mockPrisma.projectMember.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ role: 'OWNER' }) })
+    )
+  })
+
   it('does nothing to the old row when the assignee is unchanged', async () => {
     await syncAssigneeMembership('proj_1', 'user_same', 'user_same', 'user_admin')
-    expect(mockPrisma.projectMember.deleteMany).not.toHaveBeenCalled()
+    expect(mockPrisma.projectMember.updateMany).not.toHaveBeenCalled()
     expect(mockPrisma.projectMember.upsert).toHaveBeenCalled()
   })
 })

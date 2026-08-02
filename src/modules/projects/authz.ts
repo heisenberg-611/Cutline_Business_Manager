@@ -146,10 +146,15 @@ export async function authorizeProjectsAccess(
 /**
  * Keeps ProjectMember in step with the legacy Project.assigneeId pointer.
  *
- * Reassigning previously revoked the old assignee's access outright, since
- * access *was* the pointer. That behaviour is preserved: the outgoing
- * assignee's OWNER row is removed. Members added explicitly as COLLABORATOR or
- * WATCHER are untouched.
+ * Reassigning hands ownership over rather than cutting the outgoing assignee
+ * out: they are demoted OWNER -> COLLABORATOR, so they keep read/write on work
+ * they were until now responsible for, but lose the ability to manage the
+ * member list. Under the old single-assignee rule they lost access entirely,
+ * because access *was* the pointer; with several members per project that is
+ * needlessly destructive — someone mid-handover can still finish their work.
+ *
+ * Only an OWNER row is touched, so a member added explicitly as COLLABORATOR
+ * or WATCHER keeps whatever role they were given.
  *
  * Caller is responsible for tenant checks — this only writes membership rows.
  */
@@ -160,8 +165,9 @@ export async function syncAssigneeMembership(
   actorUserId: string
 ) {
   if (previousAssigneeId && previousAssigneeId !== newAssigneeId) {
-    await prisma.projectMember.deleteMany({
+    await prisma.projectMember.updateMany({
       where: { projectId, userId: previousAssigneeId, role: 'OWNER' },
+      data: { role: 'COLLABORATOR' },
     })
   }
 
