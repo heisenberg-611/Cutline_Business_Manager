@@ -10,7 +10,16 @@
     "reset-db": "tsx scripts/reset-db.ts",
     "postinstall": "prisma generate",
     "vercel-build": "prisma generate && next build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:nuke": "docker compose down -v",
+    "db:migrate": "sh scripts/local-db.sh npx prisma migrate dev",
+    "db:deploy": "sh scripts/local-db.sh npx prisma migrate deploy",
+    "db:seed": "sh scripts/local-db.sh npx tsx scripts/seed-local.ts",
+    "db:studio": "sh scripts/local-db.sh npx prisma studio",
+    "db:psql": "docker compose exec postgres psql -U cutline -d cutline_dev",
+    "dev:local": "sh scripts/local-db.sh next dev --webpack"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
