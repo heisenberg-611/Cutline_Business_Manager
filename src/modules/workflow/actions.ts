@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
 import { createManyNotifications } from '@/modules/notifications/services'
+import { authorizeProjectAccess, authorizeProjectsAccess } from '@/modules/projects/authz'
 
 const DEFAULT_STAGES = [
   { name: 'Idea / Discovery', orderIndex: 0 },
@@ -83,23 +84,7 @@ export async function ensureDefaultTemplate(orgId: string) {
 }
 
 export async function updateProjectStage(projectId: string, newStageId: string) {
-  const { orgId, userId, orgRole } = await auth()
-  
-  if (!orgId || !userId) {
-    throw new Error('Unauthorized')
-  }
-
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, businessId: orgId }
-  })
-
-  if (!project || project.businessId !== orgId) {
-    throw new Error('Project not found or unauthorized')
-  }
-
-  if (orgRole !== 'org:admin' && project.assigneeId !== userId) {
-    throw new Error('Forbidden: You are not assigned to this project.')
-  }
+  const { orgId, userId, orgRole, project } = await authorizeProjectAccess(projectId, 'write')
 
   const currentStageId = project.statusStageId
 
@@ -183,23 +168,10 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
 }
 
 export async function updateProjectOrder(updates: { id: string, statusStageId: string, orderIndex: number }[]) {
-  const { orgId, userId, orgRole } = await auth()
-  
-  if (!orgId || !userId) {
-    throw new Error('Unauthorized')
-  }
-
-  if (orgRole !== 'org:admin') {
-    const projectIds = updates.map(u => u.id)
-    const projects = await prisma.project.findMany({
-      where: { id: { in: projectIds }, businessId: orgId }
-    })
-    for (const project of projects) {
-      if (project.assigneeId !== userId) {
-        throw new Error(`Forbidden: You are not assigned to this project.`)
-      }
-    }
-  }
+  const { orgId, userId, orgRole } = await authorizeProjectsAccess(
+    updates.map(u => u.id),
+    'write'
+  )
 
   // Update all projects in a transaction
   await prisma.$transaction(
@@ -267,24 +239,8 @@ export async function updateProjectOrder(updates: { id: string, statusStageId: s
 }
 
 export async function submitMemberDelivery(projectId: string, driveLink: string) {
-  const { orgId, userId, orgRole } = await auth()
-  
-  if (!orgId || !userId) {
-    throw new Error('Unauthorized')
-  }
-
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, businessId: orgId }
-  })
-
-  if (!project) {
-    throw new Error('Project not found')
-  }
-
-  // Only the assigned member or an admin can submit
-  if (orgRole !== 'org:admin' && project.assigneeId !== userId) {
-    throw new Error('Forbidden: You are not assigned to this project.')
-  }
+  // Only a project member (or an admin) can submit a delivery.
+  const { orgId, userId, orgRole, project } = await authorizeProjectAccess(projectId, 'write')
 
   if (driveLink && driveLink.trim() !== '') {
     // Add it to the Project Links

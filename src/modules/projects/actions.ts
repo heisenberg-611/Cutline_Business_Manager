@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import prisma from '@/modules/core/db/prisma'
 import { ensureDefaultTemplate } from '@/modules/workflow/actions'
 import { createNotification } from '@/modules/notifications/services'
+import { syncAssigneeMembership } from './authz'
 
 // -----------------------------------------------------------------------------
 // DUPLICATE CHECK QUERIES (for live form validation)
@@ -44,8 +45,8 @@ export async function getOrgUsers(orgId: string) {
 }
 
 export async function createProject(data: FormData) {
-  const { orgId, orgRole } = await auth()
-  
+  const { orgId, orgRole, userId } = await auth()
+
   if (!orgId) {
     throw new Error('Unauthorized: No active business selected.')
   }
@@ -134,6 +135,10 @@ export async function createProject(data: FormData) {
   })
 
   if (assigneeId) {
+    // Authorization reads ProjectMember, so a new project must have its
+    // assignee recorded there or they could not open what they were just given.
+    await syncAssigneeMembership(project.id, assigneeId, null, userId ?? assigneeId)
+
     await createNotification({
       businessId: orgId,
       userId: assigneeId,
@@ -170,6 +175,10 @@ export async function updateProject(projectId: string, data: { title?: string, d
   })
 
   if ('assigneeId' in data && data.assigneeId !== undefined && oldAssigneeId !== data.assigneeId) {
+    // Mirror the pointer change into ProjectMember, which is what authorization
+    // now reads. Reassigning revokes the outgoing assignee as it always did.
+    await syncAssigneeMembership(projectId, data.assigneeId, oldAssigneeId, userId ?? '')
+
     await prisma.auditLog.create({
       data: {
         businessId: orgId,
