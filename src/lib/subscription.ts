@@ -107,3 +107,14 @@ export function canInviteMembers(plan: SubscriptionPlan) {
 export function canUseMessages(plan: SubscriptionPlan) {
   return plan === PLANS.BUSINESS;
 }
+
+/**
+ * Team collaboration: project members, tasks, comments and @mentions.
+ *
+ * Checked explicitly rather than inferred from canInviteMembers. A business
+ * downgraded from BUSINESS keeps its Clerk organization members, so relying on
+ * "they have teammates" would leave collaboration switched on after downgrade.
+ */
+export function canUseTeamCollaboration(plan: SubscriptionPlan) {
+  return plan === PLANS.BUSINESS;
+}

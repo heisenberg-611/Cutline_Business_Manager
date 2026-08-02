@@ -269,7 +269,8 @@ async function main() {
         entityType: "Project",
         entityId: brandFilm.id,
         authorId: MEMBERS[0].id,
-        body: `Client wants the logo sting shortened. @${MEMBERS[1].firstName} can you take this?`,
+        // Structured mention token — a bare "@Kai" is intentionally not parsed.
+        body: `Client wants the logo sting shortened. @[${MEMBERS[1].firstName} ${MEMBERS[1].lastName}](${MEMBERS[1].id}) can you take this?`,
         mentions: { create: [{ mentionedUserId: MEMBERS[1].id }] },
       },
     });

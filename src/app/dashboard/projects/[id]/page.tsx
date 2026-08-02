@@ -8,6 +8,9 @@ import { LinksPanel } from '@/modules/projects/components/LinksPanel'
 import { TimePanel } from '@/modules/projects/components/TimePanel'
 import { AssetPanel } from '@/modules/projects/components/AssetPanel'
 import { ProjectActions } from '@/modules/projects/components/ProjectActions'
+import { CommentThread } from '@/modules/collaboration/components/CommentThread'
+import { getComments } from '@/modules/collaboration/actions/comments'
+import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
 import prisma from '@/modules/core/db/prisma'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,27 +18,36 @@ import { ArrowLeft, Clock, CalendarDays, Folder } from 'lucide-react'
 import { format } from 'date-fns'
 
 export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { orgId } = await auth()
-  
+  const { orgId, userId, orgRole } = await auth()
+
   if (!orgId) {
     redirect('/dashboard/select-business')
   }
 
   // Next.js 15: params must be awaited
   const { id } = await params
-  
-  const [project, availableAssets, members] = await Promise.all([
+
+  const [project, availableAssets, members, business] = await Promise.all([
     getProjectDetails(id),
     prisma.asset.findMany({
       where: { businessId: orgId },
       orderBy: { name: 'asc' }
     }),
-    getOrgUsers(orgId)
+    getOrgUsers(orgId),
+    prisma.business.findUnique({
+      where: { id: orgId },
+      select: { subscriptionPlan: true, subscriptionPeriodEnd: true }
+    })
   ])
 
   if (!project) {
     notFound()
   }
+
+  // Comments are BUSINESS-tier. Fetched only when enabled so lower plans do not
+  // pay for a query whose result they never see.
+  const collaborationEnabled = !!business && canUseTeamCollaboration(getActivePlan(business))
+  const comments = collaborationEnabled ? await getComments('Project', project.id) : []
 
   return (
     <div className="space-y-6 flex flex-col md:h-[calc(100vh-8rem)]">
@@ -150,10 +162,24 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <AssetPanel 
             projectId={project.id} 
             currentAssets={project.assets} 
-            availableAssets={availableAssets} 
+            availableAssets={availableAssets}
           />
         </div>
       </div>
+
+      {/* Discussion — full width, since threads need more room than the panels */}
+      {collaborationEnabled && userId && (
+        <div className="shrink-0">
+          <CommentThread
+            entityType="Project"
+            entityId={project.id}
+            comments={comments}
+            members={members.map(m => m.user)}
+            currentUserId={userId}
+            isAdmin={orgRole === 'org:admin'}
+          />
+        </div>
+      )}
     </div>
   )
 }
