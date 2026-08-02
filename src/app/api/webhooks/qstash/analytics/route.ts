@@ -16,7 +16,7 @@ async function handler(req: NextRequest) {
     const snapshotDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
     const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-    const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+    const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999)
     const ninetyDaysAgo = new Date()
     ninetyDaysAgo.setDate(today.getDate() - 90)
 
@@ -133,7 +133,7 @@ async function handler(req: NextRequest) {
       const trendPromises: Promise<{ month: string; revenue: number }>[] = []
       for (let i = 5; i >= 0; i--) {
         const start = new Date(today.getFullYear(), today.getMonth() - i, 1)
-        const end = new Date(today.getFullYear(), today.getMonth() - i + 1, 0)
+        const end = new Date(today.getFullYear(), today.getMonth() - i + 1, 0, 23, 59, 59, 999)
         trendPromises.push(
           getRevenueSummary(businessId, start, end).then(({ cashRevenue }) => ({
             month: start.toLocaleString('default', { month: 'short' }),

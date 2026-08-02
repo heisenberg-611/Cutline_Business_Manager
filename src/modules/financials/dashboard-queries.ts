@@ -139,7 +139,7 @@ export async function getStudioHealth(businessId: string) {
   if (!snapshot) {
     // Fallback if no snapshot exists yet (e.g. cron hasn't run)
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0)
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
     const ninetyDaysAgo = new Date()
     ninetyDaysAgo.setDate(now.getDate() - 90)
 
@@ -278,7 +278,7 @@ export async function getRevenueTrend(businessId: string) {
     const trendPromises: Promise<{ month: string; revenue: number }>[] = []
     for (let i = 5; i >= 1; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0)
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999)
       trendPromises.push(
         getRevenueSummary(businessId, d, end).then(({ cashRevenue }) => ({
           month: d.toLocaleString('default', { month: 'short' }),
