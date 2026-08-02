@@ -2,6 +2,7 @@
 
 import prisma from '@/modules/core/db/prisma';
 import * as Ably from 'ably';
+import { conversationChannel, sidebarChannel } from '@/lib/ably/channels';
 
 export async function getGuestChatByToken(token: string) {
   const conversation = await prisma.conversation.findUnique({
@@ -51,10 +52,12 @@ export async function sendGuestMessage(token: string, content: string, guestName
     try {
       const ably = new Ably.Rest(process.env.ABLY_API_KEY);
       
-      const channel = ably.channels.get(`conversation-${conversation.id}`);
+      const channel = ably.channels.get(
+        conversationChannel(conversation.businessId, conversation.id)
+      );
       await channel.publish('new-message', message);
 
-      const businessChannel = ably.channels.get(`business-${conversation.businessId}`);
+      const businessChannel = ably.channels.get(sidebarChannel(conversation.businessId));
       await businessChannel.publish('sidebar-update', {
         conversationId: conversation.id,
         message,

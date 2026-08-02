@@ -13,6 +13,7 @@ import {
 
 
 import { useAuth } from '@clerk/nextjs'
+import { conversationChannel, sidebarChannel } from '@/lib/ably/channels'
 
 /**
  * Polls the conversation list every 15 seconds to keep unread counts fresh.
@@ -31,7 +32,7 @@ export function useConversations() {
   useEffect(() => {
     if (!orgId || !ably) return;
 
-    const channelName = `business-${orgId}`;
+    const channelName = sidebarChannel(orgId);
     const channel = ably.channels.get(channelName);
 
     const onSidebarUpdate = (message: any) => {
@@ -99,12 +100,15 @@ export function useConversationMessages(conversationId: string | null, currentUs
   })
 
   const ably = useAblyClient();
+  // Channels are namespaced per business, so the org must be known before
+  // subscribing — the token is scoped to this namespace and nothing else.
+  const { orgId } = useAuth();
 
   // Real-time via Ably WebSockets
   useEffect(() => {
-    if (!conversationId || !ably) return;
-    
-    const channelName = `conversation-${conversationId}`;
+    if (!conversationId || !ably || !orgId) return;
+
+    const channelName = conversationChannel(orgId, conversationId);
     const channel = ably.channels.get(channelName);
     
       const onMessage = (message: any) => {
@@ -146,7 +150,7 @@ export function useConversationMessages(conversationId: string | null, currentUs
     return () => {
       channel.unsubscribe('new-message', onMessage);
     };
-  }, [conversationId, ably, queryClient, currentUserId]);
+  }, [conversationId, ably, orgId, queryClient, currentUserId]);
 
   // Mutation to send a message optimistically
   const sendMutation = useMutation({
