@@ -104,7 +104,7 @@ export default async function FinancialsPage({
         </div>
 
         <div className="xl:col-span-1 min-w-0 order-1 xl:order-2 w-full">
-          <AgingBucketsCard buckets={agingBuckets} />
+          <AgingBucketsCard buckets={agingBuckets} currency={studioHealth.currency || 'USD'} />
         </div>
       </div>
     </div>

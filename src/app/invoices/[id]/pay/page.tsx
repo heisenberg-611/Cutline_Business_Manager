@@ -62,7 +62,7 @@ export default async function InvoicePayPage({ params }: { params: Promise<{ id:
             <div className="text-right">
               <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1">Amount Due</p>
               <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">
-                {isPaid ? '$0.00' : amountDueFormatted}
+                {isPaid ? formatter.format(0) : amountDueFormatted}
               </p>
               {isPaid && (
                 <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 mt-2">

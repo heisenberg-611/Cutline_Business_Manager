@@ -8,10 +8,11 @@ interface Props {
     '61-90': number
     '90+': number
   }
+  currency?: string
 }
 
 
-export function AgingBucketsCard({ buckets }: Props) {
+export function AgingBucketsCard({ buckets, currency = 'USD' }: Props) {
   const total = Object.values(buckets).reduce((a, b) => a + b, 0)
   
   return (
@@ -27,28 +28,28 @@ export function AgingBucketsCard({ buckets }: Props) {
               <div 
                 style={{ width: `${(buckets['0-30'] / total) * 100}%` }} 
                 className="bg-blue-500" 
-                title={`0-30 Days: ${formatMoney(buckets['0-30'])}`}
+                title={`0-30 Days: ${formatMoney(buckets['0-30'], currency)}`}
               />
             )}
             {buckets['31-60'] > 0 && (
               <div 
                 style={{ width: `${(buckets['31-60'] / total) * 100}%` }} 
                 className="bg-yellow-500" 
-                title={`31-60 Days: ${formatMoney(buckets['31-60'])}`}
+                title={`31-60 Days: ${formatMoney(buckets['31-60'], currency)}`}
               />
             )}
             {buckets['61-90'] > 0 && (
               <div 
                 style={{ width: `${(buckets['61-90'] / total) * 100}%` }} 
                 className="bg-orange-500" 
-                title={`61-90 Days: ${formatMoney(buckets['61-90'])}`}
+                title={`61-90 Days: ${formatMoney(buckets['61-90'], currency)}`}
               />
             )}
             {buckets['90+'] > 0 && (
               <div 
                 style={{ width: `${(buckets['90+'] / total) * 100}%` }} 
                 className="bg-red-500" 
-                title={`90+ Days: ${formatMoney(buckets['90+'])}`}
+                title={`90+ Days: ${formatMoney(buckets['90+'], currency)}`}
               />
             )}
           </div>
@@ -59,28 +60,28 @@ export function AgingBucketsCard({ buckets }: Props) {
                 <div className="w-3 h-3 rounded-full bg-blue-500"></div>
                 <span className="text-zinc-500">0-30 Days</span>
               </div>
-              <p className="mt-1 font-medium">{formatMoney(buckets['0-30'])}</p>
+              <p className="mt-1 font-medium">{formatMoney(buckets['0-30'], currency)}</p>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
                 <span className="text-zinc-500">31-60 Days</span>
               </div>
-              <p className="mt-1 font-medium">{formatMoney(buckets['31-60'])}</p>
+              <p className="mt-1 font-medium">{formatMoney(buckets['31-60'], currency)}</p>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-orange-500"></div>
                 <span className="text-zinc-500">61-90 Days</span>
               </div>
-              <p className="mt-1 font-medium">{formatMoney(buckets['61-90'])}</p>
+              <p className="mt-1 font-medium">{formatMoney(buckets['61-90'], currency)}</p>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
                 <span className="text-zinc-500">90+ Days</span>
               </div>
-              <p className="mt-1 font-medium text-red-600">{formatMoney(buckets['90+'])}</p>
+              <p className="mt-1 font-medium text-red-600">{formatMoney(buckets['90+'], currency)}</p>
             </div>
           </div>
         </div>

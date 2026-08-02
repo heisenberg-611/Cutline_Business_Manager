@@ -101,7 +101,7 @@ export function StudioHealthFinanceStrip({ data, variant = 'main' }: Props) {
             <h3 className="text-xs font-medium uppercase tracking-wider">Overdue Invoices</h3>
           </div>
           <p className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-            {formatMoney(data.overdue)}
+            {formatMoney(data.overdue, data.currency)}
           </p>
         </div>
       )}
