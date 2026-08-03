@@ -5,7 +5,7 @@ import prisma from '@/modules/core/db/prisma'
 import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
 import { visibleProjectFilter } from '@/modules/projects/authz'
 import { Badge } from '@/components/ui/badge'
-import { CheckSquare, MessageSquare, Users2, ArrowRight } from 'lucide-react'
+import { CheckSquare, MessageSquare, Users2, Handshake, ArrowRight } from 'lucide-react'
 
 export const metadata = { title: 'Collaboration' }
 
@@ -76,7 +76,7 @@ export default async function CollaborationPage() {
 
       {projects.length === 0 ? (
         <div className="rounded-xl border border-dashed border-zinc-300 py-16 text-center dark:border-zinc-700">
-          <Users2 className="mx-auto h-8 w-8 text-zinc-400" />
+          <Handshake className="mx-auto h-8 w-8 text-zinc-400" />
           <p className="mt-3 text-sm text-zinc-500">
             {isAdmin
               ? 'No active projects yet. Create one to start collaborating.'
@@ -145,7 +145,7 @@ function UpgradeNotice() {
         </h3>
       </div>
       <div className="rounded-xl border border-dashed border-zinc-300 py-16 text-center dark:border-zinc-700">
-        <Users2 className="mx-auto h-8 w-8 text-zinc-400" />
+        <Handshake className="mx-auto h-8 w-8 text-zinc-400" />
         <p className="mt-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">
           Team collaboration is a Business plan feature
         </p>

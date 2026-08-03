@@ -5,7 +5,7 @@ import {
   Briefcase,
   Clapperboard,
   Users,
-  Users2,
+  Handshake,
   CircleDollarSign,
   TrendingUp,
   Package,
@@ -38,7 +38,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Pipeline', icon: Kanban, href: '/dashboard/pipeline' },
       { label: 'Projects', icon: Briefcase, href: '/dashboard/projects' },
-      { label: 'Collaboration', icon: Users2, href: '/dashboard/collaboration' },
+      { label: 'Collaboration', icon: Handshake, href: '/dashboard/collaboration' },
       { label: 'ProdP', icon: Clapperboard, href: '/dashboard/prodp' },
       { label: 'Assets', icon: Package, href: '/dashboard/assets' },
     ],
