@@ -8,7 +8,7 @@ import {
   type DraggableProvidedDragHandleProps,
   type DropResult,
 } from '@hello-pangea/dnd'
-import { format, formatDistanceStrict, formatDistanceToNow, isBefore, startOfDay } from 'date-fns'
+import { format, formatDistanceStrict, isBefore, startOfDay } from 'date-fns'
 import { CheckSquare, Clock, GripVertical, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -282,27 +282,38 @@ export function TaskPanel({
  * completedAt is cleared when a task is reopened, so "took" only ever describes
  * a run that actually finished rather than a stale timestamp.
  */
+/** e.g. "Aug 3, 4:12 PM" — the year is in the tooltip, not the row. */
+const STAMP = 'MMM d, h:mm a'
+
+/**
+ * How long a finished task took.
+ *
+ * formatDistanceStrict picks its own unit, so an hour-scale task reads "3
+ * hours" while a two-day one does not get reported as "48 hours". Anything
+ * under a minute would round to "0 minutes", which reads as a bug.
+ */
+function durationTaken(from: Date, to: Date) {
+  return to.getTime() - from.getTime() < 60_000
+    ? 'under a minute'
+    : formatDistanceStrict(to, from)
+}
+
 function TaskTiming({ task }: { task: TaskRow }) {
   const created = new Date(task.createdAt)
   const done = task.status === 'DONE' && task.completedAt ? new Date(task.completedAt) : null
 
   return (
-    <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-zinc-400">
+    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] text-zinc-400">
       <Clock className="h-3 w-3 shrink-0" />
-      <span title={format(created, 'PPpp')}>
-        created {formatDistanceToNow(created, { addSuffix: true })}
-      </span>
+      <span title={format(created, 'PPpp')}>created {format(created, STAMP)}</span>
       {done && (
         <>
           <span aria-hidden>·</span>
           <span
-            title={`Completed ${format(done, 'PPpp')}`}
+            title={format(done, 'PPpp')}
             className="font-medium text-emerald-600 dark:text-emerald-400"
           >
-            {/* Sub-minute completions read as "0 minutes"; call those instant. */}
-            took {done.getTime() - created.getTime() < 60_000
-              ? 'under a minute'
-              : formatDistanceStrict(done, created)}
+            done {format(done, STAMP)} · took {durationTaken(created, done)}
           </span>
         </>
       )}
