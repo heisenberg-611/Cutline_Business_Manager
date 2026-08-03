@@ -10,8 +10,10 @@ import { AssetPanel } from '@/modules/projects/components/AssetPanel'
 import { ProjectActions } from '@/modules/projects/components/ProjectActions'
 import { CommentThread } from '@/modules/collaboration/components/CommentThread'
 import { TaskPanel } from '@/modules/collaboration/components/TaskPanel'
+import { ActivityFeed } from '@/modules/collaboration/components/ActivityFeed'
 import { getComments } from '@/modules/collaboration/actions/comments'
 import { getTasks } from '@/modules/collaboration/actions/tasks'
+import { getProjectActivity } from '@/modules/collaboration/actions/activity'
 import { canAccessProject } from '@/modules/projects/authz'
 import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
 import prisma from '@/modules/core/db/prisma'
@@ -50,13 +52,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   // Collaboration is BUSINESS-tier. Fetched only when enabled so lower plans do
   // not pay for queries whose results they never see.
   const collaborationEnabled = !!business && canUseTeamCollaboration(getActivePlan(business))
-  const [comments, tasks, canEditProject] = collaborationEnabled
+  const [comments, tasks, activity, canEditProject] = collaborationEnabled
     ? await Promise.all([
         getComments('Project', project.id),
         getTasks(project.id),
+        getProjectActivity(project.id),
         canAccessProject(project.id, 'write'),
       ])
-    : [[], [], false]
+    : [[], [], [], false]
 
   return (
     <div className="space-y-6 flex flex-col md:h-[calc(100vh-8rem)]">
@@ -199,6 +202,12 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
             currentUserId={userId}
             isAdmin={orgRole === 'org:admin'}
           />
+        </div>
+      )}
+
+      {collaborationEnabled && (
+        <div className="shrink-0">
+          <ActivityFeed entries={activity} />
         </div>
       )}
     </div>

@@ -5,6 +5,30 @@ import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
 import { createManyNotifications } from '@/modules/notifications/services'
 import { authorizeProjectAccess, authorizeProjectsAccess } from '@/modules/projects/authz'
+import * as Ably from 'ably'
+import { pipelineChannel, PIPELINE_EVENT, type ProjectsMovedPayload } from '@/lib/ably/channels'
+
+/**
+ * Fans a board change out to everyone else viewing the pipeline.
+ *
+ * Best-effort: a realtime failure must not fail the write that already
+ * succeeded. Clients still reconcile on their next fetch.
+ */
+async function publishPipelineUpdate(
+  orgId: string,
+  actorUserId: string,
+  updates: ProjectsMovedPayload['updates']
+) {
+  if (!process.env.ABLY_API_KEY) return
+
+  try {
+    const ably = new Ably.Rest(process.env.ABLY_API_KEY)
+    const payload: ProjectsMovedPayload = { actorUserId, updates }
+    await ably.channels.get(pipelineChannel(orgId)).publish(PIPELINE_EVENT.projectsMoved, payload)
+  } catch (e) {
+    console.error('Ably pipeline publish error:', e)
+  }
+}
 
 const DEFAULT_STAGES = [
   { name: 'Idea / Discovery', orderIndex: 0 },
@@ -118,6 +142,10 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
       })
     ])
 
+    await publishPipelineUpdate(orgId, userId, [
+      { id: projectId, statusStageId: newStageId, orderIndex: project.orderIndex }
+    ])
+
     const newStage = await prisma.workflowStage.findUnique({
       where: { id: newStageId },
       include: { template: { include: { stages: true } } }
@@ -167,24 +195,56 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
   }
 }
 
-export async function updateProjectOrder(updates: { id: string, statusStageId: string, orderIndex: number }[]) {
+/**
+ * Persists a board drag.
+ *
+ * `moved` carries the dragged project's id and the `updatedAt` the client had
+ * when the drag started. Only that project is guarded: its stage change is the
+ * meaningful edit, while the sibling rows are being reindexed and their order is
+ * cosmetic. Guarding every row would make an unrelated concurrent edit anywhere
+ * on the board fail the whole drag.
+ */
+export async function updateProjectOrder(
+  updates: { id: string, statusStageId: string, orderIndex: number }[],
+  moved?: { id: string, expectedUpdatedAt: Date | string }
+) {
   const { orgId, userId, orgRole } = await authorizeProjectsAccess(
     updates.map(u => u.id),
     'write'
   )
 
   // Update all projects in a transaction
-  await prisma.$transaction(
-    updates.map((update) => 
-      prisma.project.update({
-        where: { id: update.id, businessId: orgId },
-        data: {
-          statusStageId: update.statusStageId,
-          orderIndex: update.orderIndex
-        }
-      })
+  try {
+    await prisma.$transaction(
+      updates.map((update) =>
+        prisma.project.update({
+          where: {
+            id: update.id,
+            businessId: orgId,
+            // Optimistic concurrency: no row matches if someone else has moved
+            // this project since the drag began, so the transaction aborts
+            // instead of silently overwriting their change.
+            ...(moved && moved.id === update.id
+              ? { updatedAt: new Date(moved.expectedUpdatedAt) }
+              : {})
+          },
+          data: {
+            statusStageId: update.statusStageId,
+            orderIndex: update.orderIndex
+          }
+        })
+      )
     )
-  )
+  } catch (error) {
+    // P2025 = "record to update not found", which here means the updatedAt
+    // precondition did not match: someone else moved it first.
+    if ((error as { code?: string })?.code === 'P2025') {
+      throw new Error('CONFLICT: This project was moved by someone else. Refreshing.')
+    }
+    throw error
+  }
+
+  await publishPipelineUpdate(orgId, userId, updates)
 
   // Check if any moved to terminal delivery stage
   for (const update of updates) {

@@ -1,10 +1,14 @@
 'use client'
 
-import React, { useState, useTransition, useEffect } from 'react'
+import React, { useState, useTransition, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
+import { toast } from 'sonner'
 
 import { updateProjectStage, updateProjectOrder } from '../actions'
+import { usePipelineRealtime } from '../hooks/usePipelineRealtime'
+import { BoardViewers } from './BoardViewers'
 import { FeedbackPromptModal } from './FeedbackPromptModal'
 import { MemberDeliveryModal } from './MemberDeliveryModal'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +32,8 @@ type Project = {
   deadline: Date | null
   statusStageId: string | null
   orderIndex: number
+  /** Sent back on a drag so the server can reject a stale move. */
+  updatedAt: Date
   client?: { displayName: string }
   assignee?: { firstName: string | null; lastName: string | null; imageUrl: string | null; email: string | null } | null
 }
@@ -67,11 +73,31 @@ const isDeliveryStage = (stageName: string) => {
 export default function PipelineBoard({ stages, projects: initialProjects, hasFeedbackFeature = true }: { stages: Stage[], projects: Project[], hasFeedbackFeature?: boolean }) {
 
   const { orgRole } = useAuth()
+  const router = useRouter()
   const isAdmin = orgRole === 'org:admin'
   const [isPending, startTransition] = useTransition()
 
   // Need local state for optimistic UI updates with dnd
   const [projects, setProjects] = useState(initialProjects)
+
+  // Apply a teammate's move without a refetch. Projects not already on this
+  // board are ignored — a member's board is filtered to their own work, so a
+  // move of someone else's project must not make it appear.
+  const applyRemoteMove = useCallback((updates: { id: string, statusStageId: string, orderIndex: number }[]) => {
+    setProjects(prev => {
+      let changed = false
+      const next = prev.map(p => {
+        const update = updates.find(u => u.id === p.id)
+        if (!update) return p
+        if (p.statusStageId === update.statusStageId && p.orderIndex === update.orderIndex) return p
+        changed = true
+        return { ...p, statusStageId: update.statusStageId, orderIndex: update.orderIndex }
+      })
+      return changed ? next : prev
+    })
+  }, [])
+
+  const { viewers } = usePipelineRealtime({ enabled: true, onRemoteMove: applyRemoteMove })
 
   // Feedback & Delivery Modal State
   const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false)
@@ -166,8 +192,25 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
       return newProjects
     })
 
-    startTransition(() => {
-      updateProjectOrder(updates)
+    startTransition(async () => {
+      try {
+        await updateProjectOrder(updates, {
+          id: draggedProject.id,
+          expectedUpdatedAt: draggedProject.updatedAt,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to move project'
+        if (message.startsWith('CONFLICT:')) {
+          // Someone else moved this project mid-drag. Their change is already
+          // persisted, so take the server's version rather than ours.
+          toast.error('Someone else moved this project. Refreshing the board.')
+          setProjects(initialProjects)
+          router.refresh()
+        } else {
+          toast.error(message)
+          setProjects(initialProjects)
+        }
+      }
     })
 
     // Check if moved to terminal delivery stage to trigger feedback prompt
@@ -265,6 +308,8 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
         }
       `}</style>
       <div className="flex items-center justify-end gap-3 px-1 shrink-0">
+        <BoardViewers viewers={viewers} />
+        <div className="flex-1" />
         <button
           onClick={resetSize}
           className="flex items-center justify-center h-8 px-3 gap-1.5 rounded-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm font-normal text-zinc-900 dark:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"

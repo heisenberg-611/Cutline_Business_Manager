@@ -26,3 +26,22 @@ export function sidebarChannel(businessId: string) {
 export function conversationChannel(businessId: string, conversationId: string) {
   return `business:${businessId}:conversation:${conversationId}`
 }
+
+/**
+ * Pipeline board: stage moves and reordering, plus presence for who is
+ * currently looking at the board.
+ */
+export function pipelineChannel(businessId: string) {
+  return `business:${businessId}:pipeline`
+}
+
+/** Event names published on the pipeline channel. */
+export const PIPELINE_EVENT = {
+  projectsMoved: 'projects-moved',
+} as const
+
+export type ProjectsMovedPayload = {
+  /** Who made the change, so a client can ignore the echo of its own move. */
+  actorUserId: string
+  updates: { id: string; statusStageId: string; orderIndex: number }[]
+}

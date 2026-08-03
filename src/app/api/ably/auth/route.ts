@@ -30,10 +30,12 @@ export async function GET() {
       // grants everything the API key can do, which let any signed-in user
       // subscribe to another tenant's channels and read their messages.
       //
-      // Subscribe only: publishing happens server-side through the REST client,
-      // so a browser token never needs publish rights.
+      // Subscribe + presence only. All message publishing happens server-side
+      // through the REST client, so a browser token never needs publish rights;
+      // presence is separate and must be client-side, since it has to drop when
+      // the connection does.
       capability: JSON.stringify({
-        [businessNamespace(orgId)]: ['subscribe'],
+        [businessNamespace(orgId)]: ['subscribe', 'presence'],
       }),
     });
     return NextResponse.json(tokenRequestData);
