@@ -3,7 +3,7 @@
 Status of the internal team-collaboration feature on branch `feat/team-collaboration`.
 Written as a handoff so work can resume without re-deriving context.
 
-**Last updated:** 2026-08-03 (collaboration moved to its own nav section)
+**Last updated:** 2026-08-03 (all phases done; see §5 for what remains)
 **Branch:** `feat/team-collaboration` (off `main` @ `847aa3d`)
 **Scope decided:** internal team collaboration, gated to **BUSINESS** tier
 **Hosted database:** *untouched* — all migrations so far applied only to local Docker
@@ -242,34 +242,43 @@ Channel names centralized in `src/lib/ably/channels.ts`.
 
 ## 5. Remaining work
 
-No planned phases remain. These are gaps found while building.
+All planned phases are complete, and the member-management gap that was flagged as
+the biggest limitation is closed (`af731a0`). What follows is ordered by whether it
+is actually wrong versus merely missing.
 
-### 1. No UI for managing project members — **the biggest gap**
-`manage` is enforced and `ProjectMember` supports several collaborators per project,
-but nothing in the app writes those rows except `syncAssigneeMembership` and the
-seed. There is no way to add a collaborator, change a role, or remove someone.
-Without this the multi-collaborator capability — the whole point of the feature —
-is only reachable by editing the database. A panel on the project detail page gated
-on `manage` would close it.
+### A. Correctness — board drags do not write stage history
+`updateProjectStage` (the dropdown) closes and opens a `ProjectStageHistory` row.
+`updateProjectOrder` (a drag) changes `statusStageId` without touching history.
 
-### 2. Tasks render a due date nothing can set
-`TaskPanel` displays `dueDate` with an overdue style and the server accepts it on
-create and update, but no control sets it.
+This is not cosmetic. Three places read that history:
+- `financials/dashboard-queries.ts:218` — "at risk" detection
+- `api/webhooks/qstash/analytics/route.ts:121` — the nightly snapshot
+- `projects/components/StageProgressPipeline.tsx:39` — time-in-stage display
 
-### 3. Comments and tasks are not realtime
-Phase 5 made the pipeline board live. Comments and tasks still appear only on
-revalidation. They could publish on `business:{orgId}:project:{projectId}` reusing
-the same pattern.
+Each guards on `stageHistory[0]`, so a project moved by dragging is silently skipped
+rather than mis-measured: **drag-moved projects can never be flagged at risk**, and
+the analytics snapshot under-counts them. Predates the collaboration work; the live
+board makes dragging the normal path, so it matters more now.
 
-### 4. Board drags do not write stage history
-`updateProjectStage` (dropdown) closes and opens a `ProjectStageHistory` row;
-`updateProjectOrder` (drag) changes `statusStageId` without touching history. Stage
-duration analytics will therefore under-report any project moved by dragging. This
-predates the collaboration work — worth fixing, out of scope so far.
+`scripts/seed-local.ts` also creates projects with a `statusStageId` and no history
+row, so the local fixture cannot exercise at-risk detection at all.
 
-### 5. Comments are projects-only
-`COMMENTABLE_TYPES` is `['Project']`. Each new type needs an authorization rule in
-`collaboration/authz.ts`; clients specifically collide with `middleware.ts:58`.
+### B. Missing, known
+- **Tasks have no due-date control.** `TaskPanel` renders `dueDate` with an overdue
+  style and the server accepts it on create and update, but nothing sets it.
+- **Comments and tasks are not realtime.** The pipeline board is. They could publish
+  on `business:{orgId}:project:{projectId}` reusing the pattern in
+  `workflow/hooks/usePipelineRealtime.ts`.
+- **Comments are projects-only.** `COMMENTABLE_TYPES` is `['Project']`; each new type
+  needs a rule in `collaboration/authz.ts` and a mention rule in `mentionable.ts`.
+  Clients specifically collide with `middleware.ts:58`.
+
+### C. Consequence of the membership change worth reviewing
+Members now see every project they are a member of across Pipeline, Projects,
+Dashboard and ProdP — not only Collaboration. That is the intended fix for the
+split-brain described in `visibleProjectFilter`, but it does widen what a
+non-admin sees compared with the single-assignee behaviour. Worth confirming that
+matches how you want the workspace to feel before this reaches customers.
 
 ## 6. Before this reaches production
 
