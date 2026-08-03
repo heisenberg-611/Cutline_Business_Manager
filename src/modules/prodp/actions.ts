@@ -62,14 +62,16 @@ export async function submitIntakeForm(businessId: string, data: {
     }
   })
 
-  // Notify business members about the new request
+  // Admins only: the copy asks for approval, and only admins can approve a
+  // request. Members find out when the resulting project is assigned.
   try {
     await broadcastNotification({
       businessId,
       title: "New Project Request",
       message: `${validatedData.clientName} submitted a new project request: "${validatedData.projectTitle}". Awaiting your approval.`,
       type: "project",
-      actionUrl: `/dashboard/pipeline?view=board`
+      actionUrl: `/dashboard/pipeline?view=board`,
+      audience: 'admins'
     })
   } catch (err) {
     console.error("Notification failed", err)
