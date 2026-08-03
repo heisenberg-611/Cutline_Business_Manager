@@ -183,7 +183,7 @@ export function ProjectActions({ project, members = [] }: { project: Project, me
             
             {isAdmin && members.length > 0 && (
               <div className="space-y-2">
-                <Label>Assignee</Label>
+                <Label>Project lead</Label>
                 <Select 
                   value={formData.assigneeId} 
                   onValueChange={val => setFormData({ ...formData, assigneeId: val || 'unassigned' })}

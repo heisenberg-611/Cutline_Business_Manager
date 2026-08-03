@@ -199,7 +199,7 @@ export function ProjectForm({ clients, members = [], defaultOpen = false }: { cl
 
           {isAdmin && members && members.length > 0 && (
             <div className="space-y-2">
-              <Label>Assignee</Label>
+              <Label>Project lead</Label>
               <Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || '')}>
                 <SelectTrigger className="h-auto py-2">
                   <SelectValue placeholder="Unassigned">

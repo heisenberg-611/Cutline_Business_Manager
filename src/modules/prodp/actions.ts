@@ -8,6 +8,7 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
+import { visibleProjectFilter } from '@/modules/projects/authz'
 
 const IntakeFormSchema = z.object({
   clientName: z.string().min(1, 'Client name is required').max(100),
@@ -237,7 +238,7 @@ export async function createReviewRequest(projectId: string, draftLink: string) 
     where: { 
       id: projectId, 
       businessId: orgId,
-      ...(isAdmin ? {} : { assigneeId: userId })
+      ...(isAdmin ? {} : visibleProjectFilter(userId!))
     },
     include: { client: true }
   })
@@ -327,7 +328,7 @@ export async function getActiveReviewRequests() {
   return await prisma.reviewRequest.findMany({
     where: { 
       businessId: orgId,
-      ...(isAdmin ? {} : { project: { assigneeId: userId } })
+      ...(isAdmin ? {} : { project: visibleProjectFilter(userId!) })
     },
     include: { project: true, client: true },
     orderBy: { createdAt: 'desc' }
@@ -343,7 +344,7 @@ export async function deleteReviewRequest(id: string) {
     where: {
       id,
       businessId: orgId,
-      ...(isAdmin ? {} : { project: { assigneeId: userId } })
+      ...(isAdmin ? {} : { project: visibleProjectFilter(userId!) })
     }
   })
 
@@ -366,7 +367,7 @@ export async function resolveReviewRequest(id: string) {
     where: {
       id,
       businessId: orgId,
-      ...(isAdmin ? {} : { project: { assigneeId: userId } })
+      ...(isAdmin ? {} : { project: visibleProjectFilter(userId!) })
     }
   })
 

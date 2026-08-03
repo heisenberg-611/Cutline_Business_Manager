@@ -12,6 +12,8 @@ import { ActivityFeed } from '@/modules/collaboration/components/ActivityFeed'
 import { getTasks } from '@/modules/collaboration/actions/tasks'
 import { getComments } from '@/modules/collaboration/actions/comments'
 import { getProjectActivity } from '@/modules/collaboration/actions/activity'
+import { MemberPanel } from '@/modules/collaboration/components/MemberPanel'
+import { getProjectMembers, getAddableMembers } from '@/modules/collaboration/actions/members'
 import { Badge } from '@/components/ui/badge'
 
 export default async function ProjectCollaborationPage({
@@ -64,6 +66,14 @@ export default async function ProjectCollaborationPage({
     notFound()
   }
 
+  // Only fetched when the caller can actually change the list — getAddableMembers
+  // itself requires 'manage', so calling it unconditionally would throw.
+  const canManage = await canAccessProject(id, 'manage')
+  const [projectMembers, addableMembers] = await Promise.all([
+    getProjectMembers(id),
+    canManage ? getAddableMembers(id) : Promise.resolve([]),
+  ])
+
   return (
     <div className="space-y-6">
       <div className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
@@ -101,6 +111,13 @@ export default async function ProjectCollaborationPage({
           </Link>
         </p>
       </div>
+
+      <MemberPanel
+        projectId={project.id}
+        members={projectMembers}
+        addable={addableMembers}
+        canManage={canManage}
+      />
 
       <TaskPanel
         projectId={project.id}

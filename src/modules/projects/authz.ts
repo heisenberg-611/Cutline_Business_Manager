@@ -86,6 +86,26 @@ export async function authorizeProjectAccess(
 }
 
 /**
+ * Prisma filter for "projects this member can see".
+ *
+ * The single definition every list screen uses, so visibility cannot drift from
+ * what authorizeProjectAccess actually grants. Before this existed, the project
+ * list, pipeline, dashboard and ProdP all filtered on `assigneeId` while
+ * authorization read ProjectMember — so a collaborator could edit a project
+ * that appeared nowhere in their own navigation.
+ *
+ * `assigneeId` is included for the same reason the authorizer falls back to it:
+ * any project whose membership row is missing stays reachable by its lead.
+ *
+ * Admins are not subject to this — callers apply it only for org:member.
+ */
+export function visibleProjectFilter(userId: string) {
+  return {
+    OR: [{ members: { some: { userId } } }, { assigneeId: userId }],
+  }
+}
+
+/**
  * Non-throwing variant, for deciding whether to render editing controls.
  *
  * Server actions still authorize independently — this only shapes the UI, and

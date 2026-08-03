@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import prisma from '@/modules/core/db/prisma'
 import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
+import { visibleProjectFilter } from '@/modules/projects/authz'
 import { Badge } from '@/components/ui/badge'
 import { CheckSquare, MessageSquare, Users2, ArrowRight } from 'lucide-react'
 
@@ -32,9 +33,7 @@ export default async function CollaborationPage() {
     where: {
       businessId: orgId,
       isArchived: false,
-      ...(isAdmin
-        ? {}
-        : { OR: [{ members: { some: { userId } } }, { assigneeId: userId }] }),
+      ...(isAdmin ? {} : visibleProjectFilter(userId)),
     },
     select: {
       id: true,

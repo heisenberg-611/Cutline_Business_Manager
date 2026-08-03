@@ -7,6 +7,7 @@ import prisma from '@/modules/core/db/prisma'
 import { ensureDefaultTemplate } from '@/modules/workflow/actions'
 import { createNotification } from '@/modules/notifications/services'
 import { syncAssigneeMembership } from './authz'
+import { visibleProjectFilter } from './authz'
 
 // -----------------------------------------------------------------------------
 // DUPLICATE CHECK QUERIES (for live form validation)
@@ -233,7 +234,7 @@ export async function getProjects(orgId: string) {
     where: {
       businessId: orgId,
       isArchived: false,
-      ...(isMember ? { assigneeId: userId } : {})
+      ...(isMember ? visibleProjectFilter(userId!) : {})
     },
     include: {
       client: true,
