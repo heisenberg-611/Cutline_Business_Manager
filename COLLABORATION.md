@@ -21,11 +21,13 @@ Written as a handoff so work can resume without re-deriving context.
 | 0 | Ably token scoping (security fix) | `14372d4` | done |
 | 4 | Tasks on projects | `e6fa0df` | done |
 | 6 | Broadcast audience + plan rows | `b6d3e7d` | done |
-| 5 | Activity feed + live pipeline board | — | **not started — only phase left** |
+| 5 | Live board, presence, activity feed | `2d8e01c` | done |
 
-Phase 0 was originally sequenced first but was done after Phase 3, because comments
-shipped without realtime and therefore did not depend on it. It is now complete, so
-Phase 5 is unblocked.
+**All planned phases are complete.** Phase 0 was originally sequenced first but was
+done after Phase 3, since comments shipped without realtime and did not depend on it.
+
+What remains is in §5 — none of it was in the original plan, but the first item
+materially limits how usable the feature is.
 
 Checks at time of writing: **78 tests passing** (6 files), `tsc` clean, `next build`
 succeeds, `npm run lint` identical to the `main` baseline (456 problems — see §7).
@@ -170,6 +172,22 @@ what was persisted.
 
 "Team Collaboration" added to the three `PLAN_FEATURES` arrays.
 
+### Phase 5 — live board, presence, activity (`2d8e01c`)
+
+- **Optimistic concurrency on drags.** `updateProjectOrder` takes the dragged
+  project's `updatedAt` as a precondition. Only that project is guarded — its stage
+  change is the meaningful edit, sibling reindexing is cosmetic, and guarding every
+  row would make any unrelated concurrent edit fail the whole drag. The client
+  distinguishes `CONFLICT:` from other errors and refreshes.
+- **Realtime board.** Changes publish to `business:{orgId}:pipeline`. Clients ignore
+  the echo of their own move, and only patch projects already on their board — a
+  member's board is filtered to their own work.
+- **Presence.** `BoardViewers` shows who else is on the board, keyed by clientId so
+  one person in three tabs appears once. Required widening the Ably capability to
+  `['subscribe','presence']`; publish is still denied to browser tokens.
+- **Activity feed.** Reads `AuditLog` for the project *and* its tasks. Unknown
+  actions render as humanized text rather than disappearing.
+
 ### Phase 0 — Ably scoping (`14372d4`)
 
 `/api/ably/auth` previously minted tokens with **no `capability`**, so they inherited
@@ -210,30 +228,34 @@ Channel names centralized in `src/lib/ably/channels.ts`.
 
 ## 5. Remaining work
 
-### Phase 5 — Activity feed + live board (~2 days) — the only phase left
-- Per-project Activity tab reading `AuditLog` by `entityId`. Task actions already
-  write `entityType: 'Task'` rows, so there is data to render on day one.
-- `PipelineBoard` subscribes to a `business:{orgId}:pipeline` channel.
-- **Presence needs a capability change**: tokens are currently `['subscribe']` only.
-  Add `'presence'` in `src/app/api/ably/auth/route.ts` when presence lands.
-- **Drag conflict handling:** `updateProjectStage` (`workflow/actions.ts:85`) and
-  `updateProjectOrder` (`:185`) are silent last-write-wins. Add an `updatedAt`
-  precondition to the `where` clause so a stale drag fails loudly and refetches.
-- Comments and tasks could also go live on `business:{orgId}:project:{projectId}`,
-  reusing the optimistic + anti-jitter reconciliation already solved in
-  `messaging/hooks.ts:125`.
+No planned phases remain. These are gaps found while building.
 
-### Not scheduled
-- **No way to remove a project member, and no UI to add one.** Reassignment demotes
-  rather than removes, so ownership churn accumulates collaborators. `ProjectMember`
-  is currently written only by `syncAssigneeMembership` and the seed — there is no
-  screen for managing the member list. This is the most visible remaining gap:
-  `manage` is enforced but nothing exercises it.
-- Client/invoice comments — needs a rule per entity type, and clients specifically
-  collide with `middleware.ts:58` blocking members from `/dashboard/clients`.
-- Asset commenting/versioning (audit gap #9) — untouched.
+### 1. No UI for managing project members — **the biggest gap**
+`manage` is enforced and `ProjectMember` supports several collaborators per project,
+but nothing in the app writes those rows except `syncAssigneeMembership` and the
+seed. There is no way to add a collaborator, change a role, or remove someone.
+Without this the multi-collaborator capability — the whole point of the feature —
+is only reachable by editing the database. A panel on the project detail page gated
+on `manage` would close it.
 
----
+### 2. Tasks render a due date nothing can set
+`TaskPanel` displays `dueDate` with an overdue style and the server accepts it on
+create and update, but no control sets it.
+
+### 3. Comments and tasks are not realtime
+Phase 5 made the pipeline board live. Comments and tasks still appear only on
+revalidation. They could publish on `business:{orgId}:project:{projectId}` reusing
+the same pattern.
+
+### 4. Board drags do not write stage history
+`updateProjectStage` (dropdown) closes and opens a `ProjectStageHistory` row;
+`updateProjectOrder` (drag) changes `statusStageId` without touching history. Stage
+duration analytics will therefore under-report any project moved by dragging. This
+predates the collaboration work — worth fixing, out of scope so far.
+
+### 5. Comments are projects-only
+`COMMENTABLE_TYPES` is `['Project']`. Each new type needs an authorization rule in
+`collaboration/authz.ts`; clients specifically collide with `middleware.ts:58`.
 
 ## 6. Before this reaches production
 
