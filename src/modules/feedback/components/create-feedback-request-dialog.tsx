@@ -59,7 +59,7 @@ export function CreateFeedbackRequestDialog({
         
         <div className="grid gap-4 py-4">
           <Select value={selectedProjectId} onValueChange={(val) => setSelectedProjectId(val as string)}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full !h-auto min-h-[38px] whitespace-normal text-left [&_[data-slot=select-value]]:line-clamp-none [&_[data-slot=select-value]]:whitespace-normal [&_[data-slot=select-value]]:break-words">
               <SelectValue placeholder="Select a project">
                 {selectedProjectId 
                   ? (() => {
