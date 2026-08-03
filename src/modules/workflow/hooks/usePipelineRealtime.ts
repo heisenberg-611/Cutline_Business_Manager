@@ -57,6 +57,23 @@ export function usePipelineRealtime({
     'Someone'
   const imageUrl = user?.imageUrl ?? null
 
+  // Identity lives in a ref and is pushed with presence.update(), rather than
+  // sitting in the subscription effect's dependencies. Clerk's useUser()
+  // resolves after first render, so depending on it would tear down and rebuild
+  // the entire WebSocket the moment the user's name loads.
+  const identityRef = useRef<{ name: string; imageUrl: string | null }>({
+    name: 'Someone',
+    imageUrl: null,
+  })
+  const channelRef = useRef<RealtimeChannel | null>(null)
+
+  // Declared before the subscription effect so the identity is populated by the
+  // time presence.enter() runs on mount.
+  useEffect(() => {
+    identityRef.current = { name: displayName, imageUrl }
+    channelRef.current?.presence.update(identityRef.current).catch(() => {})
+  }, [displayName, imageUrl])
+
   useEffect(() => {
     if (!enabled || !orgId || !userId) return
 
@@ -87,6 +104,7 @@ export function usePipelineRealtime({
         })
 
         channel = client.channels.get(pipelineChannel(orgId))
+        channelRef.current = channel
 
         channel.subscribe(PIPELINE_EVENT.projectsMoved, (message: InboundMessage) => {
           const payload = message.data as ProjectsMovedPayload
@@ -118,21 +136,39 @@ export function usePipelineRealtime({
         }
 
         channel.presence.subscribe(['enter', 'leave', 'update'], syncPresence)
-        channel.presence.enter({ name: displayName, imageUrl }).then(syncPresence).catch(() => {})
+        channel.presence.enter(identityRef.current).then(syncPresence).catch(() => {})
       })
       .catch((err) => console.error('Failed to load Ably for pipeline:', err))
 
     return () => {
       cancelled = true
+      channelRef.current = null
+
+      const closingChannel = channel
+      const closingClient = client
+
       try {
-        channel?.presence?.leave()
-        channel?.unsubscribe()
+        closingChannel?.unsubscribe()
+        closingChannel?.presence.unsubscribe()
       } catch {
-        // Connection may already be closing.
+        // Channel may already be detached.
       }
-      client?.close()
+
+      // presence.leave() is asynchronous, and close() rejects whatever is still
+      // in flight. Closing before the leave settles surfaced as an unhandled
+      // "Connection closed" rejection, so wait for it either way. Promise.resolve
+      // handles the case where the import never resolved and channel is null.
+      Promise.resolve(closingChannel?.presence.leave())
+        .catch(() => {})
+        .finally(() => {
+          try {
+            closingClient?.close()
+          } catch {
+            // Already closing.
+          }
+        })
     }
-  }, [enabled, orgId, userId, displayName, imageUrl])
+  }, [enabled, orgId, userId])
 
   return { viewers }
 }
