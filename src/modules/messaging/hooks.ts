@@ -69,7 +69,10 @@ export function useConversations() {
       });
     };
 
-    channel.subscribe('sidebar-update', onSidebarUpdate);
+    // subscribe() implicitly attaches and returns a promise. Closing the client
+    // while that attach is in flight rejects it with "Connection closed", which
+    // surfaces as an unhandled rejection unless it is caught here.
+    channel.subscribe('sidebar-update', onSidebarUpdate)?.catch(() => {});
 
     return () => {
       channel.unsubscribe('sidebar-update', onSidebarUpdate);
@@ -145,7 +148,8 @@ export function useConversationMessages(conversationId: string | null, currentUs
         });
       };
 
-    channel.subscribe('new-message', onMessage);
+    // See the note in useConversations: an in-flight attach rejects on close.
+    channel.subscribe('new-message', onMessage)?.catch(() => {});
 
     return () => {
       channel.unsubscribe('new-message', onMessage);

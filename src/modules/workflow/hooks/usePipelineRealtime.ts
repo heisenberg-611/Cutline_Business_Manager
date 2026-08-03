@@ -106,13 +106,15 @@ export function usePipelineRealtime({
         channel = client.channels.get(pipelineChannel(orgId))
         channelRef.current = channel
 
+        // subscribe() implicitly attaches and returns a promise; an in-flight
+        // attach rejects with "Connection closed" when teardown closes the client.
         channel.subscribe(PIPELINE_EVENT.projectsMoved, (message: InboundMessage) => {
           const payload = message.data as ProjectsMovedPayload
           // Skip the echo of our own move; the optimistic update already applied
           // it, and re-applying would fight an in-flight drag.
           if (!payload || payload.actorUserId === userId) return
           onRemoteMoveRef.current(payload.updates)
-        })
+        })?.catch(() => {})
 
         const syncPresence = async () => {
           try {
@@ -135,7 +137,7 @@ export function usePipelineRealtime({
           }
         }
 
-        channel.presence.subscribe(['enter', 'leave', 'update'], syncPresence)
+        channel.presence.subscribe(['enter', 'leave', 'update'], syncPresence)?.catch(() => {})
         channel.presence.enter(identityRef.current).then(syncPresence).catch(() => {})
       })
       .catch((err) => console.error('Failed to load Ably for pipeline:', err))

@@ -75,7 +75,9 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
         });
       };
       
-      channelRef.subscribe('new-message', onMessageRef);
+      // subscribe() implicitly attaches; closing the client mid-attach rejects
+      // that promise with "Connection closed" if it is left uncaught.
+      channelRef.subscribe('new-message', onMessageRef)?.catch(() => {});
       
     });
     
