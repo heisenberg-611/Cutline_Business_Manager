@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
-import { MessageSquare } from 'lucide-react'
+import { Eye, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { MentionInput, displayNameOf } from './MentionInput'
 import { CommentItem } from './CommentItem'
@@ -16,6 +16,7 @@ export function CommentThread({
   members,
   currentUserId,
   isAdmin,
+  canComment,
 }: {
   entityType: string
   entityId: string
@@ -23,6 +24,8 @@ export function CommentThread({
   members: CommentAuthor[]
   currentUserId: string
   isAdmin: boolean
+  /** Write access. Watchers can read the thread but not post to it. */
+  canComment: boolean
 }) {
   const [body, setBody] = useState<MentionDraft>(EMPTY_DRAFT)
   const [replyTo, setReplyTo] = useState<string | null>(null)
@@ -76,10 +79,14 @@ export function CommentThread({
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
                 members={members}
-                onReply={(id) => {
-                  setReplyTo(id)
-                  setReplyBody(EMPTY_DRAFT)
-                }}
+                onReply={
+                  canComment
+                    ? (id) => {
+                        setReplyTo(id)
+                        setReplyBody(EMPTY_DRAFT)
+                      }
+                    : undefined
+                }
               />
 
               {replyTo && (replyTo === comment.id || comment.replies.some((r) => r.id === replyTo)) && (
@@ -132,6 +139,15 @@ export function CommentThread({
       </div>
 
       <div className="border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
+        {!canComment ? (
+          // Watchers get told why the box is missing rather than being handed a
+          // composer that fails on submit. The server still refuses the write.
+          <p className="flex items-center gap-2 text-sm text-zinc-500">
+            <Eye className="h-4 w-4 shrink-0" />
+            You have watcher access to this project, so you can follow the discussion
+            but not post to it. Ask an owner or an admin to upgrade you.
+          </p>
+        ) : (
         <div className="space-y-2">
           <MentionInput
             draft={body}
@@ -152,6 +168,7 @@ export function CommentThread({
             </Button>
           </div>
         </div>
+        )}
       </div>
     </div>
   )

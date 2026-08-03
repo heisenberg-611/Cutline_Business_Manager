@@ -23,6 +23,30 @@ const ROLE_GRANTS: Record<ProjectMemberRole, ProjectAccessLevel[]> = {
   WATCHER: ['read'],
 }
 
+/**
+ * Says which of the two reasons access was denied, because they call for
+ * different responses from the reader.
+ *
+ * "You are not assigned to this project" was previously used for both, which is
+ * plainly wrong for a WATCHER: they *are* on the project and can see it, so
+ * being told they are not assigned to it reads like a bug rather than a
+ * permission boundary. Someone who is not a member at all cannot fix their own
+ * situation either way, but a watcher can — by asking to be upgraded.
+ */
+function deniedMessage(role: ProjectMemberRole | null, level: ProjectAccessLevel): string {
+  if (!role) {
+    return 'Forbidden: You are not a member of this project.'
+  }
+
+  const roleLabel = role.charAt(0) + role.slice(1).toLowerCase()
+
+  if (level === 'manage') {
+    return `Forbidden: ${roleLabel}s cannot manage this project's members. Ask an owner or an admin.`
+  }
+
+  return `Forbidden: You are a ${roleLabel.toLowerCase()} on this project, so you can read it but not make changes. Ask an owner or an admin for access.`
+}
+
 export type ProjectAuthContext = {
   userId: string
   orgId: string
@@ -79,7 +103,7 @@ export async function authorizeProjectAccess(
     membership?.role ?? (project.assigneeId === userId ? 'OWNER' : null)
 
   if (!effectiveRole || !ROLE_GRANTS[effectiveRole].includes(level)) {
-    throw new Error('Forbidden: You are not assigned to this project.')
+    throw new Error(deniedMessage(effectiveRole, level))
   }
 
   return { userId, orgId, orgRole, isAdmin: false, memberRole: effectiveRole, project }
@@ -174,7 +198,7 @@ export async function authorizeProjectsAccess(
     const role: ProjectMemberRole | null =
       roleByProject.get(project.id) ?? (project.assigneeId === userId ? 'OWNER' : null)
     if (!role || !ROLE_GRANTS[role].includes(level)) {
-      throw new Error('Forbidden: You are not assigned to this project.')
+      throw new Error(deniedMessage(role, level))
     }
   }
 

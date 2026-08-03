@@ -135,6 +135,7 @@ export default async function ProjectCollaborationPage({
         members={mentionable}
         currentUserId={userId}
         isAdmin={orgRole === 'org:admin'}
+        canComment={canEdit}
       />
 
       <ActivityFeed

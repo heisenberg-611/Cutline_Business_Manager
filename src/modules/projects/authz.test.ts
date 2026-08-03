@@ -66,7 +66,31 @@ describe('authorizeProjectAccess', () => {
   it('denies a non-member', async () => {
     mockAuth.mockResolvedValue(MEMBER)
     await expect(authorizeProjectAccess('proj_1', 'read')).rejects.toThrow(
-      'Forbidden: You are not assigned to this project.'
+      'Forbidden: You are not a member of this project.'
+    )
+  })
+
+  // A watcher IS on the project, so telling them they are not assigned to it
+  // reads like a bug rather than a permission boundary — and unlike a
+  // non-member, they can act on the information by asking to be upgraded.
+  it('tells a watcher why they cannot write, not that they are unassigned', async () => {
+    mockAuth.mockResolvedValue(MEMBER)
+    mockPrisma.projectMember.findUnique.mockResolvedValue({ role: 'WATCHER' })
+
+    await expect(authorizeProjectAccess('proj_1', 'write')).rejects.toThrow(
+      /you are a watcher on this project/i
+    )
+    await expect(authorizeProjectAccess('proj_1', 'write')).rejects.not.toThrow(
+      /not a member/i
+    )
+  })
+
+  it('names the role when a collaborator is refused manage', async () => {
+    mockAuth.mockResolvedValue(MEMBER)
+    mockPrisma.projectMember.findUnique.mockResolvedValue({ role: 'COLLABORATOR' })
+
+    await expect(authorizeProjectAccess('proj_1', 'manage')).rejects.toThrow(
+      /Collaborators cannot manage this project/
     )
   })
 
