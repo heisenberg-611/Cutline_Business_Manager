@@ -4,6 +4,7 @@ import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
 import { createNotification } from '@/modules/notifications/services'
 import { parseMentions, stripMentionMarkup } from '../mentions'
+import { mentionableUserIds, mentionableUsersForProject } from '../mentionable'
 import { authorizeEntityAccess, requireSession } from '../authz'
 
 const MAX_BODY_LENGTH = 5000
@@ -118,15 +119,10 @@ export async function createComment(input: {
     if (parent.parentId) input.parentId = parent.parentId
   }
 
-  const mentioned = parseMentions(body)
-  const validMentionIds = mentioned.length
-    ? (
-        await prisma.businessMembership.findMany({
-          where: { businessId: orgId, userId: { in: mentioned.map((m) => m.userId) } },
-          select: { userId: true },
-        })
-      ).map((m) => m.userId)
-    : []
+  // A body can name any id, so mentions are filtered to people who can actually
+  // reach this project — its members plus admins. Anyone else would be notified
+  // about, and linked to, a project they would be denied on arrival.
+  const validMentionIds = await resolveMentionIds(orgId, input.entityType, input.entityId, body)
 
   // Notifying yourself is noise.
   const notifyIds = validMentionIds.filter((id) => id !== userId)
@@ -198,15 +194,12 @@ export async function editComment(commentId: string, body: string) {
   // Re-check the caller still has write access to the underlying entity.
   await authorizeEntityAccess(existing.entityType, existing.entityId, 'write')
 
-  const mentioned = parseMentions(trimmed)
-  const validMentionIds = mentioned.length
-    ? (
-        await prisma.businessMembership.findMany({
-          where: { businessId: orgId, userId: { in: mentioned.map((m) => m.userId) } },
-          select: { userId: true },
-        })
-      ).map((m) => m.userId)
-    : []
+  const validMentionIds = await resolveMentionIds(
+    orgId,
+    existing.entityType,
+    existing.entityId,
+    trimmed
+  )
 
   // Replace the mention set so removing a name also removes their badge.
   await prisma.$transaction([
@@ -259,17 +252,36 @@ export async function deleteComment(commentId: string) {
   revalidatePath(entityUrl(existing.entityType, existing.entityId))
 }
 
-/** Members of the caller's business, for the @ picker. */
-export async function getMentionableUsers() {
-  const { orgId } = await requireSession()
+/**
+ * People who can be @mentioned on a project: its members plus admins.
+ *
+ * Scoped to the project rather than the business so the picker cannot offer
+ * someone the mention would then be dropped for.
+ */
+export async function getMentionableUsers(projectId: string) {
+  const { orgId } = await authorizeEntityAccess('Project', projectId, 'read')
+  return mentionableUsersForProject(orgId, projectId)
+}
 
-  const memberships = await prisma.businessMembership.findMany({
-    where: { businessId: orgId },
-    include: { user: { select: authorSelect } },
-    orderBy: { createdAt: 'asc' },
-  })
+/**
+ * Mention ids in `body` that are allowed on this entity, in body order.
+ *
+ * Returns nothing for an entity type with no rule rather than falling back to
+ * "any business member" — a new commentable type should have to opt in.
+ */
+async function resolveMentionIds(
+  orgId: string,
+  entityType: string,
+  entityId: string,
+  body: string
+): Promise<string[]> {
+  const mentioned = parseMentions(body)
+  if (!mentioned.length) return []
 
-  return memberships.map((m) => m.user)
+  if (entityType !== 'Project') return []
+
+  const allowed = await mentionableUserIds(orgId, entityId)
+  return mentioned.map((m) => m.userId).filter((id) => allowed.has(id))
 }
 
 function entityUrl(entityType: string, entityId: string) {

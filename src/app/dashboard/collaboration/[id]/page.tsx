@@ -5,12 +5,11 @@ import { ArrowLeft } from 'lucide-react'
 import prisma from '@/modules/core/db/prisma'
 import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
 import { canAccessProject } from '@/modules/projects/authz'
-import { getOrgUsers } from '@/modules/projects/actions'
 import { TaskPanel } from '@/modules/collaboration/components/TaskPanel'
 import { CommentThread } from '@/modules/collaboration/components/CommentThread'
 import { ActivityFeed } from '@/modules/collaboration/components/ActivityFeed'
 import { getTasks } from '@/modules/collaboration/actions/tasks'
-import { getComments } from '@/modules/collaboration/actions/comments'
+import { getComments, getMentionableUsers } from '@/modules/collaboration/actions/comments'
 import { getProjectActivity } from '@/modules/collaboration/actions/activity'
 import { MemberPanel } from '@/modules/collaboration/components/MemberPanel'
 import { getProjectMembers, getAddableMembers } from '@/modules/collaboration/actions/members'
@@ -44,7 +43,7 @@ export default async function ProjectCollaborationPage({
     notFound()
   }
 
-  const [project, tasks, comments, activity, members, canEdit] = await Promise.all([
+  const [project, tasks, comments, activity, mentionable, canEdit] = await Promise.all([
     prisma.project.findFirst({
       where: { id, businessId: orgId },
       select: {
@@ -58,7 +57,10 @@ export default async function ProjectCollaborationPage({
     getTasks(id),
     getComments('Project', id),
     getProjectActivity(id),
-    getOrgUsers(orgId),
+    // People on this project plus admins — not everyone in the business. Used
+    // for both the @ picker and the task assignee list, so neither can offer
+    // someone who has no access to the project.
+    getMentionableUsers(id),
     canAccessProject(id, 'write'),
   ])
 
@@ -122,7 +124,7 @@ export default async function ProjectCollaborationPage({
       <TaskPanel
         projectId={project.id}
         tasks={tasks}
-        members={members.map((m) => m.user)}
+        members={mentionable}
         canEdit={canEdit}
       />
 
@@ -130,7 +132,7 @@ export default async function ProjectCollaborationPage({
         entityType="Project"
         entityId={project.id}
         comments={comments}
-        members={members.map((m) => m.user)}
+        members={mentionable}
         currentUserId={userId}
         isAdmin={orgRole === 'org:admin'}
       />
