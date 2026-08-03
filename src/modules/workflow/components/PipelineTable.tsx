@@ -55,7 +55,7 @@ export function PipelineTable({ projects, stages }: { projects: Project[], stage
           <TableRow className="hover:bg-transparent">
             <TableHead>Project Title</TableHead>
             <TableHead>Client</TableHead>
-            <TableHead>Assignee</TableHead>
+            <TableHead>Project Lead</TableHead>
             <TableHead>Stage</TableHead>
             <TableHead>Priority</TableHead>
             <TableHead>Deadline</TableHead>
@@ -77,19 +77,19 @@ export function PipelineTable({ projects, stages }: { projects: Project[], stage
                 {project.assignee ? (
                   <div className="relative group flex items-center gap-2 w-max cursor-pointer">
                     {project.assignee.imageUrl ? (
-                      <img src={project.assignee.imageUrl} alt="Assignee" className="w-6 h-6 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
+                      <img src={project.assignee.imageUrl} alt="Project lead" className="w-6 h-6 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
                     ) : (
                       <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase">
                         {(project.assignee.firstName?.[0] || '')}{(project.assignee.lastName?.[0] || '')}
                       </div>
                     )}
-                    <span className="text-sm">{[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || 'Assignee'}</span>
+                    <span className="text-sm">{[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || 'Unnamed'}</span>
                     
                     {/* Hover Card */}
                     <div className="absolute bottom-full left-0 mb-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl p-3 pointer-events-none transform translate-y-1 group-hover:translate-y-0">
                       <div className="flex items-center gap-3">
                         {project.assignee.imageUrl ? (
-                          <img src={project.assignee.imageUrl} alt="Assignee" className="w-8 h-8 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
+                          <img src={project.assignee.imageUrl} alt="Project lead" className="w-8 h-8 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase">
                             {(project.assignee.firstName?.[0] || '')}{(project.assignee.lastName?.[0] || '')}
@@ -97,7 +97,7 @@ export function PipelineTable({ projects, stages }: { projects: Project[], stage
                         )}
                         <div className="overflow-hidden">
                           <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                            {[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || 'Assignee'}
+                            {[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || 'Unnamed'}
                           </div>
                           {project.assignee.email && (
                             <div className="text-xs text-zinc-500 truncate">
