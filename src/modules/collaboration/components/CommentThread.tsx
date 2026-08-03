@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { MentionInput, displayNameOf } from './MentionInput'
 import { CommentItem } from './CommentItem'
 import { createComment, type CommentAuthor, type CommentNode } from '../actions/comments'
+import { EMPTY_DRAFT, encodeDraft, type MentionDraft } from '../mentions'
 
 export function CommentThread({
   entityType,
@@ -23,9 +24,9 @@ export function CommentThread({
   currentUserId: string
   isAdmin: boolean
 }) {
-  const [body, setBody] = useState('')
+  const [body, setBody] = useState<MentionDraft>(EMPTY_DRAFT)
   const [replyTo, setReplyTo] = useState<string | null>(null)
-  const [replyBody, setReplyBody] = useState('')
+  const [replyBody, setReplyBody] = useState<MentionDraft>(EMPTY_DRAFT)
   const [isPending, startTransition] = useTransition()
 
   const replyTarget = replyTo
@@ -33,13 +34,14 @@ export function CommentThread({
       comments.flatMap((c) => c.replies).find((r) => r.id === replyTo)
     : null
 
-  function submit(text: string, parentId: string | null, reset: () => void) {
-    const trimmed = text.trim()
-    if (!trimmed) return
+  function submit(draft: MentionDraft, parentId: string | null, reset: () => void) {
+    if (!draft.text.trim()) return
+    // Names become `@[Name](id)` tokens only here, on the way to the server.
+    const encoded = encodeDraft({ ...draft, text: draft.text.trim() })
 
     startTransition(async () => {
       try {
-        await createComment({ entityType, entityId, body: trimmed, parentId })
+        await createComment({ entityType, entityId, body: encoded, parentId })
         reset()
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to post comment')
@@ -76,14 +78,14 @@ export function CommentThread({
                 members={members}
                 onReply={(id) => {
                   setReplyTo(id)
-                  setReplyBody('')
+                  setReplyBody(EMPTY_DRAFT)
                 }}
               />
 
               {replyTo && (replyTo === comment.id || comment.replies.some((r) => r.id === replyTo)) && (
                 <div className="ml-11 mt-3 space-y-2">
                   <MentionInput
-                    value={replyBody}
+                    draft={replyBody}
                     onChange={setReplyBody}
                     members={members}
                     placeholder={
@@ -95,7 +97,7 @@ export function CommentThread({
                     rows={2}
                     onSubmit={() =>
                       submit(replyBody, comment.id, () => {
-                        setReplyBody('')
+                        setReplyBody(EMPTY_DRAFT)
                         setReplyTo(null)
                       })
                     }
@@ -103,10 +105,10 @@ export function CommentThread({
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      disabled={isPending || !replyBody.trim()}
+                      disabled={isPending || !replyBody.text.trim()}
                       onClick={() =>
                         submit(replyBody, comment.id, () => {
-                          setReplyBody('')
+                          setReplyBody(EMPTY_DRAFT)
                           setReplyTo(null)
                         })
                       }
@@ -132,19 +134,19 @@ export function CommentThread({
       <div className="border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
         <div className="space-y-2">
           <MentionInput
-            value={body}
+            draft={body}
             onChange={setBody}
             members={members}
             placeholder="Add a comment. Type @ to mention a teammate."
             disabled={isPending}
-            onSubmit={() => submit(body, null, () => setBody(''))}
+            onSubmit={() => submit(body, null, () => setBody(EMPTY_DRAFT))}
           />
           <div className="flex items-center justify-between">
             <span className="text-xs text-zinc-400">⌘↵ to post</span>
             <Button
               size="sm"
-              disabled={isPending || !body.trim()}
-              onClick={() => submit(body, null, () => setBody(''))}
+              disabled={isPending || !body.text.trim()}
+              onClick={() => submit(body, null, () => setBody(EMPTY_DRAFT))}
             >
               {isPending ? 'Posting...' : 'Comment'}
             </Button>

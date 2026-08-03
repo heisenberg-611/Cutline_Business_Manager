@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { segmentBody } from '../mentions'
+import { segmentBody, draftFromBody, encodeDraft, type MentionDraft } from '../mentions'
 import { MentionInput, displayNameOf } from './MentionInput'
 import { editComment, deleteComment, type CommentAuthor, type CommentNode } from '../actions/comments'
 
@@ -69,18 +69,18 @@ export function CommentItem({
   isReply?: boolean
 }) {
   const [isEditing, setIsEditing] = useState(false)
-  const [draft, setDraft] = useState(comment.body)
+  const [draft, setDraft] = useState<MentionDraft>(() => draftFromBody(comment.body))
   const [isPending, startTransition] = useTransition()
 
   const canEdit = !comment.isDeleted && comment.authorId === currentUserId
   const canDelete = !comment.isDeleted && (comment.authorId === currentUserId || isAdmin)
 
   function handleSaveEdit() {
-    const trimmed = draft.trim()
-    if (!trimmed) return
+    if (!draft.text.trim()) return
+    const encoded = encodeDraft({ ...draft, text: draft.text.trim() })
     startTransition(async () => {
       try {
-        await editComment(comment.id, trimmed)
+        await editComment(comment.id, encoded)
         setIsEditing(false)
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to edit comment')
@@ -122,7 +122,7 @@ export function CommentItem({
             ) : isEditing ? (
               <div className="space-y-2">
                 <MentionInput
-                  value={draft}
+                  draft={draft}
                   onChange={setDraft}
                   members={members}
                   disabled={isPending}
@@ -130,14 +130,14 @@ export function CommentItem({
                   onSubmit={handleSaveEdit}
                 />
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSaveEdit} disabled={isPending || !draft.trim()}>
+                  <Button size="sm" onClick={handleSaveEdit} disabled={isPending || !draft.text.trim()}>
                     Save
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                      setDraft(comment.body)
+                      setDraft(draftFromBody(comment.body))
                       setIsEditing(false)
                     }}
                     disabled={isPending}

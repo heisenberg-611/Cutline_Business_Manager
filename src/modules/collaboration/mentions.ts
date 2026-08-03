@@ -72,3 +72,55 @@ export function encodeMention(userId: string, displayName: string): string {
 export function stripMentionMarkup(body: string): string {
   return body.replace(MENTION_PATTERN, (_full, displayName: string) => `@${displayName}`)
 }
+
+/**
+ * What the composer edits.
+ *
+ * `text` is what the author sees and types — plain `@Kai Osei`, never the
+ * `@[Kai Osei](user_abc)` token, which cluttered the box and let a stray
+ * keystroke corrupt an id. `mentions` records the people actually picked from
+ * the menu, and the token is rebuilt from it only on submit.
+ *
+ * Keyed by display name, so two people sharing one name resolve to whichever
+ * was picked most recently. The alternative — silently mentioning the wrong
+ * person — is worse than mentioning the more recent pick.
+ */
+export type MentionDraft = {
+  text: string
+  mentions: Record<string, string>
+}
+
+export const EMPTY_DRAFT: MentionDraft = { text: '', mentions: {} }
+
+/** Turns a stored body back into an editable draft. */
+export function draftFromBody(body: string): MentionDraft {
+  const mentions: Record<string, string> = {}
+  for (const mention of parseMentions(body)) {
+    mentions[mention.displayName] = mention.userId
+  }
+  return { text: stripMentionMarkup(body), mentions }
+}
+
+/**
+ * Rebuilds the storable body from a draft.
+ *
+ * Only names still present in the text become tokens, so deleting a mention
+ * from the text removes it. Longest names are substituted first: with both
+ * "Kai" and "Kai Osei" mapped, matching "Kai" first would leave " Osei"
+ * stranded outside the token.
+ */
+export function encodeDraft(draft: MentionDraft): string {
+  const names = Object.keys(draft.mentions).sort((a, b) => b.length - a.length)
+
+  let out = draft.text
+  for (const name of names) {
+    const userId = draft.mentions[name]
+    // A display name can contain regex metacharacters.
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    out = out.replace(
+      new RegExp(`@${escaped}(?![\\w@])`, 'g'),
+      () => encodeMention(userId, name)
+    )
+  }
+  return out
+}

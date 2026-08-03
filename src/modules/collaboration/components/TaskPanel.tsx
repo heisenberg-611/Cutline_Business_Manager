@@ -8,8 +8,8 @@ import {
   type DraggableProvidedDragHandleProps,
   type DropResult,
 } from '@hello-pangea/dnd'
-import { format, isBefore, startOfDay } from 'date-fns'
-import { CheckSquare, GripVertical, Plus, Trash2 } from 'lucide-react'
+import { format, formatDistanceStrict, formatDistanceToNow, isBefore, startOfDay } from 'date-fns'
+import { CheckSquare, Clock, GripVertical, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -80,6 +80,7 @@ function applyAction(state: TaskRow[], action: TaskAction): TaskRow[] {
           assigneeId: null,
           dueDate: null,
           orderIndex: state.length,
+          createdAt: new Date(),
           completedAt: null,
         },
       ]
@@ -275,6 +276,40 @@ export function TaskPanel({
   )
 }
 
+/**
+ * Created-at, and how long the task took once it is done.
+ *
+ * completedAt is cleared when a task is reopened, so "took" only ever describes
+ * a run that actually finished rather than a stale timestamp.
+ */
+function TaskTiming({ task }: { task: TaskRow }) {
+  const created = new Date(task.createdAt)
+  const done = task.status === 'DONE' && task.completedAt ? new Date(task.completedAt) : null
+
+  return (
+    <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-zinc-400">
+      <Clock className="h-3 w-3 shrink-0" />
+      <span title={format(created, 'PPpp')}>
+        created {formatDistanceToNow(created, { addSuffix: true })}
+      </span>
+      {done && (
+        <>
+          <span aria-hidden>·</span>
+          <span
+            title={`Completed ${format(done, 'PPpp')}`}
+            className="font-medium text-emerald-600 dark:text-emerald-400"
+          >
+            {/* Sub-minute completions read as "0 minutes"; call those instant. */}
+            took {done.getTime() - created.getTime() < 60_000
+              ? 'under a minute'
+              : formatDistanceStrict(done, created)}
+          </span>
+        </>
+      )}
+    </span>
+  )
+}
+
 function TaskRowView({
   task,
   members,
@@ -329,15 +364,18 @@ function TaskRowView({
         {isDone && <CheckSquare className="h-3 w-3" />}
       </button>
 
-      <span
-        className={`min-w-0 flex-1 truncate text-sm ${
-          isDone
-            ? 'text-zinc-400 line-through dark:text-zinc-500'
-            : 'text-zinc-800 dark:text-zinc-200'
-        }`}
-        title={task.title}
-      >
-        {task.title}
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block truncate text-sm ${
+            isDone
+              ? 'text-zinc-400 line-through dark:text-zinc-500'
+              : 'text-zinc-800 dark:text-zinc-200'
+          }`}
+          title={task.title}
+        >
+          {task.title}
+        </span>
+        <TaskTiming task={task} />
       </span>
 
       {task.dueDate && (

@@ -16,6 +16,7 @@ export type TaskRow = {
   assigneeId: string | null
   dueDate: Date | null
   orderIndex: number
+  createdAt: Date
   completedAt: Date | null
 }
 
@@ -51,6 +52,7 @@ export async function getTasks(projectId: string): Promise<TaskRow[]> {
       assigneeId: true,
       dueDate: true,
       orderIndex: true,
+      createdAt: true,
       completedAt: true,
     },
   })

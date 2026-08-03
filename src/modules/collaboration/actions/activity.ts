@@ -30,19 +30,18 @@ export async function getProjectActivity(
 ): Promise<ActivityEntry[]> {
   const { orgId } = await authorizeEntityAccess('Project', projectId, 'read')
 
-  const taskIds = await prisma.task.findMany({
-    where: { businessId: orgId, projectId },
-    select: { id: true },
-  })
-
   const rows = await prisma.auditLog.findMany({
     where: {
       businessId: orgId,
       OR: [
         { entityType: 'Project', entityId: projectId },
-        ...(taskIds.length
-          ? [{ entityType: 'Task', entityId: { in: taskIds.map((t) => t.id) } }]
-          : []),
+        // Task rows are matched on the projectId inside their metadata rather
+        // than by joining against existing tasks. Resolving task ids first meant
+        // deleting a task erased its whole history from the log — the id no
+        // longer resolved, so every row about it disappeared. A log has to
+        // outlive the thing it describes, which is also why AuditLog has no
+        // foreign key to Task.
+        { entityType: 'Task', metadataJson: { contains: `"projectId":"${projectId}"` } },
       ],
     },
     orderBy: { createdAt: 'desc' },

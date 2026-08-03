@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { Textarea } from '@/components/ui/textarea'
-import { encodeMention } from '../mentions'
+import type { MentionDraft } from '../mentions'
 import type { CommentAuthor } from '../actions/comments'
 
 export function displayNameOf(user: Pick<CommentAuthor, 'firstName' | 'lastName' | 'email'>) {
@@ -16,13 +16,13 @@ export function displayNameOf(user: Pick<CommentAuthor, 'firstName' | 'lastName'
 /**
  * Textarea that turns "@" into a member picker.
  *
- * The picked user is inserted as `@[Name](userId)` so the mention survives a
- * rename and resolves to exactly one person. The token is visible in the box
- * while typing, which is a deliberate trade: a fully masked overlay would need
- * a contenteditable surface and its own caret handling.
+ * The author only ever sees `@Kai Osei`. The user id is carried alongside in
+ * the draft and reattached as `@[Kai Osei](user_abc)` at submit, so the storage
+ * format still survives a rename and resolves to exactly one person without the
+ * id cluttering the box — or being corruptible by a stray keystroke.
  */
 export function MentionInput({
-  value,
+  draft,
   onChange,
   members,
   placeholder,
@@ -30,8 +30,8 @@ export function MentionInput({
   rows = 3,
   onSubmit,
 }: {
-  value: string
-  onChange: (next: string) => void
+  draft: MentionDraft
+  onChange: (next: MentionDraft) => void
   members: CommentAuthor[]
   placeholder?: string
   disabled?: boolean
@@ -91,17 +91,23 @@ export function MentionInput({
 
   function handleChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
     const next = e.target.value
-    onChange(next)
+    onChange({ ...draft, text: next })
     syncTrigger(next, e.target.selectionStart ?? next.length)
   }
 
   function pick(member: CommentAuthor) {
     if (triggerIndex === null) return
-    const caret = textareaRef.current?.selectionStart ?? value.length
-    const token = encodeMention(member.id, displayNameOf(member))
-    const next = `${value.slice(0, triggerIndex)}${token} ${value.slice(caret)}`
+    const caret = textareaRef.current?.selectionStart ?? draft.text.length
+    const name = displayNameOf(member)
+    // Insert the readable name only. The id is held alongside and reattached at
+    // submit, so it never appears in the box the author is typing into.
+    const token = `@${name}`
+    const next = `${draft.text.slice(0, triggerIndex)}${token} ${draft.text.slice(caret)}`
 
-    onChange(next)
+    onChange({
+      text: next,
+      mentions: { ...draft.mentions, [name]: member.id },
+    })
     setQuery(null)
     setTriggerIndex(null)
 
@@ -153,7 +159,7 @@ export function MentionInput({
     <div className="relative">
       <Textarea
         ref={textareaRef}
-        value={value}
+        value={draft.text}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}

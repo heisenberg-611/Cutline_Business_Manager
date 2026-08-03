@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { parseMentions, segmentBody, encodeMention, stripMentionMarkup } from './mentions'
+import {
+  parseMentions,
+  segmentBody,
+  encodeMention,
+  stripMentionMarkup,
+  draftFromBody,
+  encodeDraft,
+} from './mentions'
 
 describe('parseMentions', () => {
   it('returns nothing for a body with no mentions', () => {
@@ -101,5 +108,66 @@ describe('stripMentionMarkup', () => {
 
   it('leaves a body without mentions untouched', () => {
     expect(stripMentionMarkup('nothing here')).toBe('nothing here')
+  })
+})
+
+describe('draft round-trip', () => {
+  it('hides the id from the editable text', () => {
+    const draft = draftFromBody('Hi @[Kai Osei](user_1), look at this')
+    expect(draft.text).toBe('Hi @Kai Osei, look at this')
+    expect(draft.text).not.toContain('user_1')
+    expect(draft.mentions).toEqual({ 'Kai Osei': 'user_1' })
+  })
+
+  it('re-attaches the id on encode', () => {
+    const body = 'Hi @[Kai Osei](user_1), look at this'
+    expect(encodeDraft(draftFromBody(body))).toBe(body)
+  })
+
+  it('survives editing text around a mention', () => {
+    const draft = draftFromBody('@[Kai Osei](user_1) please review')
+    const edited = { ...draft, text: '@Kai Osei please review today' }
+    expect(parseMentions(encodeDraft(edited))).toEqual([
+      { userId: 'user_1', displayName: 'Kai Osei' },
+    ])
+  })
+
+  // Deleting the name from the text has to drop the mention, or someone stays
+  // notified about a comment that no longer names them.
+  it('drops a mention removed from the text', () => {
+    const draft = draftFromBody('@[Kai Osei](user_1) hello')
+    const edited = { ...draft, text: 'hello' }
+    expect(parseMentions(encodeDraft(edited))).toEqual([])
+  })
+
+  // Matching the shorter name first would leave " Osei" stranded outside the
+  // token and mention the wrong person.
+  it('prefers the longer name when one is a prefix of another', () => {
+    const draft = {
+      text: '@Kai Osei and @Kai',
+      mentions: { Kai: 'user_short', 'Kai Osei': 'user_long' },
+    }
+    expect(parseMentions(encodeDraft(draft)).map((m) => m.userId)).toEqual([
+      'user_long',
+      'user_short',
+    ])
+  })
+
+  it('handles a name containing regex metacharacters', () => {
+    const draft = { text: '@A. B (x) hello', mentions: { 'A. B (x)': 'user_1' } }
+    expect(parseMentions(encodeDraft(draft))).toEqual([
+      { userId: 'user_1', displayName: 'A. B x' },
+    ])
+  })
+
+  it('encodes every occurrence of a repeated mention', () => {
+    const draft = { text: '@Kai then @Kai', mentions: { Kai: 'user_1' } }
+    expect(encodeDraft(draft)).toBe('@[Kai](user_1) then @[Kai](user_1)')
+  })
+
+  it('leaves an unpicked @handle as plain text', () => {
+    const draft = { text: 'hey @nobody', mentions: {} }
+    expect(encodeDraft(draft)).toBe('hey @nobody')
+    expect(parseMentions(encodeDraft(draft))).toEqual([])
   })
 })
