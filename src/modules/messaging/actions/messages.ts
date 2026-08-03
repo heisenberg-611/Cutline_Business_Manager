@@ -6,7 +6,7 @@ import * as Ably from 'ably'
 import { authorizeConversationRead, authorizeConversationWrite } from '../auth'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
 import { createManyNotifications } from '@/modules/notifications/services'
-import { conversationChannel, sidebarChannel } from '@/lib/ably/channels'
+import { conversationChannel, userSidebarChannel } from '@/lib/ably/channels'
 
 /**
  * Sends a message to a conversation.
@@ -70,12 +70,18 @@ export async function sendMessage(conversationId: string, content: string) {
       const channel = ably.channels.get(conversationChannel(orgId, conversationId));
       await channel.publish('new-message', message);
 
-      const businessChannel = ably.channels.get(sidebarChannel(orgId));
-      await businessChannel.publish('sidebar-update', {
-        conversationId,
-        message,
-        timestamp: new Date()
-      });
+      // Sidebar updates go to each participant individually. They used to go
+      // to one channel every member of the business subscribed to, and the
+      // payload includes the message — so every direct message was delivered
+      // to the whole organization.
+      const update = { conversationId, message, timestamp: new Date() };
+      await Promise.all(
+        conversation.participants.map((participant) =>
+          ably.channels
+            .get(userSidebarChannel(participant.userId))
+            .publish('sidebar-update', update)
+        )
+      );
     } catch (e) {
       console.error('Ably publish error:', e);
     }

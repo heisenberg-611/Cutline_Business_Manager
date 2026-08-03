@@ -2,7 +2,7 @@
 
 import prisma from '@/modules/core/db/prisma';
 import * as Ably from 'ably';
-import { conversationChannel, sidebarChannel } from '@/lib/ably/channels';
+import { conversationChannel, userSidebarChannel } from '@/lib/ably/channels';
 
 export async function getGuestChatByToken(token: string) {
   const conversation = await prisma.conversation.findUnique({
@@ -57,12 +57,19 @@ export async function sendGuestMessage(token: string, content: string, guestName
       );
       await channel.publish('new-message', message);
 
-      const businessChannel = ably.channels.get(sidebarChannel(conversation.businessId));
-      await businessChannel.publish('sidebar-update', {
-        conversationId: conversation.id,
-        message,
-        timestamp: new Date()
+      // Per participant, not to the whole business — see messages.ts.
+      const participants = await prisma.conversationParticipant.findMany({
+        where: { conversationId: conversation.id },
+        select: { userId: true },
       });
+      const update = { conversationId: conversation.id, message, timestamp: new Date() };
+      await Promise.all(
+        participants.map((participant) =>
+          ably.channels
+            .get(userSidebarChannel(participant.userId))
+            .publish('sidebar-update', update)
+        )
+      );
     } catch (e) {
       console.error('Ably guest publish error:', e);
     }

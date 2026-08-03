@@ -12,14 +12,16 @@
  * just doesn't work", with no error anywhere.
  */
 
-/** Capability pattern granting access to everything owned by one business. */
-export function businessNamespace(businessId: string) {
-  return `business:${businessId}:*`
-}
-
-/** Per-business fan-out: conversation list ordering and unread counts. */
-export function sidebarChannel(businessId: string) {
-  return `business:${businessId}:sidebar`
+/**
+ * One person's conversation-list updates: ordering and unread counts.
+ *
+ * Per user, not per business. This previously fanned out on a single
+ * `business:{id}:sidebar` channel that every member subscribed to, and the
+ * payload carries the message itself — so every direct message in the
+ * organization was delivered to everyone in it.
+ */
+export function userSidebarChannel(userId: string) {
+  return `user:${userId}:sidebar`
 }
 
 /** Messages within a single conversation. */

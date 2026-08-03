@@ -13,14 +13,14 @@ import {
 
 
 import { useAuth } from '@clerk/nextjs'
-import { conversationChannel, sidebarChannel } from '@/lib/ably/channels'
+import { conversationChannel, userSidebarChannel } from '@/lib/ably/channels'
 
 /**
  * Polls the conversation list every 15 seconds to keep unread counts fresh.
  */
 export function useConversations() {
   const ably = useAblyClient();
-  const { orgId } = useAuth();
+  const { orgId, userId } = useAuth();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -30,9 +30,11 @@ export function useConversations() {
 
   // Real-time global sidebar updates
   useEffect(() => {
-    if (!orgId || !ably) return;
+    if (!orgId || !userId || !ably) return;
 
-    const channelName = sidebarChannel(orgId);
+    // Own feed: sidebar updates are addressed per participant rather than
+    // broadcast to the business.
+    const channelName = userSidebarChannel(userId);
     const channel = ably.channels.get(channelName);
 
     const onSidebarUpdate = (message: any) => {
@@ -77,7 +79,7 @@ export function useConversations() {
     return () => {
       channel.unsubscribe('sidebar-update', onSidebarUpdate);
     };
-  }, [orgId, ably, queryClient]);
+  }, [orgId, userId, ably, queryClient]);
 
   return {
     ...query,

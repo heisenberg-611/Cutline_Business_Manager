@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import * as Ably from 'ably';
-import { businessNamespace, userNotificationsChannel } from '@/lib/ably/channels';
+import prisma from '@/modules/core/db/prisma';
+import {
+  conversationChannel,
+  pipelineChannel,
+  userNotificationsChannel,
+  userSidebarChannel,
+} from '@/lib/ably/channels';
 
 export async function GET() {
   const { userId, orgId } = await auth();
@@ -10,7 +16,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Without an organization there is no namespace to scope the token to, and an
+  // Without an organization there is nothing to scope the token to, and an
   // unscoped token inherits the API key's full rights.
   if (!orgId) {
     return NextResponse.json({ error: 'No active organization' }, { status: 403 });
@@ -24,22 +30,41 @@ export async function GET() {
   const client = new Ably.Rest(apiKey);
 
   try {
+    // Conversation access is granted per conversation the user is actually in.
+    // A `business:{orgId}:*` wildcard used to cover these, which meant any
+    // member could subscribe to any conversation in the organization — direct
+    // messages between two other people included. The database side has always
+    // checked participation; the realtime side did not.
+    //
+    // Matches authorizeConversationRead: membership, not deletedAt, is what
+    // grants access, since a soft-deleted participant only has their history
+    // hidden rather than revoked.
+    const participations = await prisma.conversationParticipant.findMany({
+      where: { userId, conversation: { businessId: orgId } },
+      select: { conversationId: true },
+    });
+
+    const capability: Record<string, string[]> = {
+      // Project stage moves and presence. Org-wide by design: the payload is
+      // project ids and stage ids, and each board already filters to the
+      // projects its viewer can see.
+      [pipelineChannel(orgId)]: ['subscribe', 'presence'],
+      // Per user, so one member cannot read another's feed.
+      [userNotificationsChannel(userId)]: ['subscribe'],
+      [userSidebarChannel(userId)]: ['subscribe'],
+    };
+
+    for (const { conversationId } of participations) {
+      capability[conversationChannel(orgId, conversationId)] = ['subscribe'];
+    }
+
     const tokenRequestData = await client.auth.createTokenRequest({
       clientId: userId,
-      // Restrict the token to this business's namespace. Omitting `capability`
-      // grants everything the API key can do, which let any signed-in user
-      // subscribe to another tenant's channels and read their messages.
-      //
-      // Subscribe + presence only. All message publishing happens server-side
-      // through the REST client, so a browser token never needs publish rights;
+      // Subscribe + presence only. All publishing happens server-side through
+      // the REST client, so a browser token never needs publish rights;
       // presence is separate and must be client-side, since it has to drop when
       // the connection does.
-      capability: JSON.stringify({
-        [businessNamespace(orgId)]: ['subscribe', 'presence'],
-        // Granted per user, not through the business wildcard, so one member
-        // cannot subscribe to another member's notifications.
-        [userNotificationsChannel(userId)]: ['subscribe'],
-      }),
+      capability: JSON.stringify(capability),
     });
     return NextResponse.json(tokenRequestData);
   } catch (error) {
