@@ -3,7 +3,7 @@
 Status of the internal team-collaboration feature on branch `feat/team-collaboration`.
 Written as a handoff so work can resume without re-deriving context.
 
-**Last updated:** 2026-08-02
+**Last updated:** 2026-08-03
 **Branch:** `feat/team-collaboration` (off `main` @ `847aa3d`)
 **Scope decided:** internal team collaboration, gated to **BUSINESS** tier
 **Hosted database:** *untouched* — all migrations so far applied only to local Docker
@@ -19,15 +19,15 @@ Written as a handoff so work can resume without re-deriving context.
 | 2a | Reassignment demotes instead of revoking | `4c88e76` | done |
 | 3 | Threaded comments + @mentions | `3f2746c` | done |
 | 0 | Ably token scoping (security fix) | `14372d4` | done |
-| 4 | Tasks UI | — | **not started** |
-| 5 | Activity feed + live pipeline board | — | **not started** |
-| 6 | Plan-feature rows + broadcast fix | — | **partially done** |
+| 4 | Tasks on projects | `e6fa0df` | done |
+| 6 | Broadcast audience + plan rows | `b6d3e7d` | done |
+| 5 | Activity feed + live pipeline board | — | **not started — only phase left** |
 
 Phase 0 was originally sequenced first but was done after Phase 3, because comments
 shipped without realtime and therefore did not depend on it. It is now complete, so
 Phase 5 is unblocked.
 
-Checks at time of writing: **57 tests passing** (5 files), `tsc` clean, `next build`
+Checks at time of writing: **78 tests passing** (6 files), `tsc` clean, `next build`
 succeeds, `npm run lint` identical to the `main` baseline (456 problems — see §7).
 
 ---
@@ -143,6 +143,33 @@ Discussion section on `/dashboard/projects/[id]`.
 
 Mentions are stored as `@[Display Name](userId)`, not `@handle`.
 
+### Phase 4 — tasks (`e6fa0df`)
+
+`src/modules/collaboration/actions/tasks.ts` and `components/TaskPanel.tsx`. The
+`Task` model shipped in Phase 1 but nothing read it. Full-width panel above
+Discussion; drag to reorder; status and assignee inline.
+
+Every action authorizes through the parent project via `authorizeEntityAccess`, so
+task access can never exceed project access and inherits the plan gate. Assignee
+ids and reorder payloads are both checked against the tenant before writing.
+Status/assignee changes write an `AuditLog` row with `entityType: 'Task'` — that is
+what the Phase 5 activity feed will read.
+
+`TaskPanel` uses `useOptimistic` rather than mirroring the server list into state,
+so a failed action needs no manual rollback and a successful one cannot drift from
+what was persisted.
+
+### Phase 6 — broadcasts + plan rows (`b6d3e7d`)
+
+`broadcastNotification` skipped every non-admin, contradicting all three call sites'
+"notify business members" comments. Audience is now an explicit
+`'all' | 'admins'` parameter defaulting to `'all'`:
+
+- client revision notes, new client feedback → **all** members
+- new project request → **admins** (copy asks for approval; only admins can approve)
+
+"Team Collaboration" added to the three `PLAN_FEATURES` arrays.
+
 ### Phase 0 — Ably scoping (`14372d4`)
 
 `/api/ably/auth` previously minted tokens with **no `capability`**, so they inherited
@@ -183,38 +210,25 @@ Channel names centralized in `src/lib/ably/channels.ts`.
 
 ## 5. Remaining work
 
-### Phase 4 — Tasks UI (~2 days)
-Schema exists and is seeded; nothing reads it yet.
-- `TaskPanel.tsx` in the project detail grid (currently 4 columns — consider where
-  it fits, or make tasks a tab alongside Discussion)
-- Server actions gated by `authorizeProjectAccess(id, 'write')`
-- Drag-to-reorder reusing `@hello-pangea/dnd`, same pattern as `PipelineBoard.tsx`
-- Assign/complete should write an `AuditLog` row and notify the assignee
-
-### Phase 5 — Activity feed + live board (~2 days) — now unblocked
-- Per-project Activity tab reading `AuditLog` by `entityId`
-- `PipelineBoard` subscribes to a `business:{orgId}:pipeline` channel
+### Phase 5 — Activity feed + live board (~2 days) — the only phase left
+- Per-project Activity tab reading `AuditLog` by `entityId`. Task actions already
+  write `entityType: 'Task'` rows, so there is data to render on day one.
+- `PipelineBoard` subscribes to a `business:{orgId}:pipeline` channel.
 - **Presence needs a capability change**: tokens are currently `['subscribe']` only.
   Add `'presence'` in `src/app/api/ably/auth/route.ts` when presence lands.
 - **Drag conflict handling:** `updateProjectStage` (`workflow/actions.ts:85`) and
   `updateProjectOrder` (`:185`) are silent last-write-wins. Add an `updatedAt`
   precondition to the `where` clause so a stale drag fails loudly and refetches.
-- Comments could also go live on `business:{orgId}:project:{projectId}`, reusing the
-  optimistic + anti-jitter reconciliation already solved in `messaging/hooks.ts:125`.
-
-### Phase 6 — gating + cleanup (~half day)
-- `canUseTeamCollaboration` **exists and is enforced** in `collaboration/authz.ts`.
-  Still to do: add a "Team Collaboration" row to the three `PLAN_FEATURES` arrays in
-  `src/lib/subscription.ts` so it appears on pricing.
-- **`notifications/services.ts:52` still skips non-admins** —
-  `if (member.role !== 'org:admin') continue` in `broadcastNotification`. Members
-  never receive broadcasts. Mention notifications use `createNotification` directly
-  so they are unaffected, but this should be fixed before relying on broadcasts.
+- Comments and tasks could also go live on `business:{orgId}:project:{projectId}`,
+  reusing the optimistic + anti-jitter reconciliation already solved in
+  `messaging/hooks.ts:125`.
 
 ### Not scheduled
-- **No way to remove a project member.** Reassignment now demotes rather than
-  removes, so ownership churn accumulates collaborators. Needs an explicit remove
-  action gated on `manage`, in a member-management UI.
+- **No way to remove a project member, and no UI to add one.** Reassignment demotes
+  rather than removes, so ownership churn accumulates collaborators. `ProjectMember`
+  is currently written only by `syncAssigneeMembership` and the seed — there is no
+  screen for managing the member list. This is the most visible remaining gap:
+  `manage` is enforced but nothing exercises it.
 - Client/invoice comments — needs a rule per entity type, and clients specifically
   collide with `middleware.ts:58` blocking members from `/dashboard/clients`.
 - Asset commenting/versioning (audit gap #9) — untouched.
@@ -249,8 +263,10 @@ Schema exists and is seeded; nothing reads it yet.
   against a `--max-warnings=377` budget. The 2 errors are pre-existing in
   `scripts/test-publish.js`. This branch adds **zero** new problems; verified by
   stashing and re-running on clean `main`. CLAUDE.md says not to raise the budget.
-- **Comments are not realtime.** They appear on revalidation. Phase 5 can add it now
-  that Phase 0 has landed.
+- **Comments and tasks are not realtime.** They appear on revalidation. Phase 5 can
+  add it now that Phase 0 has landed.
+- **Tasks have no due-date editor.** `TaskPanel` renders `dueDate` (with an overdue
+  style) and the server accepts it on create/update, but no control sets it.
 - **`scripts/` utilities now point at Docker** while `.env` is switched —
   `prod-queries.ts`, `sync-clerk-db.ts`, `fetch-user-data.ts` will silently return
   nothing. Protective for `reset-db.ts`.
@@ -261,7 +277,7 @@ Schema exists and is seeded; nothing reads it yet.
 ## 8. Useful verification commands
 
 ```bash
-npm test                      # 57 tests, 5 files
+npm test                      # 78 tests, 6 files
 npx tsc --noEmit -p tsconfig.json
 npm run lint                  # expect 456 problems — same as main
 npm run build
