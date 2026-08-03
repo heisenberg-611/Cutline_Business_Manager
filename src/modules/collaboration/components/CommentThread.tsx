@@ -54,9 +54,12 @@ export function CommentThread({
 
   const totalCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0)
 
+  // No overflow-hidden on the card: it clipped the @ picker, which is positioned
+  // above the composer and has to escape the card's bounds. The header and footer
+  // round their own corners instead, which is all overflow-hidden was doing here.
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
+    <div className="flex flex-col rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex items-center gap-2 rounded-t-xl border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
         <MessageSquare className="h-4 w-4 text-zinc-500" />
         <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Discussion</h3>
         {totalCount > 0 && (
@@ -138,7 +141,7 @@ export function CommentThread({
         )}
       </div>
 
-      <div className="border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
+      <div className="rounded-b-xl border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
         {!canComment ? (
           // Watchers get told why the box is missing rather than being handed a
           // composer that fails on submit. The server still refuses the write.

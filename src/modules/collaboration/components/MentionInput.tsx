@@ -1,9 +1,18 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 import type { MentionDraft } from '../mentions'
 import type { CommentAuthor } from '../actions/comments'
+
+/**
+ * Ceiling on how many people the picker offers at once. The list scrolls, so
+ * this is only a guard against rendering an entire large organization.
+ */
+const MAX_MATCHES = 50
+
+/** Keep in step with the max-h-60 on the list (15rem). */
+const PICKER_MAX_HEIGHT = 240
 
 export function displayNameOf(user: Pick<CommentAuthor, 'firstName' | 'lastName' | 'email'>) {
   return (
@@ -39,6 +48,8 @@ export function MentionInput({
   onSubmit?: () => void
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const [openUpward, setOpenUpward] = useState(true)
   const [query, setQuery] = useState<string | null>(null)
   const [triggerIndex, setTriggerIndex] = useState<number | null>(null)
   const [highlighted, setHighlighted] = useState(0)
@@ -53,7 +64,8 @@ export function MentionInput({
           displayNameOf(m).toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
         )
       })
-      .slice(0, 6)
+      // The list scrolls, so it no longer has to be trimmed to what fits.
+      .slice(0, MAX_MATCHES)
   }, [query, members])
 
   /**
@@ -153,6 +165,26 @@ export function MentionInput({
     }
   }
 
+  // Arrow keys can move the highlight past the visible window now that the list
+  // scrolls, so keep the active row in view. Runs on hover too, where the row is
+  // already visible and this is a no-op.
+  useEffect(() => {
+    const item = listRef.current?.children[highlighted] as HTMLElement | undefined
+    item?.scrollIntoView({ block: 'nearest' })
+  }, [highlighted])
+
+  // The picker normally opens upward, which suits a composer sitting at the
+  // bottom of its card. Near the top of the viewport there is no room, and the
+  // dashboard's scroll container would clip it — so flip it downward instead.
+  useEffect(() => {
+    if (query === null) return
+    const box = textareaRef.current?.getBoundingClientRect()
+    if (!box) return
+    const spaceAbove = box.top
+    const spaceBelow = window.innerHeight - box.bottom
+    setOpenUpward(spaceAbove >= PICKER_MAX_HEIGHT || spaceAbove >= spaceBelow)
+  }, [query])
+
   const showPicker = query !== null && matches.length > 0
 
   return (
@@ -172,7 +204,13 @@ export function MentionInput({
         <div
           role="listbox"
           aria-label="Mention a team member"
-          className="absolute bottom-full left-0 z-50 mb-1 w-64 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+          ref={listRef}
+          // max-h + overflow-y so a long member list scrolls instead of running
+          // off the top of the card. overscroll-contain stops the scroll
+          // chaining to the page once the list hits its end.
+          className={`absolute left-0 z-50 max-h-60 w-64 overflow-y-auto overscroll-contain rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900 ${
+            openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
         >
           {matches.map((member, i) => (
             <button
