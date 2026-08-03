@@ -1,0 +1,124 @@
+import { auth } from '@clerk/nextjs/server'
+import { redirect, notFound } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft } from 'lucide-react'
+import prisma from '@/modules/core/db/prisma'
+import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
+import { canAccessProject } from '@/modules/projects/authz'
+import { getOrgUsers } from '@/modules/projects/actions'
+import { TaskPanel } from '@/modules/collaboration/components/TaskPanel'
+import { CommentThread } from '@/modules/collaboration/components/CommentThread'
+import { ActivityFeed } from '@/modules/collaboration/components/ActivityFeed'
+import { getTasks } from '@/modules/collaboration/actions/tasks'
+import { getComments } from '@/modules/collaboration/actions/comments'
+import { getProjectActivity } from '@/modules/collaboration/actions/activity'
+import { Badge } from '@/components/ui/badge'
+
+export default async function ProjectCollaborationPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { orgId, userId, orgRole } = await auth()
+
+  if (!orgId || !userId) {
+    redirect('/dashboard/select-business')
+  }
+
+  const { id } = await params
+
+  const business = await prisma.business.findUnique({
+    where: { id: orgId },
+    select: { subscriptionPlan: true, subscriptionPeriodEnd: true },
+  })
+
+  if (!business || !canUseTeamCollaboration(getActivePlan(business))) {
+    redirect('/dashboard/collaboration')
+  }
+
+  // Read access is checked before anything is fetched; the actions authorize
+  // independently, but this decides between 404 and rendering.
+  if (!(await canAccessProject(id, 'read'))) {
+    notFound()
+  }
+
+  const [project, tasks, comments, activity, members, canEdit] = await Promise.all([
+    prisma.project.findFirst({
+      where: { id, businessId: orgId },
+      select: {
+        id: true,
+        title: true,
+        displayId: true,
+        client: { select: { displayName: true } },
+        statusStage: { select: { name: true } },
+      },
+    }),
+    getTasks(id),
+    getComments('Project', id),
+    getProjectActivity(id),
+    getOrgUsers(orgId),
+    canAccessProject(id, 'write'),
+  ])
+
+  if (!project) {
+    notFound()
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
+        <Link
+          href="/dashboard/collaboration"
+          className="inline-flex items-center gap-1.5 text-sm text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          All projects
+        </Link>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <h3 className="text-2xl font-bold leading-6 text-zinc-900 dark:text-zinc-100">
+            {project.title}
+          </h3>
+          {project.displayId && (
+            <Badge variant="outline" className="text-xs">
+              {project.displayId}
+            </Badge>
+          )}
+          {project.statusStage && (
+            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+              {project.statusStage.name}
+            </span>
+          )}
+        </div>
+
+        <p className="mt-2 flex items-center gap-3 text-sm text-zinc-500">
+          {project.client?.displayName}
+          <Link
+            href={`/dashboard/projects/${project.id}`}
+            className="text-zinc-500 underline transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
+          >
+            Open project details
+          </Link>
+        </p>
+      </div>
+
+      <TaskPanel
+        projectId={project.id}
+        tasks={tasks}
+        members={members.map((m) => m.user)}
+        canEdit={canEdit}
+      />
+
+      <CommentThread
+        entityType="Project"
+        entityId={project.id}
+        comments={comments}
+        members={members.map((m) => m.user)}
+        currentUserId={userId}
+        isAdmin={orgRole === 'org:admin'}
+      />
+
+      <ActivityFeed entries={activity} />
+    </div>
+  )
+}
