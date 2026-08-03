@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Activity } from 'lucide-react'
-import type { ActivityEntry } from '../actions/activity'
+import { toast } from 'sonner'
+import { getProjectActivity, type ActivityEntry } from '../actions/activity'
 
 /**
  * Turns an audit row into a sentence.
@@ -69,14 +70,38 @@ function humanize(value: string) {
   return value.replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase())
 }
 
-const COLLAPSED_COUNT = 15
+export function ActivityFeed({
+  projectId,
+  initialEntries,
+  initialCursor,
+}: {
+  projectId: string
+  initialEntries: ActivityEntry[]
+  initialCursor: string | null
+}) {
+  // Only the first page is rendered by the server; the rest is fetched on
+  // demand, so opening a long-running project does not pay for its whole
+  // history up front.
+  const [entries, setEntries] = useState(initialEntries)
+  const [cursor, setCursor] = useState(initialCursor)
+  const [isPending, startTransition] = useTransition()
 
-export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
-  // The log keeps everything; the panel just starts collapsed so a long-running
-  // project does not bury the rest of the page.
-  const [expanded, setExpanded] = useState(false)
-  const shown = expanded ? entries : entries.slice(0, COLLAPSED_COUNT)
-  const hidden = entries.length - shown.length
+  function loadMore() {
+    if (!cursor) return
+    startTransition(async () => {
+      try {
+        const page = await getProjectActivity(projectId, { cursor })
+        // Guard against a double-click racing two requests for the same cursor.
+        setEntries((current) => {
+          const seen = new Set(current.map((e) => e.id))
+          return [...current, ...page.entries.filter((e) => !seen.has(e.id))]
+        })
+        setCursor(page.nextCursor)
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to load more activity')
+      }
+    })
+  }
 
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -86,6 +111,7 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
         {entries.length > 0 && (
           <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
             {entries.length}
+            {cursor ? '+' : ''}
           </span>
         )}
       </div>
@@ -96,7 +122,7 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
         </p>
       ) : (
         <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-          {shown.map((entry) => (
+          {entries.map((entry) => (
             <li key={entry.id} className="flex items-baseline gap-2 px-4 py-2.5 text-sm">
               <span className="font-medium text-zinc-900 dark:text-zinc-100">
                 {entry.actorName ?? 'Someone'}
@@ -109,14 +135,15 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
               </span>
             </li>
           ))}
-          {hidden > 0 && (
+          {cursor && (
             <li className="px-4 py-2.5 text-center">
               <button
                 type="button"
-                onClick={() => setExpanded(true)}
-                className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
+                onClick={loadMore}
+                disabled={isPending}
+                className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 disabled:opacity-50 dark:hover:text-zinc-200"
               >
-                Show {hidden} earlier {hidden === 1 ? 'entry' : 'entries'}
+                {isPending ? 'Loading...' : 'Load earlier activity'}
               </button>
             </li>
           )}

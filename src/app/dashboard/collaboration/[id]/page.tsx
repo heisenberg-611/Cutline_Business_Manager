@@ -137,7 +137,11 @@ export default async function ProjectCollaborationPage({
         isAdmin={orgRole === 'org:admin'}
       />
 
-      <ActivityFeed entries={activity} />
+      <ActivityFeed
+        projectId={project.id}
+        initialEntries={activity.entries}
+        initialCursor={activity.nextCursor}
+      />
     </div>
   )
 }

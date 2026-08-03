@@ -14,21 +14,38 @@ export type ActivityEntry = {
   createdAt: Date
 }
 
+// Not exported: a 'use server' module may only export async functions, and a
+// stray const here fails the build rather than typecheck.
+const ACTIVITY_PAGE_SIZE = 20
+
+export type ActivityPage = {
+  entries: ActivityEntry[]
+  /** Pass back to fetch the next page; null when the log is exhausted. */
+  nextCursor: string | null
+}
+
 /**
- * Project activity, newest first.
+ * One page of project activity, newest first.
  *
  * Reads AuditLog rather than a dedicated events table — it is already
  * polymorphic and is what the rest of the app writes to. Rows about the project
  * itself and rows about its tasks are both included, which is why the task
  * writes carry `projectId` in their metadata.
+ *
+ * Paged rather than fetched whole: a long-running project accumulates hundreds
+ * of entries, and loading them all made the page's first render carry the
+ * entire history plus a name lookup for every row it referenced.
+ *
+ * Cursor-based, not offset-based. New entries land at the head of this ordering,
+ * so an offset would shift under the reader and silently duplicate or skip rows
+ * while they page through.
  */
 export async function getProjectActivity(
   projectId: string,
-  // The log is meant to be complete rather than a recent-items list, so this is
-  // a safety ceiling, not a page size. The UI collapses it and offers "show all".
-  limit = 300
-): Promise<ActivityEntry[]> {
+  options: { cursor?: string | null; limit?: number } = {}
+): Promise<ActivityPage> {
   const { orgId } = await authorizeEntityAccess('Project', projectId, 'read')
+  const limit = options.limit ?? ACTIVITY_PAGE_SIZE
 
   const rows = await prisma.auditLog.findMany({
     where: {
@@ -44,9 +61,17 @@ export async function getProjectActivity(
         { entityType: 'Task', metadataJson: { contains: `"projectId":"${projectId}"` } },
       ],
     },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
+    // id breaks ties so the ordering is total; two rows written in the same
+    // transaction share a timestamp, and an unstable order would make the cursor
+    // skip one of them.
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    // One extra row is a cheaper "is there more?" than a second count query.
+    take: limit + 1,
+    ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
   })
+
+  const hasMore = rows.length > limit
+  const pageRows = hasMore ? rows.slice(0, limit) : rows
 
   // Actor names are resolved in one query. actorUserId is intentionally not
   // FK-constrained (audit rows outlive users), so a missing user is expected
@@ -58,7 +83,7 @@ export async function getProjectActivity(
     email: string
   }
 
-  const actorIds = [...new Set(rows.map((r) => r.actorUserId).filter(Boolean))] as string[]
+  const actorIds = [...new Set(pageRows.map((r) => r.actorUserId).filter(Boolean))] as string[]
   const actors: ActorRow[] = actorIds.length
     ? await prisma.user.findMany({
         where: { id: { in: actorIds } },
@@ -67,7 +92,7 @@ export async function getProjectActivity(
     : []
   const actorById = new Map(actors.map((a) => [a.id, a]))
 
-  const parsed = rows.map((row) => ({ row, metadata: safeParse(row.metadataJson) }))
+  const parsed = pageRows.map((row) => ({ row, metadata: safeParse(row.metadataJson) }))
 
   // Metadata stores ids. A log that reads "changed stage to wfs_abc123" is not a
   // log anyone can use, so referenced stages and people are resolved to names.
@@ -111,7 +136,7 @@ export async function getProjectActivity(
   const nameOf = (id: unknown) =>
     typeof id === 'string' ? (subjectName.get(id) ?? null) : null
 
-  return parsed.map(({ row, metadata }) => {
+  const entries = parsed.map(({ row, metadata }) => {
     const actor = row.actorUserId ? actorById.get(row.actorUserId) : null
     return {
       id: row.id,
@@ -132,6 +157,11 @@ export async function getProjectActivity(
       createdAt: row.createdAt,
     }
   })
+
+  return {
+    entries,
+    nextCursor: hasMore ? pageRows[pageRows.length - 1].id : null,
+  }
 }
 
 /** Audit metadata is free-form text; a malformed row must not break the feed. */
