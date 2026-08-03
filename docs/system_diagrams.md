@@ -7,7 +7,7 @@ This document contains visually enhanced, professional-level Class and Use Case 
 This diagram represents the core data entities and their cardinality. The classes are color-coded to visually separate functional domains, using dark, rich backgrounds with white text to ensure perfect visibility in both light and dark themes.
 
 **Legend:**
-🟦 **Core, Tenancy & Analytics** | 🟩 **Client & Feedback** | 🟪 **Project & Pre-Production** | 🟨 **Financials & Logs** | 🩵 **Messaging**
+🟦 **Core, Tenancy & Analytics** | 🟩 **Client & Feedback** | 🟪 **Project & Pre-Production** | 🟨 **Financials & Logs** | 🩵 **Messaging** | 🩷 **Team Collaboration**
 
 ```mermaid
 classDiagram
@@ -149,6 +149,31 @@ classDiagram
     style ProjectLink fill:#4c1d95,stroke:#8b5cf6,stroke-width:2px,color:#ffffff
     style Note fill:#4c1d95,stroke:#8b5cf6,stroke-width:2px,color:#ffffff
 
+    %% Team Collaboration
+    class ProjectMember {
+        +ProjectMemberRole role
+        +String addedBy
+    }
+    class Task {
+        +String title
+        +TaskStatus status
+        +DateTime dueDate
+        +DateTime completedAt
+    }
+    class Comment {
+        +String entityType
+        +String body
+        +DateTime editedAt
+        +DateTime deletedAt
+    }
+    class Mention {
+        +DateTime readAt
+    }
+    style ProjectMember fill:#831843,stroke:#ec4899,stroke-width:2px,color:#ffffff
+    style Task fill:#831843,stroke:#ec4899,stroke-width:2px,color:#ffffff
+    style Comment fill:#831843,stroke:#ec4899,stroke-width:2px,color:#ffffff
+    style Mention fill:#831843,stroke:#ec4899,stroke-width:2px,color:#ffffff
+
     %% Financials
     class Invoice {
         +String invoiceNumber
@@ -234,11 +259,26 @@ classDiagram
     Project "1" *-- "*" TimeEntry : logs
     Project "1" *-- "*" Expense : incurs
     User "1" --> "*" TimeEntry : logs
+
+    %% Team collaboration
+    Project "1" *-- "*" ProjectMember : access granted by
+    Project "1" *-- "*" Task : broken into
+    User "1" --> "*" ProjectMember : member of
+    User "1" --> "*" Task : assigned
+    User "1" --> "*" Comment : authors
+    Comment "1" *-- "*" Comment : replies
+    Comment "1" *-- "*" Mention : notifies
+    User "1" --> "*" Mention : mentioned in
 ```
 
 ## Use Case Diagram
 
-This diagram outlines specific, high-level business processes executed by our primary actors: Admin/Workspace Members, External Clients, and Automated System triggers. Subgraph backgrounds have been made transparent so they don't clash with your environment theme.
+This diagram outlines the high-level business processes and who performs them.
+
+**Admin** and **Team Member** are shown separately because their reach genuinely
+differs: an admin acts across the whole workspace, while a member acts only on
+projects they belong to. Anything a member can reach, an admin can reach too, so
+admin arrows are drawn only where the capability is *exclusively* theirs.
 
 ```mermaid
 flowchart TB
@@ -250,9 +290,11 @@ flowchart TB
     classDef pmNode fill:#4c1d95,stroke:#8b5cf6,stroke-width:2px,color:#ffffff,rx:8,ry:8
     classDef finNode fill:#713f12,stroke:#eab308,stroke-width:2px,color:#ffffff,rx:8,ry:8
     classDef msgNode fill:#0f766e,stroke:#14b8a6,stroke-width:2px,color:#ffffff,rx:8,ry:8
+    classDef collabNode fill:#831843,stroke:#ec4899,stroke-width:2px,color:#ffffff,rx:8,ry:8
 
     %% Actors
-    Admin(["🏢 Admin / Workspace Member"]):::actor
+    Admin(["🏢 Admin"]):::actor
+    Member(["🧑‍💻 Team Member"]):::actor
     Client(["👤 External Client"]):::actor
     System(["💻 System (Automated)"]):::system
 
@@ -295,6 +337,18 @@ flowchart TB
     end
     style MSG fill:none,stroke:#14b8a6,stroke-width:2px,stroke-dasharray: 5 5,color:#14b8a6
 
+    subgraph COLLAB ["🤝 Team Collaboration (Business plan)"]
+        direction TB
+        ManageMembers([Add / Remove Project Members]):::collabNode
+        ManageTasks([Create & Assign Tasks]):::collabNode
+        CompleteTask([Complete Task]):::collabNode
+        DiscussProject([Discuss Project in Thread]):::collabNode
+        MentionTeammate([Mention a Teammate]):::collabNode
+        ViewActivity([Review Project Activity Log]):::collabNode
+        CollaborateLive([Collaborate on Live Board]):::collabNode
+    end
+    style COLLAB fill:none,stroke:#ec4899,stroke-width:2px,stroke-dasharray: 5 5,color:#ec4899
+
     %% Admin Interactions
     Admin -->|Manages| OnboardClient
     Admin -->|Triggers| RequestFeedback
@@ -308,6 +362,21 @@ flowchart TB
     Admin -->|Logs| RecordExpense
     Admin -->|Views| GenerateReport
     Admin -->|Chats| SendDirectMessage
+
+    %% Admin-only collaboration
+    Admin -->|Assigns lead & members| ManageMembers
+
+    %% Team Member Interactions — limited to projects they belong to
+    Member -->|Updates| UpdateStage
+    Member -->|Logs| TrackTime
+    Member -->|Creates| ManageTasks
+    Member -->|Ticks off| CompleteTask
+    Member -->|Comments in| DiscussProject
+    Member -->|Reads| ViewActivity
+    Member -->|Drags cards on| CollaborateLive
+    Member -->|Chats| SendDirectMessage
+    DiscussProject -.->|may include| MentionTeammate
+    MentionTeammate -.->|notifies| Member
 
     %% Client Interactions
     Client -->|Fills out| SubmitIntake
@@ -324,4 +393,8 @@ flowchart TB
     System -->|Snapshots| GenerateReport
     SendReminder -.->|Notifies| Client
     GenerateInvoice -.->|Includes data from| TrackTime
+    ManageMembers -.->|grants access to| DiscussProject
+    ManageMembers -.->|grants access to| ManageTasks
+    CompleteTask -.->|records to| ViewActivity
+    UpdateStage -.->|records to| ViewActivity
 ```

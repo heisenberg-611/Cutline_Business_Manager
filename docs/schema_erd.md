@@ -1,6 +1,16 @@
 # Prisma Schema ER Diagram
 
-This document contains a Mermaid Entity-Relationship (ER) diagram reflecting the full structure of our `schema.prisma`. 
+This document contains a Mermaid Entity-Relationship (ER) diagram reflecting the full structure of our `schema.prisma`.
+
+> **On `Comment`:** `entityType` / `entityId` are a deliberate polymorphic pair with
+> no foreign key, following the same pattern as `AuditLog`. One table therefore serves
+> projects, tasks and anything added later without a join table per target — at the
+> cost of referential integrity, which is enforced in the application layer instead.
+> `parentId` is a self-relation: threads are one level deep.
+>
+> **On `ProjectMember`:** this, not `Project.assigneeId`, is what grants access.
+> `assigneeId` is retained as the *project lead* — displayed and notified, kept in
+> sync with this table, but no longer an authorization input.
 
 ```mermaid
 erDiagram
@@ -134,8 +144,55 @@ erDiagram
     Note {
         String id PK
         String projectId FK
+        String createdBy FK
         String type
         String content
+    }
+
+    ProjectMember {
+        String id PK
+        String projectId FK
+        String userId FK
+        ProjectMemberRole role
+        String addedBy
+        DateTime createdAt
+    }
+
+    Task {
+        String id PK
+        String businessId FK
+        String projectId FK
+        String title
+        String description
+        TaskStatus status
+        String assigneeId FK
+        DateTime dueDate
+        Int orderIndex
+        String createdBy FK
+        DateTime completedAt
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
+    Comment {
+        String id PK
+        String businessId FK
+        String entityType
+        String entityId
+        String authorId FK
+        String body
+        String parentId FK
+        DateTime createdAt
+        DateTime editedAt
+        DateTime deletedAt
+    }
+
+    Mention {
+        String id PK
+        String commentId FK
+        String mentionedUserId FK
+        DateTime readAt
+        DateTime createdAt
     }
 
     TimeEntry {
@@ -298,4 +355,17 @@ erDiagram
 
     Conversation ||--o{ ConversationParticipant : "participants"
     Conversation ||--o{ Message : "messages"
+
+    %% Team collaboration
+    Project ||--o{ ProjectMember : "members"
+    Project ||--o{ Task : "tasks"
+    Business ||--o{ Task : "tasks"
+    Business ||--o{ Comment : "comments"
+    User ||--o{ ProjectMember : "projectMemberships"
+    User ||--o{ Task : "assignedTasks"
+    User ||--o{ Comment : "comments"
+    User ||--o{ Mention : "mentions"
+    User ||--o{ Note : "authoredNotes"
+    Comment ||--o{ Comment : "replies"
+    Comment ||--o{ Mention : "mentions"
 ```

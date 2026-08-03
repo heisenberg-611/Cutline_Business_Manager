@@ -2,6 +2,22 @@
 
 This document contains a full conceptual Schema Diagram for `schema.prisma` using UML Class Diagram formatting, excluding traditional ER/EER notation.
 
+**Team collaboration notes**
+
+* `ProjectMember` — not `Project.assigneeId` — is what grants access to a project.
+  `assigneeId` is kept as the *project lead*: displayed and notified, kept in sync
+  with this table, but no longer an authorization input. Unique per
+  `(projectId, userId)`.
+* `Comment.entityType` / `entityId` are polymorphic with no foreign key, the same
+  pattern `AuditLog` uses, so one table serves projects and anything added later.
+  `parentId` is a self-relation and threads are one level deep. Deletes are soft, so
+  replies underneath a removed comment survive.
+* `Task.completedAt` is cleared when a task is reopened, so a stale timestamp cannot
+  outlive the `DONE` state.
+* Author columns (`Comment.authorId`, `Task.createdBy`, `Note.createdBy`) are nullable
+  with `onDelete: SetNull`: the record survives the deletion of the person who made
+  it, matching how the audit trail already behaves.
+
 ```mermaid
 classDiagram
     class Business {
@@ -353,6 +369,52 @@ classDiagram
         DateTime createdAt
     }
 
+    class ProjectMember {
+        String id
+        String projectId
+        String userId
+        ProjectMemberRole role
+        String addedBy
+        DateTime createdAt
+    }
+
+    class Task {
+        String id
+        String businessId
+        String projectId
+        String title
+        String description
+        TaskStatus status
+        String assigneeId
+        DateTime dueDate
+        Int orderIndex
+        String createdBy
+        DateTime completedAt
+        DateTime createdAt
+        DateTime updatedAt
+    }
+
+    class Comment {
+        String id
+        String businessId
+        String entityType
+        String entityId
+        String authorId
+        String body
+        String parentId
+        DateTime createdAt
+        DateTime editedAt
+        DateTime deletedAt
+    }
+
+    class Mention {
+        String id
+        String commentId
+        String mentionedUserId
+        DateTime readAt
+        DateTime createdAt
+    }
+
     class Conversation {
         String id
         String businessId
@@ -446,4 +508,17 @@ classDiagram
 
     Conversation "1" --> "*" ConversationParticipant : participants
     Conversation "1" --> "*" Message : messages
+
+    %% Team collaboration
+    Project "1" --> "*" ProjectMember : grants access via
+    Project "1" --> "*" Task : breaks down into
+    Business "1" --> "*" Task : owns
+    Business "1" --> "*" Comment : owns
+    User "1" --> "*" ProjectMember : belongs to projects
+    User "1" --> "*" Task : assigned
+    User "1" --> "*" Comment : authors
+    User "1" --> "*" Mention : mentioned in
+    User "1" --> "*" Note : authors
+    Comment "1" --> "*" Comment : replies
+    Comment "1" --> "*" Mention : notifies
 ```
