@@ -91,6 +91,17 @@ export async function createTask(input: {
     },
   })
 
+  await prisma.auditLog.create({
+    data: {
+      businessId: orgId,
+      entityType: 'Task',
+      entityId: task.id,
+      action: 'TASK_CREATED',
+      actorUserId: userId,
+      metadataJson: JSON.stringify({ projectId: input.projectId, title }),
+    },
+  })
+
   if (assigneeId && assigneeId !== userId) {
     await notifyAssignment(orgId, assigneeId, title, input.projectId)
   }
@@ -189,7 +200,18 @@ export async function updateTask(
 }
 
 export async function deleteTask(taskId: string) {
-  const { task } = await authorizeTask(taskId, 'write')
+  const { orgId, userId, task } = await authorizeTask(taskId, 'write')
+
+  await prisma.auditLog.create({
+    data: {
+      businessId: orgId,
+      entityType: 'Task',
+      entityId: taskId,
+      action: 'TASK_DELETED',
+      actorUserId: userId,
+      metadataJson: JSON.stringify({ projectId: task.projectId, title: task.title }),
+    },
+  })
 
   await prisma.task.delete({ where: { id: taskId } })
 

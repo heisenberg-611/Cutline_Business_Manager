@@ -202,11 +202,11 @@ export function ProjectForm({ clients, members = [], defaultOpen = false }: { cl
               <Label>Project lead</Label>
               <Select value={assigneeId} onValueChange={(val) => setAssigneeId(val || '')}>
                 <SelectTrigger className="h-auto py-2">
-                  <SelectValue placeholder="Unassigned">
+                  <SelectValue placeholder="No lead">
                     {assigneeId && assigneeId !== 'unassigned' 
                       ? (() => {
                           const user = members.find(m => m.user.id === assigneeId)?.user;
-                          if (!user) return 'Unassigned';
+                          if (!user) return 'No lead';
                           const rawName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
                           const name = rawName || user.email.split('@')[0] || 'Unknown User';
                           return (
@@ -225,11 +225,11 @@ export function ProjectForm({ clients, members = [], defaultOpen = false }: { cl
                             </span>
                           );
                         })()
-                      : 'Unassigned'}
+                      : 'No lead'}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent align="start" alignItemWithTrigger={false} className="w-max min-w-[var(--anchor-width)]">
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">No lead</SelectItem>
                   {members.map(m => {
                     const rawName = `${m.user.firstName || ''} ${m.user.lastName || ''}`.trim();
                     const name = rawName || m.user.email.split('@')[0] || 'Unknown User';

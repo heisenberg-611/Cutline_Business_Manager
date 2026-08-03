@@ -141,6 +141,17 @@ export async function createComment(input: {
     },
   })
 
+  await prisma.auditLog.create({
+    data: {
+      businessId: orgId,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      action: input.parentId ? 'COMMENT_REPLIED' : 'COMMENT_POSTED',
+      actorUserId: userId,
+      metadataJson: JSON.stringify({ commentId: comment.id, mentioned: validMentionIds.length }),
+    },
+  })
+
   if (notifyIds.length) {
     const actor = await prisma.user.findUnique({
       where: { id: userId },
@@ -217,6 +228,17 @@ export async function editComment(commentId: string, body: string) {
       : []),
   ])
 
+  await prisma.auditLog.create({
+    data: {
+      businessId: orgId,
+      entityType: existing.entityType,
+      entityId: existing.entityId,
+      action: 'COMMENT_EDITED',
+      actorUserId: userId,
+      metadataJson: JSON.stringify({ commentId }),
+    },
+  })
+
   revalidatePath(entityUrl(existing.entityType, existing.entityId))
 }
 
@@ -247,6 +269,16 @@ export async function deleteComment(commentId: string) {
     }),
     // Drop mentions so a deleted comment stops showing in anyone's unread list.
     prisma.mention.deleteMany({ where: { commentId } }),
+    prisma.auditLog.create({
+      data: {
+        businessId: orgId,
+        entityType: existing.entityType,
+        entityId: existing.entityId,
+        action: 'COMMENT_DELETED',
+        actorUserId: userId,
+        metadataJson: JSON.stringify({ commentId }),
+      },
+    }),
   ])
 
   revalidatePath(entityUrl(existing.entityType, existing.entityId))

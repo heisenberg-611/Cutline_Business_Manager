@@ -139,6 +139,21 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
           projectId,
           stageId: newStageId
         }
+      }),
+      // Same trail as the drag path, so the activity feed does not depend on
+      // which control was used to move the project.
+      prisma.auditLog.create({
+        data: {
+          businessId: orgId,
+          entityType: 'Project',
+          entityId: projectId,
+          action: 'STAGE_CHANGED',
+          actorUserId: userId,
+          metadataJson: JSON.stringify({
+            fromStageId: currentStageId,
+            toStageId: newStageId
+          })
+        }
       })
     ])
 
@@ -213,10 +228,24 @@ export async function updateProjectOrder(
     'write'
   )
 
+  // Stage history is keyed off what actually changed, so the previous stage has
+  // to be read before the write.
+  const before = await prisma.project.findMany({
+    where: { id: { in: updates.map(u => u.id) }, businessId: orgId },
+    select: { id: true, statusStageId: true }
+  })
+  const previousStageById = new Map(before.map(p => [p.id, p.statusStageId]))
+
+  const stageChanges = updates.filter(
+    u => previousStageById.get(u.id) !== u.statusStageId
+  )
+
+  const now = new Date()
+
   // Update all projects in a transaction
   try {
-    await prisma.$transaction(
-      updates.map((update) =>
+    await prisma.$transaction([
+      ...updates.map((update) =>
         prisma.project.update({
           where: {
             id: update.id,
@@ -233,8 +262,42 @@ export async function updateProjectOrder(
             orderIndex: update.orderIndex
           }
         })
-      )
-    )
+      ),
+
+      // A drag changes stage exactly like the dropdown does, so it has to leave
+      // the same trail. Without this, `stageHistory[0]` is missing and the
+      // at-risk checks in financials/dashboard-queries.ts and the nightly
+      // analytics snapshot silently skip the project instead of measuring it.
+      ...stageChanges.flatMap((change) => {
+        const previousStageId = previousStageById.get(change.id) ?? null
+        return [
+          ...(previousStageId
+            ? [
+                prisma.projectStageHistory.updateMany({
+                  where: { projectId: change.id, stageId: previousStageId, exitedAt: null },
+                  data: { exitedAt: now }
+                })
+              ]
+            : []),
+          prisma.projectStageHistory.create({
+            data: { projectId: change.id, stageId: change.statusStageId, enteredAt: now }
+          }),
+          prisma.auditLog.create({
+            data: {
+              businessId: orgId,
+              entityType: 'Project',
+              entityId: change.id,
+              action: 'STAGE_CHANGED',
+              actorUserId: userId,
+              metadataJson: JSON.stringify({
+                fromStageId: previousStageId,
+                toStageId: change.statusStageId
+              })
+            }
+          })
+        ]
+      })
+    ])
   } catch (error) {
     // P2025 = "record to update not found", which here means the updatedAt
     // precondition did not match: someone else moved it first.

@@ -224,7 +224,19 @@ async function main() {
         orderIndex: i,
       },
     });
-    projectRows.push(row);
+    projectRows.push(row)
+
+    // Projects created with a statusStageId but no history row cannot be
+    // measured by the at-risk checks, which read stageHistory[0].
+    const hasHistory = await prisma.projectStageHistory.findFirst({
+      where: { projectId: row.id, exitedAt: null },
+      select: { id: true },
+    })
+    if (!hasHistory && row.statusStageId) {
+      await prisma.projectStageHistory.create({
+        data: { projectId: row.id, stageId: row.statusStageId },
+      })
+    };
 
     // The backfill migration only covers projects that existed when it ran, so
     // freshly seeded rows need their membership written here too.

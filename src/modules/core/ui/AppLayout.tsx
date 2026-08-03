@@ -290,12 +290,19 @@ export function AppLayout({
               popover state and the aria-expanded MutationObserver never drop out
               mid-toggle; it crossfades via opacity/width instead of display:none,
               which is what makes the fade actually visible. */}
+          {/* Both layers are absolutely positioned so neither participates in
+              layout. The switcher used to animate width, which squeezed Clerk's
+              avatar and name horizontally on the way out — the same "visibly
+              getting squeezed" problem the nav rows avoid. It now only fades,
+              and the two layers are staggered with the same fast-out /
+              delayed-in pair the labels use, so the small collapsed avatar never
+              crossfades on top of the switcher's own avatar. */}
           <motion.div
-            animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : '100%' }}
-            transition={SIDEBAR_TRANSITION}
+            animate={{ opacity: isCollapsed ? 0 : 1 }}
+            transition={isCollapsed ? LABEL_TRANSITION : LABEL_ENTER_TRANSITION}
             style={{ pointerEvents: isCollapsed ? 'none' : 'auto' }}
             aria-hidden={isCollapsed}
-            className="flex items-center overflow-hidden"
+            className="absolute left-4 right-4 flex items-center overflow-hidden"
           >
             <OrganizationSwitcher
               hidePersonal
@@ -330,12 +337,14 @@ export function AppLayout({
               }}
             />
           </motion.div>
+          {/* Plain fade, no scale: a logo that pops in at 0.85 reads as a
+              glitch rather than a transition. */}
           <motion.div
-            animate={{ opacity: isCollapsed ? 1 : 0, scale: isCollapsed ? 1 : 0.85 }}
-            transition={SIDEBAR_TRANSITION}
+            animate={{ opacity: isCollapsed ? 1 : 0 }}
+            transition={isCollapsed ? LABEL_ENTER_TRANSITION : LABEL_TRANSITION}
             style={{ pointerEvents: isCollapsed ? 'auto' : 'none' }}
             aria-hidden={!isCollapsed}
-            className="absolute flex justify-center items-center w-8 h-8 text-foreground font-bold"
+            className="absolute left-1/2 -translate-x-1/2 flex justify-center items-center w-8 h-8 text-foreground font-bold"
           >
             {organization?.imageUrl ? (
               <img src={organization.imageUrl} alt={organization.name} className="w-8 h-8 min-w-[32px] min-h-[32px] rounded-md object-cover shrink-0" />
