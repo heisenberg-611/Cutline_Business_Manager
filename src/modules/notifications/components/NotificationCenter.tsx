@@ -7,6 +7,12 @@ import { getNotifications, markAsRead, markAllAsRead, clearAllNotifications } fr
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
+/**
+ * How often the bell re-checks. Matches the messaging sidebar's own 15s poll,
+ * so the two do not disagree about how fresh the app feels.
+ */
+const POLL_INTERVAL_MS = 15_000
+
 type Notification = {
   id: string
   title: string
@@ -132,15 +138,30 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
 
   React.useEffect(() => {
     fetchNotifications()
-    
+
     // Listen for real-time push from OneSignal
     const handlePushReceived = () => {
       fetchNotifications()
     }
     window.addEventListener('onesignal-push-received', handlePushReceived)
-    
+
+    // Push was the only trigger, so a notification written to the database was
+    // invisible until the next full page load whenever the push did not arrive
+    // — which is the normal case if browser notifications were never allowed,
+    // or OneSignal is not configured. Polling makes delivery independent of it.
+    const poll = window.setInterval(fetchNotifications, POLL_INTERVAL_MS)
+
+    // Coming back to the tab is the moment stale counts are most obvious, and
+    // it costs one request rather than waiting out the interval.
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchNotifications()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       window.removeEventListener('onesignal-push-received', handlePushReceived)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.clearInterval(poll)
     }
   }, [])
 

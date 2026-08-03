@@ -104,6 +104,7 @@ export async function createComment(input: {
 
   // A reply must belong to the same entity, or a comment could be grafted onto
   // a thread the caller cannot see.
+  let replyingTo: string | null = null
   if (input.parentId) {
     const parent = await prisma.comment.findFirst({
       where: {
@@ -112,9 +113,13 @@ export async function createComment(input: {
         entityType: input.entityType,
         entityId: input.entityId,
       },
-      select: { id: true, parentId: true },
+      select: { id: true, parentId: true, authorId: true, deletedAt: true },
     })
     if (!parent) throw new Error('Parent comment not found.')
+    // The person being replied to. Taken from the comment actually replied to,
+    // before the root re-parenting below, so replying to a reply notifies the
+    // person who wrote that reply rather than whoever started the thread.
+    if (!parent.deletedAt) replyingTo = parent.authorId
     // Threads are one level deep; replying to a reply attaches to its root.
     if (parent.parentId) input.parentId = parent.parentId
   }
@@ -126,6 +131,21 @@ export async function createComment(input: {
 
   // Notifying yourself is noise.
   const notifyIds = validMentionIds.filter((id) => id !== userId)
+
+  // A reply is addressed at someone, so tell them — otherwise a conversation
+  // only works if the other person happens to reload the page. Skipped when
+  // they are already being notified for a mention in the same comment, so one
+  // comment never produces two notifications for one person, and held to the
+  // same access rule as mentions so nobody is pointed at a project they cannot
+  // open.
+  if (
+    replyingTo &&
+    replyingTo !== userId &&
+    !notifyIds.includes(replyingTo) &&
+    (await canBeNotified(orgId, input.entityType, input.entityId, replyingTo))
+  ) {
+    notifyIds.push(replyingTo)
+  }
 
   const comment = await prisma.comment.create({
     data: {
@@ -166,11 +186,14 @@ export async function createComment(input: {
     const message = preview.length > 140 ? `${preview.slice(0, 137)}...` : preview
 
     await Promise.all(
-      notifyIds.map((mentionedUserId) =>
+      notifyIds.map((recipientId) =>
         createNotification({
           businessId: orgId,
-          userId: mentionedUserId,
-          title: `${actorName} mentioned you`,
+          userId: recipientId,
+          title:
+            recipientId === replyingTo && !validMentionIds.includes(recipientId)
+              ? `${actorName} replied to you`
+              : `${actorName} mentioned you`,
           message,
           type: 'mention',
           actionUrl: entityUrl(input.entityType, input.entityId),
@@ -314,6 +337,18 @@ async function resolveMentionIds(
 
   const allowed = await mentionableUserIds(orgId, entityId)
   return mentioned.map((m) => m.userId).filter((id) => allowed.has(id))
+}
+
+/** Whether someone may be pointed at this entity by a notification. */
+async function canBeNotified(
+  orgId: string,
+  entityType: string,
+  entityId: string,
+  userId: string
+): Promise<boolean> {
+  if (entityType !== 'Project') return false
+  const allowed = await mentionableUserIds(orgId, entityId)
+  return allowed.has(userId)
 }
 
 function entityUrl(entityType: string, entityId: string) {
