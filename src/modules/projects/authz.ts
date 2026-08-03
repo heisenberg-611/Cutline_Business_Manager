@@ -86,6 +86,24 @@ export async function authorizeProjectAccess(
 }
 
 /**
+ * Non-throwing variant, for deciding whether to render editing controls.
+ *
+ * Server actions still authorize independently — this only shapes the UI, and
+ * hiding a control is not access control.
+ */
+export async function canAccessProject(
+  projectId: string,
+  level: ProjectAccessLevel
+): Promise<boolean> {
+  try {
+    await authorizeProjectAccess(projectId, level)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Batch variant for the pipeline board, which reorders many projects at once.
  * Verifies every id individually so an unauthorized project cannot ride along
  * in the payload.

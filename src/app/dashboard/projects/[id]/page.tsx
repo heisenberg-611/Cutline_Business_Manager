@@ -9,7 +9,10 @@ import { TimePanel } from '@/modules/projects/components/TimePanel'
 import { AssetPanel } from '@/modules/projects/components/AssetPanel'
 import { ProjectActions } from '@/modules/projects/components/ProjectActions'
 import { CommentThread } from '@/modules/collaboration/components/CommentThread'
+import { TaskPanel } from '@/modules/collaboration/components/TaskPanel'
 import { getComments } from '@/modules/collaboration/actions/comments'
+import { getTasks } from '@/modules/collaboration/actions/tasks'
+import { canAccessProject } from '@/modules/projects/authz'
 import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
 import prisma from '@/modules/core/db/prisma'
 import { Button } from '@/components/ui/button'
@@ -44,10 +47,16 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     notFound()
   }
 
-  // Comments are BUSINESS-tier. Fetched only when enabled so lower plans do not
-  // pay for a query whose result they never see.
+  // Collaboration is BUSINESS-tier. Fetched only when enabled so lower plans do
+  // not pay for queries whose results they never see.
   const collaborationEnabled = !!business && canUseTeamCollaboration(getActivePlan(business))
-  const comments = collaborationEnabled ? await getComments('Project', project.id) : []
+  const [comments, tasks, canEditProject] = collaborationEnabled
+    ? await Promise.all([
+        getComments('Project', project.id),
+        getTasks(project.id),
+        canAccessProject(project.id, 'write'),
+      ])
+    : [[], [], false]
 
   return (
     <div className="space-y-6 flex flex-col md:h-[calc(100vh-8rem)]">
@@ -167,7 +176,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {/* Discussion — full width, since threads need more room than the panels */}
+      {/* Tasks and Discussion are full width — rows with an assignee, status and
+          due date do not fit a quarter-width panel column. */}
+      {collaborationEnabled && (
+        <div className="shrink-0">
+          <TaskPanel
+            projectId={project.id}
+            tasks={tasks}
+            members={members.map(m => m.user)}
+            canEdit={canEditProject}
+          />
+        </div>
+      )}
+
       {collaborationEnabled && userId && (
         <div className="shrink-0">
           <CommentThread
