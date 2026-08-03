@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import * as Ably from 'ably';
-import { businessNamespace } from '@/lib/ably/channels';
+import { businessNamespace, userNotificationsChannel } from '@/lib/ably/channels';
 
 export async function GET() {
   const { userId, orgId } = await auth();
@@ -36,6 +36,9 @@ export async function GET() {
       // the connection does.
       capability: JSON.stringify({
         [businessNamespace(orgId)]: ['subscribe', 'presence'],
+        // Granted per user, not through the business wildcard, so one member
+        // cannot subscribe to another member's notifications.
+        [userNotificationsChannel(userId)]: ['subscribe'],
       }),
     });
     return NextResponse.json(tokenRequestData);

@@ -1,5 +1,35 @@
 import prisma from "@/modules/core/db/prisma"
 import { sendPushNotification } from "@/lib/onesignal"
+import * as Ably from "ably"
+import { userNotificationsChannel, NOTIFICATION_EVENT, type NotificationPayload } from "@/lib/ably/channels"
+
+/**
+ * Nudges recipients' open tabs so the bell updates without polling.
+ *
+ * The bell used to poll every 15 seconds, which is one Vercel function
+ * invocation per user per interval for something that is idle most of the time.
+ * This carries no content — only the business it belongs to — so the client
+ * refetches through the normal authorized path rather than trusting a payload
+ * off a channel.
+ *
+ * Best-effort: a realtime failure must not fail the notification that has
+ * already been written. Tabs still catch up when they regain focus.
+ */
+async function publishNotificationSignal(userIds: string[], businessId: string) {
+  if (!process.env.ABLY_API_KEY || userIds.length === 0) return
+
+  try {
+    const ably = new Ably.Rest(process.env.ABLY_API_KEY)
+    const payload: NotificationPayload = { businessId }
+    await Promise.all(
+      [...new Set(userIds)].map((userId) =>
+        ably.channels.get(userNotificationsChannel(userId)).publish(NOTIFICATION_EVENT, payload)
+      )
+    )
+  } catch (e) {
+    console.error("Ably notification publish error:", e)
+  }
+}
 
 export async function createNotification(data: {
   userId: string
@@ -30,6 +60,8 @@ export async function createNotification(data: {
   ).catch((err) => {
     console.error("Failed to push notification:", err)
   })
+
+  await publishNotificationSignal([data.userId], data.businessId)
 
   return notification
 }
@@ -155,6 +187,10 @@ export async function broadcastNotification(data: {
     ).catch((err) => {
       console.error("Failed to broadcast push notifications:", err)
     })
+
+    // This writes rows directly rather than going through createNotification,
+    // so it has to raise the signal itself.
+    await publishNotificationSignal(targetUserIds, data.businessId)
   }
 }
 
@@ -193,4 +229,6 @@ export async function createManyNotifications(
   ).catch((err) => {
     console.error("Failed to push notifications:", err)
   })
+
+  await publishNotificationSignal(userIds, data.businessId)
 }

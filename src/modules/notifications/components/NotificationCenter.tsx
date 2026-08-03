@@ -4,14 +4,11 @@ import * as React from "react"
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 import { Bell, Check, Loader2, Trash2 } from "lucide-react"
 import { getNotifications, markAsRead, markAllAsRead, clearAllNotifications } from "../actions"
+import { useNotificationsRealtime } from "../useNotificationsRealtime"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
-/**
- * How often the bell re-checks. Matches the messaging sidebar's own 15s poll,
- * so the two do not disagree about how fresh the app feels.
- */
-const POLL_INTERVAL_MS = 15_000
+
 
 type Notification = {
   id: string
@@ -145,14 +142,10 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
     }
     window.addEventListener('onesignal-push-received', handlePushReceived)
 
-    // Push was the only trigger, so a notification written to the database was
-    // invisible until the next full page load whenever the push did not arrive
-    // — which is the normal case if browser notifications were never allowed,
-    // or OneSignal is not configured. Polling makes delivery independent of it.
-    const poll = window.setInterval(fetchNotifications, POLL_INTERVAL_MS)
-
-    // Coming back to the tab is the moment stale counts are most obvious, and
-    // it costs one request rather than waiting out the interval.
+    // Returning to the tab is where a stale count is most obvious, and it costs
+    // one request rather than a standing interval. This is the safety net for a
+    // signal missed while the socket was down; useNotificationsRealtime below
+    // is what normally delivers.
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') fetchNotifications()
     }
@@ -161,9 +154,12 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
     return () => {
       window.removeEventListener('onesignal-push-received', handlePushReceived)
       document.removeEventListener('visibilitychange', handleVisibility)
-      window.clearInterval(poll)
     }
   }, [])
+
+  // Delivery is pushed over Ably rather than polled. Polling cost one Vercel
+  // invocation per user per interval, nearly always to find nothing new.
+  useNotificationsRealtime(fetchNotifications)
 
   const unreadCount = notifications.filter(n => !n.isRead).length
 

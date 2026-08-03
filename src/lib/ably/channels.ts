@@ -35,6 +35,25 @@ export function pipelineChannel(businessId: string) {
   return `business:${businessId}:pipeline`
 }
 
+/**
+ * One person's notification feed.
+ *
+ * Deliberately outside the `business:{id}:` namespace. The member token grants
+ * `business:{orgId}:*`, so a notification channel placed under it would be
+ * readable by every other member of the organization — and notifications carry
+ * previews of comments on projects the reader may have no access to.
+ */
+export function userNotificationsChannel(userId: string) {
+  return `user:${userId}:notifications`
+}
+
+export const NOTIFICATION_EVENT = 'notification'
+
+export type NotificationPayload = {
+  /** The client ignores signals for an organization it is not currently in. */
+  businessId: string
+}
+
 /** Event names published on the pipeline channel. */
 export const PIPELINE_EVENT = {
   projectsMoved: 'projects-moved',
