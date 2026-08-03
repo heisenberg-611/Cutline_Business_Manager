@@ -94,7 +94,14 @@ The application is built as a Modular Monolith, leveraging Server Components and
 - **Admin Broadcasts:** Dedicated announcement channels where admins can blast updates to the entire organization (read-only for members).
 - **Smart Chat Management:** Features include mute notifications, soft-deletion for members (hides history until new message), and hard-deletion capabilities for admins.
 
-### 6. Client-Facing Public Portals
+### 6. Team Collaboration *(Business plan)*
+- **Project Members & Roles:** Projects carry a member list with `OWNER` / `COLLABORATOR` / `WATCHER` roles. Access is resolved from membership, so several people can genuinely share a project rather than one nominal assignee holding it. `Project.assigneeId` remains as the **project lead** — displayed and notified, but no longer what grants access.
+- **Tasks:** Assignable units of work beneath a project, with status, assignee, drag-to-reorder, and created / time-to-complete tracking.
+- **Threaded Discussion with @mentions:** In-context comment threads on a project. Mentions are stored structurally (`@[Name](userId)`) so they survive renames, and are scoped to the project's members plus admins — you cannot mention, or notify, someone who has no access to the project.
+- **Activity Log:** A durable, cursor-paginated audit trail of stage moves, task changes, comments and membership changes, built on the same `AuditLog` table as the financial trail. Entries outlive the records they describe, so deleting a task does not erase its history.
+- **Live Pipeline Board:** Stage moves broadcast over Ably so the board updates for everyone, with presence avatars showing who else is viewing. Drags carry an optimistic-concurrency precondition, so a stale move fails loudly instead of overwriting a teammate's change.
+
+### 7. Client-Facing Public Portals
 - **Guest Chat, Feedback & Review Links:** Secure, token-based links let clients join a conversation thread, submit feedback, or leave a testimonial without needing an account.
 - **Client Intake Forms:** Public intake forms automatically create pipeline projects in the correct business workspace.
 - **Installable & Offline-Ready:** A Serwist-powered service worker enables PWA installation and web push notifications (OneSignal) for real-time workflow alerts.
@@ -216,6 +223,26 @@ npx prisma migrate dev
 svix listen http://localhost:3000/api/webhooks/clerk
 ```
 
+#### Optional: disposable local database
+
+A Docker Postgres is included for schema work, so migrations can be written and
+replayed without touching a hosted database. The `db:*` scripts export their own
+connection string, so they stay local regardless of what `.env` points at.
+
+```bash
+npm run db:up        # Postgres 16 on localhost:55432
+npm run db:deploy    # apply all migrations
+npm run db:seed      # load a Business-tier fixture with several members
+npm run dev:local    # run the app against it
+
+npm run db:studio    # Prisma Studio      npm run db:psql   # psql shell
+npm run db:down      # stop               npm run db:nuke   # stop and wipe
+```
+
+The seed refuses to run against any non-local `DATABASE_URL`. See
+[COLLABORATION.md](./COLLABORATION.md) for how to point the fixture at a real
+Clerk organization so it can be signed into.
+
 ### 4. Start the Application
 
 ```bash
@@ -237,6 +264,7 @@ src/
     ├── analytics/        # Dashboarding & revenue/DSO aggregation
     ├── assets/           # Asset & licensing tracking
     ├── clients/          # Client CRM operations
+    ├── collaboration/    # Project members, tasks, comments/@mentions, activity log
     ├── core/             # Auth helpers & database configuration
     ├── feedback/         # Client feedback requests & responses
     ├── financials/       # Invoicing & payment ledgers

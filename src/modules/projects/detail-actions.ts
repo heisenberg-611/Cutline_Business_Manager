@@ -1,12 +1,21 @@
 'use server'
 
-import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
+import { authorizeProjectAccess } from './authz'
 
 export async function getProjectDetails(projectId: string) {
-  const { orgId, userId, orgRole } = await auth()
-  if (!orgId || !userId) throw new Error('Unauthorized')
+  let ctx
+  try {
+    ctx = await authorizeProjectAccess(projectId, 'read')
+  } catch (error) {
+    // Preserve the previous contract: a missing project returns null so the
+    // page can render notFound(). Permission failures still throw.
+    if (error instanceof Error && error.message === 'Project not found') return null
+    throw error
+  }
+
+  const { orgId } = ctx
 
   const project = await prisma.project.findFirst({
     where: {
@@ -35,13 +44,8 @@ export async function getProjectDetails(projectId: string) {
 
   if (!project) return null
 
-  // Group 2 & 3: Authorization and Least Privilege Client Data
-  if (orgRole !== 'org:admin') {
-    if (project.assigneeId !== userId) {
-      throw new Error('Forbidden: You are not assigned to this project.')
-    }
-    
-    // Narrowly scope the client data (scrub sensitive fields)
+  // Group 3: Least Privilege Client Data — non-admins never see client PII.
+  if (!ctx.isAdmin) {
     project.client = {
       ...project.client,
       email: null,
@@ -56,24 +60,14 @@ export async function getProjectDetails(projectId: string) {
 }
 
 export async function addNote(projectId: string, content: string, type: string) {
-  const { orgId, userId, orgRole } = await auth()
-  if (!orgId || !userId) throw new Error('Unauthorized')
-
-  // Verify access
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, businessId: orgId }
-  })
-  if (!project) throw new Error('Project not found')
-  
-  if (orgRole !== 'org:admin' && project.assigneeId !== userId) {
-    throw new Error('Forbidden: You are not assigned to this project.')
-  }
+  const { userId } = await authorizeProjectAccess(projectId, 'write')
 
   await prisma.note.create({
     data: {
       projectId,
       content,
-      type
+      type,
+      createdBy: userId
     }
   })
 
@@ -81,18 +75,7 @@ export async function addNote(projectId: string, content: string, type: string) 
 }
 
 export async function logTime(projectId: string, durationMinutes: number, isBillable: boolean) {
-  const { orgId, userId, orgRole } = await auth()
-  if (!orgId || !userId) throw new Error('Unauthorized')
-
-  // Verify access
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, businessId: orgId }
-  })
-  if (!project) throw new Error('Project not found')
-  
-  if (orgRole !== 'org:admin' && project.assigneeId !== userId) {
-    throw new Error('Forbidden: You are not assigned to this project.')
-  }
+  const { userId } = await authorizeProjectAccess(projectId, 'write')
 
   await prisma.timeEntry.create({
     data: {
@@ -108,18 +91,7 @@ export async function logTime(projectId: string, durationMinutes: number, isBill
 }
 
 export async function addLink(projectId: string, url: string, label: string) {
-  const { orgId, userId, orgRole } = await auth()
-  if (!orgId || !userId) throw new Error('Unauthorized')
-
-  // Verify access
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, businessId: orgId }
-  })
-  if (!project) throw new Error('Project not found')
-  
-  if (orgRole !== 'org:admin' && project.assigneeId !== userId) {
-    throw new Error('Forbidden: You are not assigned to this project.')
-  }
+  await authorizeProjectAccess(projectId, 'write')
 
   await prisma.projectLink.create({
     data: {
@@ -133,18 +105,7 @@ export async function addLink(projectId: string, url: string, label: string) {
 }
 
 export async function deleteLink(linkId: string, projectId: string) {
-  const { orgId, userId, orgRole } = await auth()
-  if (!orgId || !userId) throw new Error('Unauthorized')
-
-  // Verify access
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, businessId: orgId }
-  })
-  if (!project) throw new Error('Project not found')
-  
-  if (orgRole !== 'org:admin' && project.assigneeId !== userId) {
-    throw new Error('Forbidden: You are not assigned to this project.')
-  }
+  const { orgId } = await authorizeProjectAccess(projectId, 'write')
 
   await prisma.projectLink.deleteMany({
     where: { id: linkId, projectId, project: { businessId: orgId } }

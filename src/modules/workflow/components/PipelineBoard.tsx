@@ -1,10 +1,14 @@
 'use client'
 
-import React, { useState, useTransition, useEffect } from 'react'
+import React, { useState, useTransition, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
+import { toast } from 'sonner'
 
 import { updateProjectStage, updateProjectOrder } from '../actions'
+import { usePipelineRealtime } from '../hooks/usePipelineRealtime'
+import { BoardViewers } from './BoardViewers'
 import { FeedbackPromptModal } from './FeedbackPromptModal'
 import { MemberDeliveryModal } from './MemberDeliveryModal'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +32,8 @@ type Project = {
   deadline: Date | null
   statusStageId: string | null
   orderIndex: number
+  /** Sent back on a drag so the server can reject a stale move. */
+  updatedAt: Date
   client?: { displayName: string }
   assignee?: { firstName: string | null; lastName: string | null; imageUrl: string | null; email: string | null } | null
 }
@@ -67,11 +73,31 @@ const isDeliveryStage = (stageName: string) => {
 export default function PipelineBoard({ stages, projects: initialProjects, hasFeedbackFeature = true }: { stages: Stage[], projects: Project[], hasFeedbackFeature?: boolean }) {
 
   const { orgRole } = useAuth()
+  const router = useRouter()
   const isAdmin = orgRole === 'org:admin'
   const [isPending, startTransition] = useTransition()
 
   // Need local state for optimistic UI updates with dnd
   const [projects, setProjects] = useState(initialProjects)
+
+  // Apply a teammate's move without a refetch. Projects not already on this
+  // board are ignored — a member's board is filtered to their own work, so a
+  // move of someone else's project must not make it appear.
+  const applyRemoteMove = useCallback((updates: { id: string, statusStageId: string, orderIndex: number }[]) => {
+    setProjects(prev => {
+      let changed = false
+      const next = prev.map(p => {
+        const update = updates.find(u => u.id === p.id)
+        if (!update) return p
+        if (p.statusStageId === update.statusStageId && p.orderIndex === update.orderIndex) return p
+        changed = true
+        return { ...p, statusStageId: update.statusStageId, orderIndex: update.orderIndex }
+      })
+      return changed ? next : prev
+    })
+  }, [])
+
+  const { viewers } = usePipelineRealtime({ enabled: true, onRemoteMove: applyRemoteMove })
 
   // Feedback & Delivery Modal State
   const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false)
@@ -166,8 +192,25 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
       return newProjects
     })
 
-    startTransition(() => {
-      updateProjectOrder(updates)
+    startTransition(async () => {
+      try {
+        await updateProjectOrder(updates, {
+          id: draggedProject.id,
+          expectedUpdatedAt: draggedProject.updatedAt,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to move project'
+        if (message.startsWith('CONFLICT:')) {
+          // Someone else moved this project mid-drag. Their change is already
+          // persisted, so take the server's version rather than ours.
+          toast.error('Someone else moved this project. Refreshing the board.')
+          setProjects(initialProjects)
+          router.refresh()
+        } else {
+          toast.error(message)
+          setProjects(initialProjects)
+        }
+      }
     })
 
     // Check if moved to terminal delivery stage to trigger feedback prompt
@@ -265,6 +308,8 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
         }
       `}</style>
       <div className="flex items-center justify-end gap-3 px-1 shrink-0">
+        <BoardViewers viewers={viewers} />
+        <div className="flex-1" />
         <button
           onClick={resetSize}
           className="flex items-center justify-center h-8 px-3 gap-1.5 rounded-lg bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm font-normal text-zinc-900 dark:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
@@ -367,8 +412,10 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
                                 </Link>
                               </div>
 
-                              <div className="flex justify-between items-center">
-                                <div className="flex gap-2">
+                              <div className="flex justify-between items-center gap-2">
+                                {/* shrink-0 so a long lead name truncates instead of
+                                    squashing the priority and deadline chips. */}
+                                <div className="flex gap-2 shrink-0">
                                   {project.priority && (
                                     <Badge
                                       variant="secondary"
@@ -388,28 +435,40 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
                                   )}
                                 </div>
                                 {project.assignee && (
-                                  <div className="relative group flex items-center shrink-0">
+                                  <div className="relative group flex items-center gap-1.5 shrink min-w-0" title="Project lead">
                                     {project.assignee.imageUrl ? (
-                                      <img src={project.assignee.imageUrl} alt="Assignee" className="w-5 h-5 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 cursor-pointer" />
+                                      <img src={project.assignee.imageUrl} alt="Project lead" className="w-5 h-5 shrink-0 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 cursor-pointer" />
                                     ) : (
-                                      <div className="w-5 h-5 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[9px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase cursor-pointer">
+                                      <div className="w-5 h-5 shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[9px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase cursor-pointer">
                                         {(project.assignee.firstName?.[0] || '')}{(project.assignee.lastName?.[0] || '')}
                                       </div>
                                     )}
-                                    
+
+                                    {/* Name plus a Lead label: assigneeId is now the project lead,
+                                        not what grants access, so the card should say which it is. */}
+                                    <span className="truncate text-[10px] font-medium text-zinc-600 dark:text-zinc-400">
+                                      {[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || 'Unnamed'}
+                                    </span>
+                                    <span className="shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[9px] font-medium uppercase tracking-wide text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">
+                                      Lead
+                                    </span>
+
                                     {/* Hover Card */}
                                     <div className="absolute bottom-full right-0 mb-2 w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[100] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl p-3 pointer-events-none transform translate-y-1 group-hover:translate-y-0">
                                       <div className="flex items-center gap-3">
                                         {project.assignee.imageUrl ? (
-                                          <img src={project.assignee.imageUrl} alt="Assignee" className="w-8 h-8 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
+                                          <img src={project.assignee.imageUrl} alt="Project lead" className="w-8 h-8 rounded-full object-cover border border-zinc-200 dark:border-zinc-700" />
                                         ) : (
                                           <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 uppercase">
                                             {(project.assignee.firstName?.[0] || '')}{(project.assignee.lastName?.[0] || '')}
                                           </div>
                                         )}
                                         <div className="overflow-hidden">
+                                          <div className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+                                            Project lead
+                                          </div>
                                           <div className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                                            {[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || 'Assignee'}
+                                            {[project.assignee.firstName, project.assignee.lastName].filter(Boolean).join(' ') || 'Unnamed'}
                                           </div>
                                           {project.assignee.email && (
                                             <div className="text-xs text-zinc-500 truncate">

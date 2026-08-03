@@ -1,0 +1,23 @@
+# Local-only Postgres for schema/migration testing.
+# Never points at Aiven/Neon — port 55432 keeps it clear of any system Postgres.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cutline-local-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cutline
+      POSTGRES_PASSWORD: cutline_local_dev
+      POSTGRES_DB: cutline_dev
+    ports:
+      - "55432:5432"
+    volumes:
+      - cutline-local-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cutline -d cutline_dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  cutline-local-pgdata:

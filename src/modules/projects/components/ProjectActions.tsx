@@ -183,17 +183,17 @@ export function ProjectActions({ project, members = [] }: { project: Project, me
             
             {isAdmin && members.length > 0 && (
               <div className="space-y-2">
-                <Label>Assignee</Label>
+                <Label>Project lead</Label>
                 <Select 
                   value={formData.assigneeId} 
                   onValueChange={val => setFormData({ ...formData, assigneeId: val || 'unassigned' })}
                 >
                   <SelectTrigger className="h-auto py-2">
-                    <SelectValue placeholder="Unassigned">
+                    <SelectValue placeholder="No lead">
                       {formData.assigneeId && formData.assigneeId !== 'unassigned'
                         ? (() => {
                             const user = members.find(m => m.user.id === formData.assigneeId)?.user;
-                            if (!user) return 'Unassigned';
+                            if (!user) return 'No lead';
                             const rawName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
                             const name = rawName || user.email.split('@')[0] || 'Unknown User';
                             return (
@@ -212,11 +212,11 @@ export function ProjectActions({ project, members = [] }: { project: Project, me
                               </span>
                             );
                           })()
-                        : 'Unassigned'}
+                        : 'No lead'}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent align="start" alignItemWithTrigger={false} className="w-max min-w-[var(--anchor-width)]">
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    <SelectItem value="unassigned">No lead</SelectItem>
                     {members.map(m => {
                       const rawName = `${m.user.firstName || ''} ${m.user.lastName || ''}`.trim();
                       const name = rawName || m.user.email.split('@')[0] || 'Unknown User';

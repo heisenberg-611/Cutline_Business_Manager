@@ -23,6 +23,7 @@ export const PLAN_FEATURES = {
     { name: 'Client Feedback Forms', included: false },
     { name: 'Access to ProdP', included: false },
     { name: 'Team Member Invites', included: false },
+    { name: 'Team Collaboration', included: false },
     { name: 'Realtime Messages', included: false },
   ],
   [PLANS.PRO]: [
@@ -34,6 +35,7 @@ export const PLAN_FEATURES = {
     { name: 'Client Feedback Forms', included: true },
     { name: 'Access to ProdP', included: true },
     { name: 'Team Member Invites', included: false },
+    { name: 'Team Collaboration', included: false },
     { name: 'Realtime Messages', included: false },
   ],
   [PLANS.BUSINESS]: [
@@ -45,6 +47,7 @@ export const PLAN_FEATURES = {
     { name: 'Client Feedback Forms', included: true },
     { name: 'Access to ProdP', included: true },
     { name: 'Team Member Invites', included: true },
+    { name: 'Team Collaboration', included: true },
     { name: 'Realtime Messages', included: true },
   ]
 };
@@ -105,5 +108,16 @@ export function canInviteMembers(plan: SubscriptionPlan) {
 }
 
 export function canUseMessages(plan: SubscriptionPlan) {
+  return plan === PLANS.BUSINESS;
+}
+
+/**
+ * Team collaboration: project members, tasks, comments and @mentions.
+ *
+ * Checked explicitly rather than inferred from canInviteMembers. A business
+ * downgraded from BUSINESS keeps its Clerk organization members, so relying on
+ * "they have teammates" would leave collaboration switched on after downgrade.
+ */
+export function canUseTeamCollaboration(plan: SubscriptionPlan) {
   return plan === PLANS.BUSINESS;
 }

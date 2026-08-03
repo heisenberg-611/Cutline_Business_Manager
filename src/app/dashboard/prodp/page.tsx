@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { ProdPTabsWrapper as ProdPTabs } from '@/modules/prodp/components/ProdPTabsWrapper'
 import prisma from '@/modules/core/db/prisma'
+import { visibleProjectFilter } from '@/modules/projects/authz'
 
 export const metadata = {
   title: 'Production',
@@ -19,7 +20,7 @@ export default async function ProdPPage() {
     where: { 
       businessId: orgId, 
       isArchived: false,
-      ...(isAdmin ? {} : { assigneeId: userId })
+      ...(isAdmin ? {} : visibleProjectFilter(userId!))
     },
     orderBy: { createdAt: 'desc' },
     include: { client: true }
@@ -28,7 +29,7 @@ export default async function ProdPPage() {
   const reviewRequests = await prisma.reviewRequest.findMany({
     where: { 
       businessId: orgId,
-      ...(isAdmin ? {} : { project: { assigneeId: userId } })
+      ...(isAdmin ? {} : { project: visibleProjectFilter(userId!) })
     },
     orderBy: { createdAt: 'desc' },
     include: { project: true, client: true }

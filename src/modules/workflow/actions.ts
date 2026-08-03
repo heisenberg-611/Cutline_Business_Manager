@@ -4,6 +4,31 @@ import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
 import { createManyNotifications } from '@/modules/notifications/services'
+import { authorizeProjectAccess, authorizeProjectsAccess } from '@/modules/projects/authz'
+import * as Ably from 'ably'
+import { pipelineChannel, PIPELINE_EVENT, type ProjectsMovedPayload } from '@/lib/ably/channels'
+
+/**
+ * Fans a board change out to everyone else viewing the pipeline.
+ *
+ * Best-effort: a realtime failure must not fail the write that already
+ * succeeded. Clients still reconcile on their next fetch.
+ */
+async function publishPipelineUpdate(
+  orgId: string,
+  actorUserId: string,
+  updates: ProjectsMovedPayload['updates']
+) {
+  if (!process.env.ABLY_API_KEY) return
+
+  try {
+    const ably = new Ably.Rest(process.env.ABLY_API_KEY)
+    const payload: ProjectsMovedPayload = { actorUserId, updates }
+    await ably.channels.get(pipelineChannel(orgId)).publish(PIPELINE_EVENT.projectsMoved, payload)
+  } catch (e) {
+    console.error('Ably pipeline publish error:', e)
+  }
+}
 
 const DEFAULT_STAGES = [
   { name: 'Idea / Discovery', orderIndex: 0 },
@@ -83,23 +108,7 @@ export async function ensureDefaultTemplate(orgId: string) {
 }
 
 export async function updateProjectStage(projectId: string, newStageId: string) {
-  const { orgId, userId, orgRole } = await auth()
-  
-  if (!orgId || !userId) {
-    throw new Error('Unauthorized')
-  }
-
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, businessId: orgId }
-  })
-
-  if (!project || project.businessId !== orgId) {
-    throw new Error('Project not found or unauthorized')
-  }
-
-  if (orgRole !== 'org:admin' && project.assigneeId !== userId) {
-    throw new Error('Forbidden: You are not assigned to this project.')
-  }
+  const { orgId, userId, orgRole, project } = await authorizeProjectAccess(projectId, 'write')
 
   const currentStageId = project.statusStageId
 
@@ -130,7 +139,26 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
           projectId,
           stageId: newStageId
         }
+      }),
+      // Same trail as the drag path, so the activity feed does not depend on
+      // which control was used to move the project.
+      prisma.auditLog.create({
+        data: {
+          businessId: orgId,
+          entityType: 'Project',
+          entityId: projectId,
+          action: 'STAGE_CHANGED',
+          actorUserId: userId,
+          metadataJson: JSON.stringify({
+            fromStageId: currentStageId,
+            toStageId: newStageId
+          })
+        }
       })
+    ])
+
+    await publishPipelineUpdate(orgId, userId, [
+      { id: projectId, statusStageId: newStageId, orderIndex: project.orderIndex }
     ])
 
     const newStage = await prisma.workflowStage.findUnique({
@@ -182,37 +210,104 @@ export async function updateProjectStage(projectId: string, newStageId: string) 
   }
 }
 
-export async function updateProjectOrder(updates: { id: string, statusStageId: string, orderIndex: number }[]) {
-  const { orgId, userId, orgRole } = await auth()
-  
-  if (!orgId || !userId) {
-    throw new Error('Unauthorized')
-  }
+/**
+ * Persists a board drag.
+ *
+ * `moved` carries the dragged project's id and the `updatedAt` the client had
+ * when the drag started. Only that project is guarded: its stage change is the
+ * meaningful edit, while the sibling rows are being reindexed and their order is
+ * cosmetic. Guarding every row would make an unrelated concurrent edit anywhere
+ * on the board fail the whole drag.
+ */
+export async function updateProjectOrder(
+  updates: { id: string, statusStageId: string, orderIndex: number }[],
+  moved?: { id: string, expectedUpdatedAt: Date | string }
+) {
+  const { orgId, userId, orgRole } = await authorizeProjectsAccess(
+    updates.map(u => u.id),
+    'write'
+  )
 
-  if (orgRole !== 'org:admin') {
-    const projectIds = updates.map(u => u.id)
-    const projects = await prisma.project.findMany({
-      where: { id: { in: projectIds }, businessId: orgId }
-    })
-    for (const project of projects) {
-      if (project.assigneeId !== userId) {
-        throw new Error(`Forbidden: You are not assigned to this project.`)
-      }
-    }
-  }
+  // Stage history is keyed off what actually changed, so the previous stage has
+  // to be read before the write.
+  const before = await prisma.project.findMany({
+    where: { id: { in: updates.map(u => u.id) }, businessId: orgId },
+    select: { id: true, statusStageId: true }
+  })
+  const previousStageById = new Map(before.map(p => [p.id, p.statusStageId]))
+
+  const stageChanges = updates.filter(
+    u => previousStageById.get(u.id) !== u.statusStageId
+  )
+
+  const now = new Date()
 
   // Update all projects in a transaction
-  await prisma.$transaction(
-    updates.map((update) => 
-      prisma.project.update({
-        where: { id: update.id, businessId: orgId },
-        data: {
-          statusStageId: update.statusStageId,
-          orderIndex: update.orderIndex
-        }
+  try {
+    await prisma.$transaction([
+      ...updates.map((update) =>
+        prisma.project.update({
+          where: {
+            id: update.id,
+            businessId: orgId,
+            // Optimistic concurrency: no row matches if someone else has moved
+            // this project since the drag began, so the transaction aborts
+            // instead of silently overwriting their change.
+            ...(moved && moved.id === update.id
+              ? { updatedAt: new Date(moved.expectedUpdatedAt) }
+              : {})
+          },
+          data: {
+            statusStageId: update.statusStageId,
+            orderIndex: update.orderIndex
+          }
+        })
+      ),
+
+      // A drag changes stage exactly like the dropdown does, so it has to leave
+      // the same trail. Without this, `stageHistory[0]` is missing and the
+      // at-risk checks in financials/dashboard-queries.ts and the nightly
+      // analytics snapshot silently skip the project instead of measuring it.
+      ...stageChanges.flatMap((change) => {
+        const previousStageId = previousStageById.get(change.id) ?? null
+        return [
+          ...(previousStageId
+            ? [
+                prisma.projectStageHistory.updateMany({
+                  where: { projectId: change.id, stageId: previousStageId, exitedAt: null },
+                  data: { exitedAt: now }
+                })
+              ]
+            : []),
+          prisma.projectStageHistory.create({
+            data: { projectId: change.id, stageId: change.statusStageId, enteredAt: now }
+          }),
+          prisma.auditLog.create({
+            data: {
+              businessId: orgId,
+              entityType: 'Project',
+              entityId: change.id,
+              action: 'STAGE_CHANGED',
+              actorUserId: userId,
+              metadataJson: JSON.stringify({
+                fromStageId: previousStageId,
+                toStageId: change.statusStageId
+              })
+            }
+          })
+        ]
       })
-    )
-  )
+    ])
+  } catch (error) {
+    // P2025 = "record to update not found", which here means the updatedAt
+    // precondition did not match: someone else moved it first.
+    if ((error as { code?: string })?.code === 'P2025') {
+      throw new Error('CONFLICT: This project was moved by someone else. Refreshing.')
+    }
+    throw error
+  }
+
+  await publishPipelineUpdate(orgId, userId, updates)
 
   // Check if any moved to terminal delivery stage
   for (const update of updates) {
@@ -267,24 +362,8 @@ export async function updateProjectOrder(updates: { id: string, statusStageId: s
 }
 
 export async function submitMemberDelivery(projectId: string, driveLink: string) {
-  const { orgId, userId, orgRole } = await auth()
-  
-  if (!orgId || !userId) {
-    throw new Error('Unauthorized')
-  }
-
-  const project = await prisma.project.findFirst({
-    where: { id: projectId, businessId: orgId }
-  })
-
-  if (!project) {
-    throw new Error('Project not found')
-  }
-
-  // Only the assigned member or an admin can submit
-  if (orgRole !== 'org:admin' && project.assigneeId !== userId) {
-    throw new Error('Forbidden: You are not assigned to this project.')
-  }
+  // Only a project member (or an admin) can submit a delivery.
+  const { orgId, userId, orgRole, project } = await authorizeProjectAccess(projectId, 'write')
 
   if (driveLink && driveLink.trim() !== '') {
     // Add it to the Project Links

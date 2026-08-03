@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import prisma from '@/modules/core/db/prisma'
+import { visibleProjectFilter } from '@/modules/projects/authz'
 import { getStudioHealth, getRevenueTrend, getOutstandingInvoices } from '@/modules/financials/dashboard-queries'
 import { StudioHealthFinanceStrip } from '@/modules/financials/components/StudioHealthFinanceStrip'
 import { AgingBucketsCard } from '@/modules/financials/components/AgingBucketsCard'
@@ -26,7 +27,7 @@ export default async function DashboardPage() {
   const activeProjectWhere = { 
     businessId: orgId,
     isArchived: false,
-    ...(isAdmin ? {} : { assigneeId: userId }),
+    ...(isAdmin ? {} : visibleProjectFilter(userId!)),
     NOT: {
       statusStage: {
         name: { contains: 'final', mode: 'insensitive' }

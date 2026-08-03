@@ -6,6 +6,7 @@ import * as Ably from 'ably'
 import { authorizeConversationRead, authorizeConversationWrite } from '../auth'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
 import { createManyNotifications } from '@/modules/notifications/services'
+import { conversationChannel, sidebarChannel } from '@/lib/ably/channels'
 
 /**
  * Sends a message to a conversation.
@@ -66,10 +67,10 @@ export async function sendMessage(conversationId: string, content: string) {
     try {
       const ably = new Ably.Rest(process.env.ABLY_API_KEY);
       
-      const channel = ably.channels.get(`conversation-${conversationId}`);
+      const channel = ably.channels.get(conversationChannel(orgId, conversationId));
       await channel.publish('new-message', message);
 
-      const businessChannel = ably.channels.get(`business-${orgId}`);
+      const businessChannel = ably.channels.get(sidebarChannel(orgId));
       await businessChannel.publish('sidebar-update', {
         conversationId,
         message,

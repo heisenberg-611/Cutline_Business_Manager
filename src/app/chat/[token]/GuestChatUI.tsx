@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { MessageList } from '@/modules/messaging/components/thread/MessageList';
 import { ThreadHeader } from '@/modules/messaging/components/thread/ThreadHeader';
 import { MessageComposer } from '@/modules/messaging/components/thread/MessageComposer';
+import { conversationChannel } from '@/lib/ably/channels';
 import { VirtuosoHandle } from 'react-virtuoso';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -49,7 +50,9 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
         authUrl: `/api/ably/auth-guest?guestToken=${token}` 
       });
       
-      const channelName = `conversation-${conversation.id}`;
+      // Must match the single channel the guest token is scoped to; a mismatch
+      // is rejected by Ably rather than silently receiving nothing.
+      const channelName = conversationChannel(conversation.businessId, conversation.id);
       channelRef = clientRef.channels.get(channelName);
       
       onMessageRef = (message: any) => {
@@ -72,7 +75,9 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
         });
       };
       
-      channelRef.subscribe('new-message', onMessageRef);
+      // subscribe() implicitly attaches; closing the client mid-attach rejects
+      // that promise with "Connection closed" if it is left uncaught.
+      channelRef.subscribe('new-message', onMessageRef)?.catch(() => {});
       
     });
     

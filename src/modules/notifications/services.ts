@@ -34,16 +34,28 @@ export async function createNotification(data: {
   return notification
 }
 
+/**
+ * Notifies people in a business.
+ *
+ * `audience` is explicit because the two cases are genuinely different: some
+ * broadcasts are about work anyone on the team should see, others are about an
+ * action only an admin can take. This previously always skipped non-admins,
+ * which contradicted every call site's "notify business members" comment and
+ * meant members received no broadcasts at all.
+ */
 export async function broadcastNotification(data: {
   businessId: string
   title: string
   message: string
   type?: string
   actionUrl?: string
+  audience?: 'all' | 'admins'
 }) {
+  const audience = data.audience ?? 'all'
+
   const { clerkClient } = await import("@clerk/nextjs/server")
   const client = await clerkClient()
-  
+
   const members = await client.organizations.getOrganizationMembershipList({
     organizationId: data.businessId,
   })
@@ -51,8 +63,8 @@ export async function broadcastNotification(data: {
   const targetUserIds: string[] = []
 
   for (const member of members.data) {
-    if (member.role !== 'org:admin') continue
-    
+    if (audience === 'admins' && member.role !== 'org:admin') continue
+
     const userId = member.publicUserData?.userId
     if (!userId) continue
 
