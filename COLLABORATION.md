@@ -51,6 +51,7 @@ npm run db:down      # stop        db:nuke = stop + wipe volume
 ```
 
 **Connection string** — `postgresql://cutline:cutline_local_dev@localhost:55432/cutline_dev`
+(a throwaway credential for a container bound to localhost; it is not a secret)
 
 `.env` currently has `DATABASE_URL`/`DIRECT_URL` pointed at Docker, with the Supabase
 strings commented out directly below under a `# --- HOSTED ---` header. Because real
@@ -62,9 +63,10 @@ what guarantees the `db:*` scripts stay local even if `.env` is switched back.
 Auth is Clerk, not the database — swapping `DATABASE_URL` does not change that.
 `Business.id` must equal a real Clerk `orgId` and `User.id` a real Clerk `userId`
 (`src/app/api/webhooks/clerk/route.ts:57`), or the app redirects to
-`/dashboard/select-business`.
+`/dashboard/select-business`. There are no app passwords in the database to look up.
 
-The Clerk dev instance (**your-clerk-instance**) already has a usable org:
+To sign in against seeded data, map the fixture onto a real Clerk organization that
+has one admin and at least two members:
 
 ```bash
 SEED_ORG_ID=org_xxx \
@@ -74,14 +76,26 @@ SEED_MEMBER_USER_ID=user_zzz \
 npm run db:seed
 ```
 
-That is `your organization` — admin `admin@example.test`, members
-`member-one@example.test` and `member-two@example.test`. Roles already match what
-`middleware.ts:53` expects; nothing needs changing in the Clerk dashboard.
-`svix listen` is not required for this path — the seed writes the rows the webhook
-would have. It *is* required if you change membership in Clerk and want it reflected.
+Look the ids up against your own Clerk instance rather than hard-coding them here —
+this repository is public, and organization ids, user ids and teammates' email
+addresses do not belong in it:
+
+```bash
+KEY=$(grep '^CLERK_SECRET_KEY=' .env | cut -d= -f2-)
+curl -s -H "Authorization: Bearer $KEY" "https://api.clerk.com/v1/organizations?limit=10"
+curl -s -H "Authorization: Bearer $KEY" "https://api.clerk.com/v1/users?limit=20"
+curl -s -H "Authorization: Bearer $KEY" "https://api.clerk.com/v1/organizations/<orgId>/memberships"
+```
+
+Clerk roles must already match what `middleware.ts:53` expects (`org:admin` /
+`org:member`); the seed writes matching `BusinessMembership` rows but does not
+change Clerk. `svix listen` is not needed for this path — the seed writes the rows
+the webhook would have. It *is* needed if you change membership in Clerk and want
+that reflected locally.
 
 Run with no env vars and you get a mock org (`org_local_mock_agency`) that is
-inspectable in the DB but cannot be signed into.
+inspectable in the database but cannot be signed into, because those user ids do
+not exist in Clerk.
 
 ### The fixture
 
