@@ -3,7 +3,7 @@
 Status of the internal team-collaboration feature on branch `feat/team-collaboration`.
 Written as a handoff so work can resume without re-deriving context.
 
-**Last updated:** 2026-08-03
+**Last updated:** 2026-08-03 (collaboration moved to its own nav section)
 **Branch:** `feat/team-collaboration` (off `main` @ `847aa3d`)
 **Scope decided:** internal team collaboration, gated to **BUSINESS** tier
 **Hosted database:** *untouched* — all migrations so far applied only to local Docker
@@ -140,16 +140,15 @@ syncAssigneeMembership(projectId, newAssignee, prevAssignee, actor)
 ### Phase 3 — comments + @mentions (`3f2746c`)
 
 `src/modules/collaboration/` — `mentions.ts` (pure), `authz.ts` (entity dispatch +
-plan gate), `actions/comments.ts`, and three components. Rendered as a full-width
-Discussion section on `/dashboard/projects/[id]`.
+plan gate), `actions/comments.ts`, and three components.
 
 Mentions are stored as `@[Display Name](userId)`, not `@handle`.
 
 ### Phase 4 — tasks (`e6fa0df`)
 
 `src/modules/collaboration/actions/tasks.ts` and `components/TaskPanel.tsx`. The
-`Task` model shipped in Phase 1 but nothing read it. Full-width panel above
-Discussion; drag to reorder; status and assignee inline.
+`Task` model shipped in Phase 1 but nothing read it. Drag to reorder; status and
+assignee inline.
 
 Every action authorizes through the parent project via `authorizeEntityAccess`, so
 task access can never exceed project access and inherits the plan gate. Assignee
@@ -187,6 +186,21 @@ what was persisted.
   `['subscribe','presence']`; publish is still denied to browser tokens.
 - **Activity feed.** Reads `AuditLog` for the project *and* its tasks. Unknown
   actions render as humanized text rather than disappearing.
+
+### Where the UI lives (`dde92fc`)
+
+Collaboration is its own sidebar item under **Work**, not part of the project
+detail page — that page is byte-identical to its pre-collaboration state.
+
+- `/dashboard/collaboration` — projects the caller can collaborate on, with open
+  task, comment and member counts. Scoped exactly as `authorizeProjectAccess`
+  resolves access, so it cannot list a project the detail page would refuse to open.
+- `/dashboard/collaboration/[id]` — Tasks, Discussion and Activity.
+
+Non-Business plans see an upgrade notice rather than a redirect, so the nav item
+does not look broken. No nav-preference migration was needed: AppLayout treats an
+href with no saved preference as visible. The route is deliberately *not* in the
+member-restricted prefixes in either AppLayout or `middleware.ts`.
 
 ### Phase 0 — Ably scoping (`14372d4`)
 
