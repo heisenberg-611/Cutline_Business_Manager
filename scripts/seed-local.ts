@@ -90,6 +90,15 @@ const STAGES = [
   "Delivered",
 ];
 
+/** Display name as actually stored, falling back to the fixture name. */
+async function nameOf(userId: string, fallback: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { firstName: true, lastName: true },
+  })
+  return [user?.firstName, user?.lastName].filter(Boolean).join(" ") || fallback
+}
+
 async function main() {
   console.log(`🌱 Seeding mock agency into ${url.replace(/:[^:@]*@/, ":***@")}\n`);
 
@@ -270,7 +279,10 @@ async function main() {
         entityId: brandFilm.id,
         authorId: MEMBERS[0].id,
         // Structured mention token — a bare "@Kai" is intentionally not parsed.
-        body: `Client wants the logo sting shortened. @[${MEMBERS[1].firstName} ${MEMBERS[1].lastName}](${MEMBERS[1].id}) can you take this?`,
+        // The display name is read back from the row rather than taken from the
+        // fixture, so when seeding onto real Clerk ids the chip shows the real
+        // person's name instead of "Kai Osei".
+        body: `Client wants the logo sting shortened. @[${await nameOf(MEMBERS[1].id, `${MEMBERS[1].firstName} ${MEMBERS[1].lastName}`)}](${MEMBERS[1].id}) can you take this?`,
         mentions: { create: [{ mentionedUserId: MEMBERS[1].id }] },
       },
     });
