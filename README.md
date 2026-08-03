@@ -16,8 +16,8 @@
   <p>
     <a href="https://www.cutlin.tech"><b>View Live Demo</b></a> &nbsp;·&nbsp;
     <a href="https://github.com/heisenberg-611/Cutline_Business_manager/wiki"><b>Documentation</b></a> &nbsp;·&nbsp;
-    <a href="CUTLINE_FOR_DUMMIES.md"><b>User Guide</b></a> &nbsp;·&nbsp;
-    <a href="system_diagrams.md"><b>System Diagrams</b></a>
+    <a href="docs/CUTLINE_FOR_DUMMIES.md"><b>User Guide</b></a> &nbsp;·&nbsp;
+    <a href="docs/system_diagrams.md"><b>System Diagrams</b></a>
   </p>
 </div>
 
@@ -240,7 +240,7 @@ npm run db:down      # stop               npm run db:nuke   # stop and wipe
 ```
 
 The seed refuses to run against any non-local `DATABASE_URL`. See
-[COLLABORATION.md](./COLLABORATION.md) for how to point the fixture at a real
+[docs/COLLABORATION.md](./docs/COLLABORATION.md) for how to point the fixture at a real
 Clerk organization so it can be signed into.
 
 ### 4. Start the Application
@@ -275,10 +275,26 @@ src/
     └── workflow/         # Configurable pipeline stage templates
 ```
 
+## 📚 Documentation
+
+| Where | What |
+|---|---|
+| [Wiki](https://github.com/heisenberg-611/Cutline_Business_Manager/wiki) | Architecture, database schema, API conventions, performance, onboarding |
+| [docs/CUTLINE_FOR_DUMMIES.md](docs/CUTLINE_FOR_DUMMIES.md) | Plain-language user guide |
+| [docs/system_diagrams.md](docs/system_diagrams.md) | Request-flow diagrams |
+| [docs/schema_erd.md](docs/schema_erd.md) · [docs/schema_diagram.md](docs/schema_diagram.md) | Entity-relationship diagrams |
+| [docs/COLLABORATION.md](docs/COLLABORATION.md) | Team collaboration: design decisions and working notes |
+
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! 
-Please review the [Architecture & API Documentation](https://github.com/heisenberg-611/Cutline_Business_manager/wiki) in our Wiki before submitting pull requests to ensure alignment with existing patterns.
+Contributions, issues, and feature requests are welcome. Please read
+[CONTRIBUTING](.github/CONTRIBUTING.md) and the
+[Code of Conduct](.github/CODE_OF_CONDUCT.md), and review the
+[Wiki](https://github.com/heisenberg-611/Cutline_Business_Manager/wiki) before opening a
+pull request so changes line up with existing patterns.
+
+To report a vulnerability, see [SECURITY](.github/SECURITY.md) — please do not open a
+public issue.
 
 ## 📄 License
 
