@@ -2,12 +2,9 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import prisma from '@/modules/core/db/prisma'
-import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
 import { visibleProjectFilter } from '@/modules/projects/authz'
 import { Badge } from '@/components/ui/badge'
 import { CheckSquare, MessageSquare, Users2, Handshake, ArrowRight } from 'lucide-react'
-
-export const metadata = { title: 'Collaboration' }
 
 export default async function CollaborationPage() {
   const { orgId, userId, orgRole } = await auth()
@@ -16,15 +13,8 @@ export default async function CollaborationPage() {
     redirect('/dashboard/select-business')
   }
 
-  const business = await prisma.business.findUnique({
-    where: { id: orgId },
-    select: { subscriptionPlan: true, subscriptionPeriodEnd: true },
-  })
-
-  if (!business || !canUseTeamCollaboration(getActivePlan(business))) {
-    return <UpgradeNotice />
-  }
-
+  // The plan gate lives in layout.tsx, covering this page and the project
+  // detail page from one place.
   const isAdmin = orgRole === 'org:admin'
 
   // Admins see the whole board; everyone else sees only projects they are a
@@ -132,33 +122,6 @@ export default async function CollaborationPage() {
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-function UpgradeNotice() {
-  return (
-    <div className="space-y-6">
-      <div className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
-        <h3 className="text-xl font-bold leading-tight text-zinc-900 sm:text-2xl sm:leading-6 dark:text-zinc-100">
-          Collaboration
-        </h3>
-      </div>
-      <div className="rounded-xl border border-dashed border-zinc-300 py-16 text-center dark:border-zinc-700">
-        <Handshake className="mx-auto h-8 w-8 text-zinc-400" />
-        <p className="mt-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-          Team collaboration is a Business plan feature
-        </p>
-        <p className="mt-1 text-sm text-zinc-500">
-          Upgrade to give your team shared tasks, discussion and activity on every project.
-        </p>
-        <Link
-          href="/dashboard/settings"
-          className="mt-4 inline-block text-sm font-medium text-zinc-900 underline dark:text-zinc-100"
-        >
-          View plans
-        </Link>
-      </div>
     </div>
   )
 }

@@ -3,7 +3,6 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import prisma from '@/modules/core/db/prisma'
-import { canUseTeamCollaboration, getActivePlan } from '@/lib/subscription'
 import { canAccessProject } from '@/modules/projects/authz'
 import { TaskPanel } from '@/modules/collaboration/components/TaskPanel'
 import { CommentThread } from '@/modules/collaboration/components/CommentThread'
@@ -27,15 +26,6 @@ export default async function ProjectCollaborationPage({
   }
 
   const { id } = await params
-
-  const business = await prisma.business.findUnique({
-    where: { id: orgId },
-    select: { subscriptionPlan: true, subscriptionPeriodEnd: true },
-  })
-
-  if (!business || !canUseTeamCollaboration(getActivePlan(business))) {
-    redirect('/dashboard/collaboration')
-  }
 
   // Read access is checked before anything is fetched; the actions authorize
   // independently, but this decides between 404 and rendering.
