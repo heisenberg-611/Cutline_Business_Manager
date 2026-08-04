@@ -2,418 +2,564 @@ import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
-import { Users, FileText, MessageSquare, UsersRound, ArrowUpRight, CheckCircle2, LayoutDashboard, Sparkles, Zap, Shield, Folder, Mail, Clock } from 'lucide-react';
-import { FadeIn, FadeInStagger, FadeInStaggerItem, ScaleIn } from '@/components/ui/scroll-animation';
+import {
+  ArrowUpRight,
+  CheckCircle2,
+  Clock,
+  FileText,
+  LayoutDashboard,
+  Mail,
+  MessageSquare,
+  Receipt,
+  Shield,
+  Sparkles,
+  Users,
+  UsersRound,
+  X,
+} from 'lucide-react';
+import {
+  HoverLift,
+  Reveal,
+  RevealItem,
+  RevealStagger,
+  ScaleIn,
+  ScrollProgress,
+} from '@/components/ui/scroll-animation';
 import { HeroMockup } from '@/components/marketing/hero-mockup';
+import { SiteHeader } from '@/components/marketing/site-header';
+import { SiteFooter } from '@/components/marketing/site-footer';
+import { Faq, type FaqItem } from '@/components/marketing/faq';
 import { PLAN_PRICES, getPlanFeatures, PLANS } from '@/lib/subscription';
 import prisma from '@/modules/core/db/prisma';
 import { ContactForm } from '@/components/marketing/ContactForm';
-import { X } from 'lucide-react';
+import { CONTACT, SITE } from '@/lib/site';
 
 export const metadata: Metadata = {
-  title: 'Cutline OS | Your creative business, finally organized',
-  description: 'Manage clients, track projects, send invoices, and collect feedback—all in one beautiful workspace.',
+  title: `${SITE.name} | ${SITE.tagline}`,
+  description: SITE.description,
+  alternates: { canonical: SITE.url },
   openGraph: {
-    title: 'Cutline OS | Your creative business, finally organized',
-    description: 'Replace five different tools with one seamless workflow.',
-    url: 'https://cutline.app',
-    siteName: 'Cutline OS',
-    images: [{ url: '/og-image.jpg', width: 1200, height: 630, alt: 'Cutline OS - Your creative business, finally organized' }],
+    title: `${SITE.name} | ${SITE.tagline}`,
+    description: SITE.description,
+    url: SITE.url,
+    siteName: SITE.name,
+    images: [
+      { url: '/og-image.jpg', width: 1200, height: 630, alt: `${SITE.name} — ${SITE.tagline}` },
+    ],
     locale: 'en_US',
     type: 'website',
   },
 };
 
+const STEPS = [
+  {
+    title: 'Onboard the client',
+    body: 'Send one secure link that collects the brief, the reference assets and the deposit — no back-and-forth thread to reconstruct later.',
+  },
+  {
+    title: 'Deliver and iterate',
+    body: 'Share drafts through the client portal. Feedback arrives pinned to the work it refers to, so nothing gets lost in translation.',
+  },
+  {
+    title: 'Get paid',
+    body: 'Approved work turns into a numbered invoice with the project data already filled in. Track what is outstanding at a glance.',
+  },
+];
+
+const FAQ_ITEMS: FaqItem[] = [
+  {
+    question: 'Do I need a credit card to start?',
+    answer:
+      'No. The Starter plan is free and does not ask for payment details. You can upgrade later from inside the dashboard once you know the product fits how you work.',
+  },
+  {
+    question: 'What happens to my data if I downgrade?',
+    answer:
+      'Nothing is deleted. Projects beyond your new plan limit become read-only rather than disappearing, and paid-only features are locked until you upgrade again. Your clients, invoices and files stay exactly where they are.',
+  },
+  {
+    question: 'Can my clients use Cutline OS without an account?',
+    answer:
+      'Yes. Intake forms, draft review, feedback and the invoice payment portal all work through secure per-client links. Your clients never create a login or see your other projects.',
+  },
+  {
+    question: 'How does team access work?',
+    answer:
+      'Admins see everything in the workspace. Members are scoped to the projects they have been added to, with owner, collaborator and watcher roles controlling whether they can manage, edit or only read. Team features are part of the Business plan.',
+  },
+  {
+    question: 'Is my client data kept private?',
+    answer:
+      'Every workspace is isolated: queries are scoped to your business on the server, and realtime channels are authorised per user rather than per organisation, so teammates cannot subscribe to conversations they are not part of.',
+  },
+  {
+    question: 'Can I export what I put in?',
+    answer:
+      'Yes. Invoices generate as PDFs, and you can request a full export of your workspace data by emailing support at any time.',
+  },
+];
+
 export default async function MarketingHomepage() {
   const { userId } = await auth();
-  
+
   const settings = await prisma.globalSettings.findUnique({
-    where: { id: 'default' }
+    where: { id: 'default' },
   });
-  
+
   const features = getPlanFeatures(settings || undefined);
-  
+
+  const plans = [
+    {
+      key: PLANS.FREE,
+      name: 'Starter',
+      price: PLAN_PRICES.FREE,
+      blurb: 'For freelancers finding their footing.',
+      cta: { href: '/sign-up', label: 'Get started free' },
+      highlighted: false,
+    },
+    {
+      key: PLANS.PRO,
+      name: 'Professional',
+      price: PLAN_PRICES.PRO,
+      blurb: 'For busy creatives running a full client roster.',
+      cta: { href: '/claim-trial', label: 'Start 1 month free' },
+      highlighted: true,
+    },
+    {
+      key: PLANS.BUSINESS,
+      name: 'Business',
+      price: PLAN_PRICES.BUSINESS,
+      blurb: 'For studios and agencies working as a team.',
+      cta: { href: '#contact', label: 'Talk to us' },
+      highlighted: false,
+    },
+  ];
+
   return (
-    <div className="force-light min-h-screen bg-background text-foreground font-sans overflow-x-hidden">
-      {/* Navigation */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 lg:w-1/3">
-            <div className="w-7 h-7 flex items-center justify-center">
-              <img src="/icon.svg" alt="Cutline OS Logo" className="w-full h-full object-contain" />
-            </div>
-            <Link href="/" className="text-lg font-semibold tracking-tight">Cutline OS</Link>
-          </div>
-          
-          <nav className="hidden md:flex items-center justify-center gap-8 text-sm font-medium text-muted-foreground lg:w-1/3">
-            <Link href="#features" className="hover:text-foreground transition-colors">Features</Link>
-            <Link href="#pricing" className="hover:text-foreground transition-colors">Pricing</Link>
-            <Link href="#about" className="hover:text-foreground transition-colors">About</Link>
-          </nav>
-          
-          <div className="flex items-center justify-end gap-3 lg:w-1/3">
-            {userId ? (
-              <Link href="/dashboard" className="bg-primary text-primary-foreground border-none rounded-md px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors">
-                Go to dashboard
-              </Link>
-            ) : (
-              <>
-                <Link href="/login" className="bg-transparent border-none text-sm font-medium text-foreground hover:text-muted-foreground transition-colors">
-                  Log in
-                </Link>
-                <Link href="/sign-up" className="bg-primary text-primary-foreground border-none rounded-md px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm">
-                  Start free
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+    <div className="force-light min-h-screen overflow-x-hidden bg-background font-sans text-foreground">
+      <ScrollProgress />
+      <SiteHeader signedIn={Boolean(userId)} />
 
       <main>
-        {/* Hero Section - Full Viewport Height */}
-        <section className="relative min-h-[calc(100vh-4rem)] flex items-center px-4 sm:px-6 lg:px-12 max-w-[1920px] mx-auto py-12 lg:py-0">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center w-full">
-            
-            {/* Left Content */}
-            <FadeInStagger className="text-left max-w-2xl">
-              <FadeInStaggerItem>
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
-                  <Sparkles className="w-4 h-4" />
-                  <span>The new standard for creative workflows</span>
+        {/* ---------------------------------------------------------------- Hero */}
+        <section className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1920px] items-center px-4 py-16 sm:px-6 lg:px-12 lg:py-0">
+          {/* Ambient wash. Sits behind everything and never intercepts pointer events. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+          >
+            <div className="absolute -top-40 left-1/4 h-[520px] w-[520px] rounded-full bg-indigo-500/10 blur-[120px]" />
+            <div className="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-teal-500/10 blur-[110px]" />
+          </div>
+
+          <div className="grid w-full items-center gap-12 lg:grid-cols-2 lg:gap-8">
+            <RevealStagger className="max-w-2xl text-left" stagger={0.09}>
+              <RevealItem>
+                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-sm font-medium text-foreground/80 backdrop-blur-sm">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span>Purpose-built for creative studios</span>
                 </div>
-              </FadeInStaggerItem>
-              
-              <FadeInStaggerItem>
-                <h1 className="text-5xl lg:text-7xl font-bold tracking-tight text-foreground leading-[1.1] mb-6">
-                  Your creative business, <br/><span className="text-muted-foreground">finally organized.</span>
+              </RevealItem>
+
+              <RevealItem>
+                <h1 className="mb-6 text-[2.75rem] font-bold leading-[1.08] tracking-tight text-foreground sm:text-6xl lg:text-7xl">
+                  Your creative business,
+                  <br />
+                  <span className="text-muted-foreground">finally organized.</span>
                 </h1>
-              </FadeInStaggerItem>
-              
-              <FadeInStaggerItem>
-                <p className="text-xl text-muted-foreground mb-10 leading-relaxed max-w-xl">
-                  Replace five different tools with one seamless workflow. Manage clients, track projects, send invoices, and collect feedback—all in one beautiful workspace.
+              </RevealItem>
+
+              <RevealItem>
+                <p className="mb-10 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+                  Replace the spreadsheet, the invoice template, the feedback thread and the
+                  shared drive with one workspace that understands how client work actually
+                  flows.
                 </p>
-              </FadeInStaggerItem>
-              
-              <FadeInStaggerItem className="flex flex-col sm:flex-row items-start gap-4">
-                <Link href={userId ? "/dashboard" : "/sign-up"} className="inline-flex items-center justify-center bg-primary text-primary-foreground rounded-full px-8 py-4 text-base font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 w-full sm:w-auto">
-                  {userId ? "Go to Dashboard" : "Start for free"}
+              </RevealItem>
+
+              <RevealItem className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+                <Link
+                  href={userId ? '/dashboard' : '/sign-up'}
+                  className="group inline-flex items-center justify-center gap-2 rounded-full bg-primary px-8 py-4 text-base font-medium text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/25"
+                >
+                  {userId ? 'Go to dashboard' : 'Start for free'}
+                  <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                 </Link>
-                <Link href="#features" className="inline-flex items-center justify-center bg-transparent border border-border rounded-full px-8 py-4 text-base font-medium text-foreground hover:bg-muted transition-colors w-full sm:w-auto">
+                <Link
+                  href="#how-it-works"
+                  className="inline-flex items-center justify-center rounded-full border border-border bg-transparent px-8 py-4 text-base font-medium text-foreground transition-colors hover:bg-muted"
+                >
                   See how it works
                 </Link>
-              </FadeInStaggerItem>
-              
-              <FadeInStaggerItem className="mt-8 flex items-center gap-4 text-sm text-muted-foreground">
-                <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-zinc-200 border-2 border-background"></div>
-                  <div className="w-8 h-8 rounded-full bg-zinc-300 border-2 border-background"></div>
-                  <div className="w-8 h-8 rounded-full bg-zinc-400 border-2 border-background"></div>
-                </div>
-                <p>Trusted by 2,000+ creative professionals</p>
-              </FadeInStaggerItem>
-            </FadeInStagger>
+              </RevealItem>
 
-            {/* Right Content - Abstract UI Mockup to fill space */}
+              {/* Concrete, checkable statements rather than an invented user count. */}
+              <RevealItem className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                {['Free plan, no card required', 'Set up in minutes', 'Cancel anytime'].map(
+                  (point) => (
+                    <span key={point} className="inline-flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4 w-4 text-primary/70" />
+                      {point}
+                    </span>
+                  )
+                )}
+              </RevealItem>
+            </RevealStagger>
+
             <HeroMockup />
-            
           </div>
         </section>
 
-        {/* How it works - Horizontal Flow */}
-        <section id="how-it-works" className="py-24 overflow-hidden">
-          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
-            <FadeIn>
-              <h2 className="text-3xl md:text-4xl font-semibold mb-16 tracking-tight text-center">How Cutline OS works</h2>
-            </FadeIn>
-            
-            <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
-              {/* Connecting line (Desktop only) */}
-              <div className="hidden md:block absolute top-8 left-[15%] right-[15%] h-0.5 bg-border -z-10"></div>
-              
-              <FadeInStaggerItem className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-background border-4 border-background shadow-md flex items-center justify-center text-xl font-bold bg-primary text-primary-foreground mb-6">1</div>
-                <h3 className="text-xl font-semibold mb-2">Onboard Client</h3>
-                <p className="text-muted-foreground">Send a secure link to your client to collect their brief, assets, and initial deposit in one seamless flow.</p>
-              </FadeInStaggerItem>
-              
-              <FadeInStaggerItem className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-background border-4 border-background shadow-md flex items-center justify-center text-xl font-bold bg-primary text-primary-foreground mb-6">2</div>
-                <h3 className="text-xl font-semibold mb-2">Deliver & Iterate</h3>
-                <p className="text-muted-foreground">Share drafts through the portal. Clients can pinpoint exactly what they want changed with visual annotations.</p>
-              </FadeInStaggerItem>
-              
-              <FadeInStaggerItem className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-background border-4 border-background shadow-md flex items-center justify-center text-xl font-bold bg-primary text-primary-foreground mb-6">3</div>
-                <h3 className="text-xl font-semibold mb-2">Get Paid</h3>
-                <p className="text-muted-foreground">Once approved, the final invoice is automatically generated.</p>
-              </FadeInStaggerItem>
-            </FadeInStagger>
-          </div>
-        </section>
-
-        {/* Feature Bento Grid (Uses space much more efficiently) */}
-        <section id="features" className="py-24 bg-muted/20 border-y border-border/50 overflow-hidden">
-          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
-            <FadeIn className="text-center mb-16 max-w-2xl mx-auto">
-              <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">Everything you need to run your creative business</h2>
-              <p className="text-lg text-muted-foreground">Replace five different tools with one seamless workflow designed specifically for client services.</p>
-            </FadeIn>
-            
-            <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Large Feature 1 */}
-              <FadeInStaggerItem className="md:col-span-2 bg-background border border-border/50 rounded-3xl p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden relative group">
-                <div className="relative z-10 max-w-md">
-                  <Users className="w-10 h-10 text-primary mb-6" />
-                  <h3 className="text-2xl font-semibold mb-3">Client & project pipeline</h3>
-                  <p className="text-muted-foreground leading-relaxed text-lg">
-                    Every client and project in one clean, trackable view. Know exactly what's due, what's in review, and what's completed without digging through folders.
-                  </p>
-                </div>
-                <div className="absolute right-0 bottom-0 opacity-10 group-hover:opacity-20 transition-opacity translate-x-1/4 translate-y-1/4 text-foreground">
-                  <LayoutDashboard className="w-64 h-64" />
-                </div>
-              </FadeInStaggerItem>
-
-              {/* Small Feature 1 */}
-              <FadeInStaggerItem className="bg-background border border-border/50 rounded-3xl p-8 md:p-10 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative group">
-                <div className="relative z-10">
-                  <FileText className="w-10 h-10 text-primary mb-6" />
-                  <h3 className="text-xl font-semibold mb-3">Invoicing that just works</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Sequential, organized, no manual number chasing. Generate professional invoices directly from your project data.
-                  </p>
-                </div>
-                <div className="absolute right-0 bottom-0 opacity-5 group-hover:opacity-10 transition-opacity translate-x-1/4 translate-y-1/4 text-foreground">
-                  <FileText className="w-48 h-48" />
-                </div>
-              </FadeInStaggerItem>
-
-              {/* Small Feature 2 */}
-              <FadeInStaggerItem className="bg-background border border-border/50 rounded-3xl p-8 md:p-10 shadow-sm hover:shadow-md transition-shadow overflow-hidden relative group">
-                <div className="relative z-10">
-                  <MessageSquare className="w-10 h-10 text-primary mb-6" />
-                  <h3 className="text-xl font-semibold mb-3">Feedback in the workflow</h3>
-                  <p className="text-muted-foreground leading-relaxed">
-                    Client revisions and testimonials, right where the work lives. No more deciphering vague email feedback.
-                  </p>
-                </div>
-                <div className="absolute right-0 bottom-0 opacity-5 group-hover:opacity-10 transition-opacity translate-x-1/4 translate-y-1/4 text-foreground">
-                  <MessageSquare className="w-48 h-48" />
-                </div>
-              </FadeInStaggerItem>
-
-              {/* Large Feature 2 */}
-              <FadeInStaggerItem className="md:col-span-2 bg-background border border-border/50 rounded-3xl p-8 md:p-12 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between relative overflow-hidden group">
-                <div className="relative z-10 max-w-md">
-                  <UsersRound className="w-10 h-10 text-primary mb-6" />
-                  <h3 className="text-2xl font-semibold mb-3">Room to grow</h3>
-                  <p className="text-muted-foreground leading-relaxed text-lg">
-                    Roles, assignment, and messaging for when you build a team. Cutline OS scales gracefully from solo freelancer to a bustling studio.
-                  </p>
-                </div>
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity translate-x-1/4 text-foreground">
-                  <Shield className="w-64 h-64" />
-                </div>
-              </FadeInStaggerItem>
-            </FadeInStagger>
-          </div>
-        </section>
-
-
-
-        {/* NEW: Pricing Section */}
-        <section id="pricing" className="py-24 bg-muted/20 border-y border-border/50 overflow-hidden">
-          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
-            <FadeIn className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">Simple, transparent pricing</h2>
-              <p className="text-lg text-muted-foreground">Start for free, upgrade when you need more power.</p>
-            </FadeIn>
-            
-            <FadeInStagger className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 max-w-[1440px] mx-auto">
-              
-              {/* Starter */}
-              <FadeInStaggerItem className="bg-background rounded-3xl p-8 border border-border shadow-sm flex flex-col">
-                <h3 className="text-xl font-semibold mb-2">Starter</h3>
-                <div className="mb-6"><span className="text-4xl font-bold">৳{PLAN_PRICES.FREE}</span><span className="text-muted-foreground">/month</span></div>
-                <p className="text-muted-foreground text-sm mb-8">Perfect for freelancers just starting out.</p>
-                <ul className="space-y-3 mb-8 flex-1">
-                  {features[PLANS.FREE].map((feature) => (
-                    <li key={feature.name} className="flex items-start gap-3 text-sm">
-                      {feature.included ? (
-                        <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      ) : (
-                        <X className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                      )}
-                      <span className={feature.included ? "text-foreground" : "text-muted-foreground"}>{feature.name}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/sign-up" className="w-full py-3 rounded-xl border border-border text-center font-medium hover:bg-muted transition-colors">Get Started</Link>
-              </FadeInStaggerItem>
-
-              {/* Professional (Highlighted) */}
-              <FadeInStaggerItem className="bg-primary text-primary-foreground rounded-3xl p-8 shadow-xl flex flex-col relative transform md:-translate-y-4">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background text-foreground text-xs font-bold px-4 py-1 rounded-full border border-border shadow-sm">
-                  MOST POPULAR
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Professional</h3>
-                <div className="mb-6"><span className="text-4xl font-bold">৳{PLAN_PRICES.PRO}</span><span className="opacity-80">/month</span></div>
-                <p className="opacity-90 text-sm mb-8">For busy creatives who need serious tools.</p>
-                <ul className="space-y-3 mb-8 flex-1">
-                  {features[PLANS.PRO].map((feature) => (
-                    <li key={feature.name} className="flex items-start gap-3 text-sm">
-                      {feature.included ? (
-                        <CheckCircle2 className="w-4 h-4 opacity-90 mt-0.5 shrink-0" />
-                      ) : (
-                        <X className="w-4 h-4 opacity-50 mt-0.5 shrink-0" />
-                      )}
-                      <span className={feature.included ? "" : "opacity-70"}>{feature.name}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/claim-trial" className="w-full py-3 rounded-xl bg-background text-foreground text-center font-medium hover:bg-muted transition-colors">Start 1 Month Free Trial</Link>
-              </FadeInStaggerItem>
-
-              {/* Business */}
-              <FadeInStaggerItem className="bg-background rounded-3xl p-8 border border-border shadow-sm flex flex-col">
-                <h3 className="text-xl font-semibold mb-2">Business</h3>
-                <div className="mb-6"><span className="text-4xl font-bold">৳{PLAN_PRICES.BUSINESS}</span><span className="text-muted-foreground">/month</span></div>
-                <p className="text-muted-foreground text-sm mb-8">For growing teams and agencies.</p>
-                <ul className="space-y-3 mb-8 flex-1">
-                  {features[PLANS.BUSINESS].map((feature) => (
-                    <li key={feature.name} className="flex items-start gap-3 text-sm">
-                      {feature.included ? (
-                        <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      ) : (
-                        <X className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                      )}
-                      <span className={feature.included ? "text-foreground" : "text-muted-foreground"}>{feature.name}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="#contact" className="w-full py-3 rounded-xl border border-border text-center font-medium hover:bg-muted transition-colors">Contact Sales</Link>
-              </FadeInStaggerItem>
-
-            </FadeInStagger>
-          </div>
-        </section>
-
-        {/* NEW: About Section */}
-        <section id="about" className="py-24">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-8">Built by creatives, for creatives.</h2>
-            <div className="prose prose-lg mx-auto text-muted-foreground">
-              <p className="mb-6 text-xl leading-relaxed">
-                We understand the chaos of managing a creative business. The endless email chains, the lost feedback, the late invoices, and the overwhelming feeling that you're spending more time managing the work than actually creating it.
+        {/* -------------------------------------------------------- How it works */}
+        <section id="how-it-works" className="scroll-mt-20 overflow-hidden border-y border-border/50 bg-muted/20 py-24">
+          <div className="mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-12">
+            <Reveal className="mx-auto mb-16 max-w-2xl text-center">
+              <h2 className="mb-4 text-3xl font-semibold tracking-tight md:text-4xl">
+                Three steps, start to paid
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                The same path every project takes — without you holding it together by hand.
               </p>
-              <p className="text-xl leading-relaxed">
-                We built Cutline OS to replace the scattered mess of spreadsheets, generic task managers, and PDFs with a single, elegant workspace that understands how creative services actually work. Our mission is simple: let you focus on what you do best—creating.
+            </Reveal>
+
+            <RevealStagger
+              className="relative grid grid-cols-1 gap-12 md:grid-cols-3"
+              stagger={0.12}
+            >
+              <div
+                aria-hidden
+                className="absolute left-[16%] right-[16%] top-8 -z-10 hidden h-px bg-gradient-to-r from-transparent via-border to-transparent md:block"
+              />
+
+              {STEPS.map((step, i) => (
+                <RevealItem key={step.title} className="flex flex-col items-center text-center">
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border-4 border-background bg-primary text-xl font-bold text-primary-foreground shadow-md">
+                    {i + 1}
+                  </div>
+                  <h3 className="mb-2 text-xl font-semibold">{step.title}</h3>
+                  <p className="max-w-xs leading-relaxed text-muted-foreground">{step.body}</p>
+                </RevealItem>
+              ))}
+            </RevealStagger>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ Features */}
+        <section id="features" className="scroll-mt-20 overflow-hidden py-24">
+          <div className="mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-12">
+            <Reveal className="mx-auto mb-16 max-w-2xl text-center">
+              <h2 className="mb-4 text-3xl font-semibold tracking-tight md:text-4xl">
+                Everything you need to run your creative business
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Five tools replaced by one workflow, designed specifically for client services.
               </p>
+            </Reveal>
+
+            <RevealStagger className="grid grid-cols-1 gap-6 md:grid-cols-3" stagger={0.1}>
+              <RevealItem className="md:col-span-2">
+                <HoverLift className="group relative flex h-full flex-col justify-between overflow-hidden rounded-3xl border border-border/50 bg-background p-8 shadow-sm transition-shadow hover:shadow-lg md:p-12">
+                  <div className="relative z-10 max-w-md">
+                    <Users className="mb-6 h-10 w-10 text-primary" />
+                    <h3 className="mb-3 text-2xl font-semibold">Client &amp; project pipeline</h3>
+                    <p className="text-lg leading-relaxed text-muted-foreground">
+                      Every client and project in one trackable board. Know what&apos;s due,
+                      what&apos;s in review and what shipped — without opening four folders to
+                      find out.
+                    </p>
+                  </div>
+                  <div className="pointer-events-none absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 text-foreground opacity-[0.07] transition-opacity duration-500 group-hover:opacity-[0.14]">
+                    <LayoutDashboard className="h-64 w-64" />
+                  </div>
+                </HoverLift>
+              </RevealItem>
+
+              <RevealItem>
+                <HoverLift className="group relative h-full overflow-hidden rounded-3xl border border-border/50 bg-background p-8 shadow-sm transition-shadow hover:shadow-lg md:p-10">
+                  <div className="relative z-10">
+                    <Receipt className="mb-6 h-10 w-10 text-primary" />
+                    <h3 className="mb-3 text-xl font-semibold">Invoicing that just works</h3>
+                    <p className="leading-relaxed text-muted-foreground">
+                      Sequential numbering, no manual chasing. Invoices generate from project
+                      data and clients pay through a link.
+                    </p>
+                  </div>
+                  <div className="pointer-events-none absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 text-foreground opacity-[0.05] transition-opacity duration-500 group-hover:opacity-[0.1]">
+                    <FileText className="h-48 w-48" />
+                  </div>
+                </HoverLift>
+              </RevealItem>
+
+              <RevealItem>
+                <HoverLift className="group relative h-full overflow-hidden rounded-3xl border border-border/50 bg-background p-8 shadow-sm transition-shadow hover:shadow-lg md:p-10">
+                  <div className="relative z-10">
+                    <MessageSquare className="mb-6 h-10 w-10 text-primary" />
+                    <h3 className="mb-3 text-xl font-semibold">Feedback in the workflow</h3>
+                    <p className="leading-relaxed text-muted-foreground">
+                      Revisions and testimonials land where the work lives. No more decoding
+                      vague notes from a long email chain.
+                    </p>
+                  </div>
+                  <div className="pointer-events-none absolute bottom-0 right-0 translate-x-1/4 translate-y-1/4 text-foreground opacity-[0.05] transition-opacity duration-500 group-hover:opacity-[0.1]">
+                    <MessageSquare className="h-48 w-48" />
+                  </div>
+                </HoverLift>
+              </RevealItem>
+
+              <RevealItem className="md:col-span-2">
+                <HoverLift className="group relative flex h-full flex-col justify-between overflow-hidden rounded-3xl border border-border/50 bg-background p-8 shadow-sm transition-shadow hover:shadow-lg md:p-12">
+                  <div className="relative z-10 max-w-md">
+                    <UsersRound className="mb-6 h-10 w-10 text-primary" />
+                    <h3 className="mb-3 text-2xl font-semibold">Built to grow into a team</h3>
+                    <p className="text-lg leading-relaxed text-muted-foreground">
+                      Add teammates to the projects they work on, assign tasks, discuss in
+                      threads and pull someone in with an @mention. Owner, collaborator and
+                      watcher roles keep access exactly as wide as it should be.
+                    </p>
+                  </div>
+                  <div className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/4 text-foreground opacity-[0.07] transition-opacity duration-500 group-hover:opacity-[0.14]">
+                    <Shield className="h-64 w-64" />
+                  </div>
+                </HoverLift>
+              </RevealItem>
+            </RevealStagger>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------- Pricing */}
+        <section
+          id="pricing"
+          className="scroll-mt-20 overflow-hidden border-y border-border/50 bg-muted/20 py-24"
+        >
+          <div className="mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-12">
+            <Reveal className="mx-auto mb-16 max-w-2xl text-center">
+              <h2 className="mb-4 text-3xl font-semibold tracking-tight md:text-4xl">
+                Simple, transparent pricing
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Start free. Upgrade when the work outgrows the plan, not before.
+              </p>
+            </Reveal>
+
+            <RevealStagger
+              className="mx-auto grid max-w-[1440px] grid-cols-1 items-start gap-8 md:grid-cols-3 lg:gap-10"
+              stagger={0.12}
+            >
+              {plans.map((plan) => (
+                <RevealItem key={plan.name} className="h-full">
+                  <HoverLift
+                    lift={plan.highlighted ? -6 : -4}
+                    className={`relative flex h-full flex-col rounded-3xl p-8 ${
+                      plan.highlighted
+                        ? 'bg-primary text-primary-foreground shadow-xl md:-translate-y-4'
+                        : 'border border-border bg-background shadow-sm'
+                    }`}
+                  >
+                    {plan.highlighted && (
+                      <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-border bg-background px-4 py-1 text-xs font-bold text-foreground shadow-sm">
+                        MOST POPULAR
+                      </div>
+                    )}
+
+                    <h3 className="mb-2 text-xl font-semibold">{plan.name}</h3>
+                    <div className="mb-6 flex items-baseline gap-1">
+                      <span className="text-4xl font-bold">৳{plan.price}</span>
+                      <span className={plan.highlighted ? 'opacity-80' : 'text-muted-foreground'}>
+                        /month
+                      </span>
+                    </div>
+                    <p
+                      className={`mb-8 text-sm ${
+                        plan.highlighted ? 'opacity-90' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {plan.blurb}
+                    </p>
+
+                    <ul className="mb-8 flex-1 space-y-3">
+                      {features[plan.key].map((feature) => (
+                        <li key={feature.name} className="flex items-start gap-3 text-sm">
+                          {feature.included ? (
+                            <CheckCircle2
+                              className={`mt-0.5 h-4 w-4 shrink-0 ${
+                                plan.highlighted ? 'opacity-90' : 'text-primary'
+                              }`}
+                            />
+                          ) : (
+                            <X
+                              className={`mt-0.5 h-4 w-4 shrink-0 ${
+                                plan.highlighted ? 'opacity-50' : 'text-muted-foreground'
+                              }`}
+                            />
+                          )}
+                          <span
+                            className={
+                              feature.included
+                                ? plan.highlighted
+                                  ? ''
+                                  : 'text-foreground'
+                                : plan.highlighted
+                                  ? 'opacity-70'
+                                  : 'text-muted-foreground'
+                            }
+                          >
+                            {feature.name}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <Link
+                      href={plan.cta.href}
+                      className={`w-full rounded-xl py-3 text-center font-medium transition-colors ${
+                        plan.highlighted
+                          ? 'bg-background text-foreground hover:bg-muted'
+                          : 'border border-border hover:bg-muted'
+                      }`}
+                    >
+                      {plan.cta.label}
+                    </Link>
+                  </HoverLift>
+                </RevealItem>
+              ))}
+            </RevealStagger>
+
+            <Reveal delay={0.2} className="mt-10 text-center text-sm text-muted-foreground">
+              Prices in Bangladeshi Taka (৳), billed monthly. Plans can be changed or cancelled
+              from the dashboard at any time.
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ----------------------------------------------------------------- FAQ */}
+        <section id="faq" className="scroll-mt-20 overflow-hidden py-24">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+            <Reveal className="mb-12 text-center">
+              <h2 className="mb-4 text-3xl font-semibold tracking-tight md:text-4xl">
+                Questions, answered
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Still unsure about something?{' '}
+                <Link href="#contact" className="text-foreground underline underline-offset-4">
+                  Ask us directly
+                </Link>
+                .
+              </p>
+            </Reveal>
+
+            <Reveal delay={0.1}>
+              <Faq items={FAQ_ITEMS} />
+            </Reveal>
+          </div>
+        </section>
+
+        {/* --------------------------------------------------------------- About */}
+        <section
+          id="about"
+          className="scroll-mt-20 border-y border-border/50 bg-muted/20 py-24"
+        >
+          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+            <Reveal>
+              <h2 className="mb-8 text-3xl font-semibold tracking-tight md:text-4xl">
+                Built by creatives, for creatives.
+              </h2>
+            </Reveal>
+            <RevealStagger className="space-y-6 text-lg leading-relaxed text-muted-foreground sm:text-xl">
+              <RevealItem>
+                <p>
+                  We know the shape of the chaos: the email chain nobody can find, the feedback
+                  that arrived as a voice note, the invoice that slipped a month. Most of it
+                  isn&apos;t creative work at all — it&apos;s the admin that grows around it.
+                </p>
+              </RevealItem>
+              <RevealItem>
+                <p>
+                  Cutline OS replaces the scattered spreadsheets, generic task boards and loose
+                  PDFs with one workspace that understands how creative services actually run.
+                  The goal is narrow and unglamorous: give you back the hours you currently
+                  spend managing the work instead of doing it.
+                </p>
+              </RevealItem>
+            </RevealStagger>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------- Contact */}
+        <section id="contact" className="scroll-mt-20 overflow-hidden py-24">
+          <div className="mx-auto max-w-[1920px] px-4 sm:px-6 lg:px-12">
+            <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+              <Reveal direction="right">
+                <h2 className="mb-4 text-3xl font-semibold tracking-tight md:text-4xl">
+                  Get in touch
+                </h2>
+                <p className="mb-8 text-lg text-muted-foreground">
+                  Questions about pricing, features, or setting up your team? Write to us and a
+                  human will reply.
+                </p>
+                <div className="space-y-6">
+                  <div className="flex items-center gap-4 text-muted-foreground">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Mail className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-foreground">Email us directly</h3>
+                      <a
+                        href={`mailto:${CONTACT.support}`}
+                        className="break-all transition-colors hover:text-foreground"
+                      >
+                        {CONTACT.support}
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-muted-foreground">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Clock className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-foreground">Support hours</h3>
+                      <p>
+                        {CONTACT.hours} ({CONTACT.timezone})
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Reveal>
+
+              <Reveal direction="left" delay={0.1}>
+                <ContactForm />
+              </Reveal>
             </div>
           </div>
         </section>
 
-        {/* Closing CTA */}
-        <section className="py-24 px-4 sm:px-6 lg:px-12 max-w-[1920px] mx-auto overflow-hidden">
-          <ScaleIn className="bg-primary text-primary-foreground rounded-[2.5rem] p-12 md:p-20 text-center relative shadow-2xl">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-foreground/10 to-transparent rounded-[2.5rem]"></div>
+        {/* ----------------------------------------------------------- Final CTA */}
+        <section className="mx-auto max-w-[1920px] overflow-hidden px-4 pb-24 sm:px-6 lg:px-12">
+          <ScaleIn className="relative rounded-[2.5rem] bg-primary p-12 text-center text-primary-foreground shadow-2xl md:p-20">
+            <div
+              aria-hidden
+              className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-primary-foreground/10 to-transparent"
+            />
             <div className="relative z-10">
-              <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-6">Ready to get organized?</h2>
-              <p className="text-xl opacity-90 mb-10 max-w-2xl mx-auto">Join thousands of creative professionals who use Cutline OS to run their business smoothly and profitably.</p>
-              <Link href={userId ? "/dashboard" : "/login"} className="inline-flex items-center justify-center bg-background text-foreground rounded-full px-8 py-4 text-base font-medium hover:bg-muted transition-colors shadow-lg shadow-background/20 group">
-                {userId ? "Go to Dashboard" : "Start your free trial"}
-                <ArrowUpRight className="ml-2 w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+              <h2 className="mb-6 text-4xl font-bold tracking-tight md:text-5xl">
+                Ready to get organized?
+              </h2>
+              <p className="mx-auto mb-10 max-w-2xl text-lg opacity-90 md:text-xl">
+                Set up your workspace in a few minutes and run your next project start to
+                finish in one place.
+              </p>
+              <Link
+                href={userId ? '/dashboard' : '/sign-up'}
+                className="group inline-flex items-center justify-center rounded-full bg-background px-8 py-4 text-base font-medium text-foreground shadow-lg shadow-background/20 transition-colors hover:bg-muted"
+              >
+                {userId ? 'Go to dashboard' : 'Start for free'}
+                <ArrowUpRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:-translate-y-1 group-hover:translate-x-1" />
               </Link>
             </div>
           </ScaleIn>
         </section>
-
-        {/* NEW: Contact Form Section */}
-        <section id="contact" className="py-24 bg-muted/20 border-t border-border/50 overflow-hidden">
-          <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <FadeIn>
-                <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">Get in touch</h2>
-                <p className="text-lg text-muted-foreground mb-8">Have a question about our pricing, features, or need help setting up your team? We're here to help.</p>
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4 text-muted-foreground">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <Mail className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-foreground">Email us directly</h4>
-                      <p>support@cutlin.tech</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-muted-foreground">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <Clock className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-foreground">Support Hours</h4>
-                      <p>Mon-Fri, 9am - 5pm EST</p>
-                    </div>
-                  </div>
-                </div>
-              </FadeIn>
-              
-              <FadeIn>
-                <ContactForm />
-              </FadeIn>
-            </div>
-          </div>
-        </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 pt-16 pb-8 bg-muted/10">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
-            <div className="md:col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 flex items-center justify-center">
-                  <img src="/icon.svg" alt="Cutline OS Logo" className="w-full h-full object-contain" />
-                </div>
-                <span className="text-lg font-semibold text-foreground tracking-tight">Cutline OS</span>
-              </div>
-              <p className="text-muted-foreground max-w-sm leading-relaxed text-sm">
-                Your creative business, finally organized. Clients, projects, invoicing, and feedback — all in one beautiful workspace.
-              </p>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold text-foreground mb-4">Legal</h3>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
-                <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link></li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-foreground mb-4">Contact</h3>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li>
-                  <a href="mailto:support@cutlin.tech" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
-                    <Mail className="w-4 h-4" /> support@cutlin.tech
-                  </a>
-                </li>
-                <li>
-                  <a href="mailto:sales@cutlin.tech" className="inline-flex items-center gap-2 hover:text-foreground transition-colors">
-                    <MessageSquare className="w-4 h-4" /> sales@cutlin.tech
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} Cutline OS. All rights reserved.</p>
-            <p className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> Support active Mon-Fri, 9am - 5pm EST</p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
