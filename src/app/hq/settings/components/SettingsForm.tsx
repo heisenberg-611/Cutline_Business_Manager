@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { updateGlobalSettings } from '../actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, Plus, Shield, Zap, Mail, Settings, CreditCard, Database, DownloadCloud } from 'lucide-react';
+import { Trash2, Plus, Shield, Zap, Mail, Settings, CreditCard, Database, DownloadCloud, UserSearch } from 'lucide-react';
+import { UserDataExport } from './UserDataExport';
 
 type PaymentMethod = {
   id: string;
@@ -103,6 +104,7 @@ export function SettingsForm({ initialData }: { initialData: any }) {
     { id: 'communications', label: 'Communications', icon: Mail },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'data', label: 'Data & Backups', icon: Database },
+    { id: 'user-data', label: 'User Data Requests', icon: UserSearch },
   ];
 
   return (
@@ -321,8 +323,15 @@ export function SettingsForm({ initialData }: { initialData: any }) {
               </div>
             )}
 
+            {activeTab === 'user-data' && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                <h3 className="text-lg font-semibold border-b border-border/50 pb-4">User Data Requests</h3>
+                <UserDataExport />
+              </div>
+            )}
+
           </div>
-          
+
           {/* Footer actions */}
           <div className="p-6 bg-muted/20 border-t border-border/50 flex items-center justify-end gap-4">
             {success && <span className="text-sm text-green-500 font-medium animate-in fade-in">Saved successfully!</span>}
