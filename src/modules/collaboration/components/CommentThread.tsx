@@ -1,13 +1,21 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Eye, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
 import { MentionInput, displayNameOf } from './MentionInput'
 import { CommentItem } from './CommentItem'
+import { Panel, PanelEmpty, PANEL_SCROLL_MAIN } from './Panel'
 import { createComment, type CommentAuthor, type CommentNode } from '../actions/comments'
 import { EMPTY_DRAFT, encodeDraft, type MentionDraft } from '../mentions'
+
+/**
+ * How many threads the pane holds before older ones are tucked behind a button.
+ * The pane itself scrolls, so this is about not rendering years of history into
+ * the DOM on open — not about what fits on screen.
+ */
+const VISIBLE_THREADS = 20
 
 export function CommentThread({
   entityType,
@@ -54,127 +62,151 @@ export function CommentThread({
 
   const totalCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0)
 
-  // No overflow-hidden on the card: it clipped the @ picker, which is positioned
-  // above the composer and has to escape the card's bounds. The header and footer
-  // round their own corners instead, which is all overflow-hidden was doing here.
-  return (
-    <div className="flex flex-col rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex items-center gap-2 rounded-t-xl border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
-        <MessageSquare className="h-4 w-4 text-zinc-500" />
-        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Discussion</h3>
-        {totalCount > 0 && (
-          <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-            {totalCount}
-          </span>
-        )}
+  // Comments arrive oldest first, so the newest sit at the bottom of the pane —
+  // the chat convention. Only the most recent threads render; older ones are one
+  // click away rather than gone.
+  const [visible, setVisible] = useState(VISIBLE_THREADS)
+  const shown = comments.slice(-visible)
+  const olderCount = comments.length - shown.length
+
+  const paneRef = useRef<HTMLDivElement>(null)
+  // Open pinned to the newest comment, and stay pinned as new ones arrive.
+  // Keyed on the count so revealing older threads does not yank the view back
+  // down while someone is reading history.
+  useEffect(() => {
+    const pane = paneRef.current
+    if (pane) pane.scrollTop = pane.scrollHeight
+  }, [comments.length])
+
+  const composer = !canComment ? (
+    // Watchers get told why the box is missing rather than being handed a
+    // composer that fails on submit. The server still refuses the write.
+    <p className="flex items-center gap-2 text-sm text-zinc-500">
+      <Eye className="h-4 w-4 shrink-0" />
+      You have watcher access to this project, so you can follow the discussion but not post
+      to it. Ask an owner or an admin to upgrade you.
+    </p>
+  ) : (
+    <div className="space-y-2">
+      <MentionInput
+        draft={body}
+        onChange={setBody}
+        members={members}
+        placeholder="Add a comment. Type @ to mention a teammate."
+        disabled={isPending}
+        onSubmit={() => submit(body, null, () => setBody(EMPTY_DRAFT))}
+      />
+      {/* Hint sits beside the button rather than pinned to the far edge, which
+          left a wide gap across the footer. */}
+      <div className="flex items-center justify-end gap-3">
+        {/* Keyboard hint is meaningless on a touch device. */}
+        <span className="hidden text-xs text-zinc-400 sm:inline">⌘↵ to post</span>
+        {/* Default size, matching the other panel footers' controls. The reply
+            and edit buttons inside a thread stay small — they are nested. */}
+        <Button
+          disabled={isPending || !body.text.trim()}
+          onClick={() => submit(body, null, () => setBody(EMPTY_DRAFT))}
+        >
+          {isPending ? 'Posting...' : 'Comment'}
+        </Button>
       </div>
+    </div>
+  )
 
-      <div className="space-y-5 p-3 sm:p-4">
+  return (
+    <Panel icon={MessageSquare} title="Discussion" count={totalCount || undefined} clip={false} footer={composer}>
+      {/* Threads are separated by rules rather than whitespace alone, so where
+          one conversation ends and the next begins survives a long page.
+          The pane scrolls its own history, chat-style; the @ picker is portalled
+          so this container cannot clip it. */}
+      <div
+        ref={paneRef}
+        className={`divide-y divide-zinc-100 sm:overflow-y-auto sm:overscroll-contain dark:divide-zinc-800 ${PANEL_SCROLL_MAIN}`}
+      >
         {comments.length === 0 ? (
-          <p className="py-6 text-center text-sm text-zinc-500">
+          <PanelEmpty>
             No comments yet. Start the discussion — type @ to mention a teammate.
-          </p>
+          </PanelEmpty>
         ) : (
-          comments.map((comment) => (
-            <div key={comment.id}>
-              <CommentItem
-                comment={comment}
-                currentUserId={currentUserId}
-                isAdmin={isAdmin}
-                members={members}
-                onReply={
-                  canComment
-                    ? (id) => {
-                        setReplyTo(id)
-                        setReplyBody(EMPTY_DRAFT)
-                      }
-                    : undefined
-                }
-              />
+          <>
+            {olderCount > 0 && (
+              <div className="p-3 text-center sm:p-4">
+                <button
+                  type="button"
+                  onClick={() => setVisible((v) => v + VISIBLE_THREADS)}
+                  className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
+                >
+                  Show {Math.min(olderCount, VISIBLE_THREADS)} earlier{' '}
+                  {olderCount === 1 ? 'comment' : 'comments'}
+                </button>
+              </div>
+            )}
+            {shown.map((comment) => (
+              <div key={comment.id} className="p-3 sm:p-4">
+                <CommentItem
+                  comment={comment}
+                  currentUserId={currentUserId}
+                  isAdmin={isAdmin}
+                  members={members}
+                  onReply={
+                    canComment
+                      ? (id) => {
+                          setReplyTo(id)
+                          setReplyBody(EMPTY_DRAFT)
+                        }
+                      : undefined
+                  }
+                />
 
-              {replyTo && (replyTo === comment.id || comment.replies.some((r) => r.id === replyTo)) && (
-                <div className="ml-4 mt-3 space-y-2 sm:ml-11">
-                  <MentionInput
-                    draft={replyBody}
-                    onChange={setReplyBody}
-                    members={members}
-                    placeholder={
-                      replyTarget?.author
-                        ? `Reply to ${displayNameOf(replyTarget.author)}...`
-                        : 'Write a reply...'
-                    }
-                    disabled={isPending}
-                    rows={2}
-                    onSubmit={() =>
-                      submit(replyBody, comment.id, () => {
-                        setReplyBody(EMPTY_DRAFT)
-                        setReplyTo(null)
-                      })
-                    }
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      disabled={isPending || !replyBody.text.trim()}
-                      onClick={() =>
+                {replyTo && (replyTo === comment.id || comment.replies.some((r) => r.id === replyTo)) && (
+                  <div className="mt-3 space-y-2 border-l border-zinc-200 pl-4 dark:border-zinc-800 sm:ml-4 sm:pl-5">
+                    <MentionInput
+                      draft={replyBody}
+                      onChange={setReplyBody}
+                      members={members}
+                      placeholder={
+                        replyTarget?.author
+                          ? `Reply to ${displayNameOf(replyTarget.author)}...`
+                          : 'Write a reply...'
+                      }
+                      disabled={isPending}
+                      rows={2}
+                      onSubmit={() =>
                         submit(replyBody, comment.id, () => {
                           setReplyBody(EMPTY_DRAFT)
                           setReplyTo(null)
                         })
                       }
-                    >
-                      Reply
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setReplyTo(null)}
-                      disabled={isPending}
-                    >
-                      Cancel
-                    </Button>
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        disabled={isPending || !replyBody.text.trim()}
+                        onClick={() =>
+                          submit(replyBody, comment.id, () => {
+                            setReplyBody(EMPTY_DRAFT)
+                            setReplyTo(null)
+                          })
+                        }
+                      >
+                        Reply
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setReplyTo(null)}
+                        disabled={isPending}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          ))
+                )}
+              </div>
+            ))}
+          </>
         )}
       </div>
-
-      <div className="rounded-b-xl border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
-        {!canComment ? (
-          // Watchers get told why the box is missing rather than being handed a
-          // composer that fails on submit. The server still refuses the write.
-          <p className="flex items-center gap-2 text-sm text-zinc-500">
-            <Eye className="h-4 w-4 shrink-0" />
-            You have watcher access to this project, so you can follow the discussion
-            but not post to it. Ask an owner or an admin to upgrade you.
-          </p>
-        ) : (
-        <div className="space-y-2">
-          <MentionInput
-            draft={body}
-            onChange={setBody}
-            members={members}
-            placeholder="Add a comment. Type @ to mention a teammate."
-            disabled={isPending}
-            onSubmit={() => submit(body, null, () => setBody(EMPTY_DRAFT))}
-          />
-          <div className="flex items-center justify-between">
-            {/* Keyboard hint is meaningless on a touch device. */}
-            <span className="hidden text-xs text-zinc-400 sm:inline">⌘↵ to post</span>
-            <span className="sm:hidden" />
-            <Button
-              size="sm"
-              disabled={isPending || !body.text.trim()}
-              onClick={() => submit(body, null, () => setBody(EMPTY_DRAFT))}
-            >
-              {isPending ? 'Posting...' : 'Comment'}
-            </Button>
-          </div>
-        </div>
-        )}
-      </div>
-    </div>
+    </Panel>
   )
 }

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { formatDistanceToNow } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
+import { Ban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { segmentBody, draftFromBody, encodeDraft, type MentionDraft } from '../mentions'
@@ -33,7 +34,8 @@ function CommentBody({ body, currentUserId }: { body: string; currentUserId: str
   )
 }
 
-function Avatar({ author }: { author: CommentAuthor | null }) {
+function Avatar({ author, dimmed = false }: { author: CommentAuthor | null; dimmed?: boolean }) {
+  const ring = 'ring-1 ring-black/5 dark:ring-white/10'
   if (author?.imageUrl) {
     // Clerk avatar URLs are external and not in next.config images.remotePatterns,
     // so next/image cannot load them without config the rest of the app lacks.
@@ -42,16 +44,24 @@ function Avatar({ author }: { author: CommentAuthor | null }) {
       <img
         src={author.imageUrl}
         alt=""
-        className="h-8 w-8 shrink-0 rounded-full object-cover"
+        className={`h-8 w-8 shrink-0 rounded-full object-cover ${ring} ${dimmed ? 'opacity-60 grayscale' : ''}`}
       />
     )
   }
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-zinc-100 text-[10px] font-semibold uppercase text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+    <span
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-semibold uppercase text-zinc-600 ${ring} dark:bg-zinc-800 dark:text-zinc-300 ${
+        dimmed ? 'opacity-60' : ''
+      }`}
+    >
       {author ? displayNameOf(author).slice(0, 2) : '--'}
     </span>
   )
 }
+
+/** Actions read as quiet links, and only surface on hover on pointer devices. */
+const ACTION_CLASS =
+  'text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 disabled:opacity-50 dark:hover:text-zinc-200'
 
 export function CommentItem({
   comment,
@@ -98,18 +108,28 @@ export function CommentItem({
     })
   }
 
+  const posted = new Date(comment.createdAt)
+
   return (
-    <div className={isReply ? 'ml-4 mt-3 sm:ml-11' : ''}>
-      <div className="flex gap-3">
-        <Avatar author={comment.author} />
+    // Replies hang off a connector line so a thread reads as one conversation
+    // rather than a set of separately indented comments.
+    <div
+      className={
+        isReply
+          ? 'mt-3 border-l border-zinc-200 pl-4 dark:border-zinc-800 sm:ml-4 sm:pl-5'
+          : ''
+      }
+    >
+      <div className="group flex gap-3">
+        <Avatar author={comment.author} dimmed={comment.isDeleted} />
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
               {comment.author ? displayNameOf(comment.author) : 'Unknown user'}
             </span>
-            <span className="text-xs text-zinc-400">
-              {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
+            <span className="text-xs text-zinc-400" title={format(posted, 'PPpp')}>
+              {formatDistanceToNow(posted, { addSuffix: true })}
             </span>
             {comment.editedAt && !comment.isDeleted && (
               <span className="text-xs text-zinc-400">(edited)</span>
@@ -118,7 +138,10 @@ export function CommentItem({
 
           <div className="mt-1">
             {comment.isDeleted ? (
-              <p className="text-sm italic text-zinc-400">This comment was deleted.</p>
+              <p className="flex items-center gap-1.5 text-sm italic text-zinc-400">
+                <Ban className="h-3.5 w-3.5 shrink-0" />
+                This comment was deleted.
+              </p>
             ) : isEditing ? (
               <div className="space-y-2">
                 <MentionInput
@@ -152,22 +175,15 @@ export function CommentItem({
           </div>
 
           {!comment.isDeleted && !isEditing && (
-            <div className="mt-1.5 flex items-center gap-3">
+            // Always visible on touch, where there is no hover to reveal them.
+            <div className="mt-1.5 flex items-center gap-3 transition-opacity sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
               {onReply && (
-                <button
-                  type="button"
-                  onClick={() => onReply(comment.id)}
-                  className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
-                >
+                <button type="button" onClick={() => onReply(comment.id)} className={ACTION_CLASS}>
                   Reply
                 </button>
               )}
               {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
-                >
+                <button type="button" onClick={() => setIsEditing(true)} className={ACTION_CLASS}>
                   Edit
                 </button>
               )}

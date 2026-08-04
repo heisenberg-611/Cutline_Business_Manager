@@ -61,9 +61,15 @@ function SelectContent({
   children,
   side = "bottom",
   sideOffset = 4,
-  align = "center",
+  align = "start",
   alignOffset = 0,
-  alignItemWithTrigger = true,
+  // Base UI's align-item-with-trigger mode overlays the selected item on the
+  // trigger and positions itself, which is why the popup below disables its
+  // animation in that mode. Defaulting it off makes Select open like every
+  // other overlay in the app — anchored under the trigger, with the same
+  // fade/zoom/slide as DropdownMenu, Popover and Tooltip. Call sites can still
+  // pass alignItemWithTrigger to opt back in; they lose the animation, as before.
+  alignItemWithTrigger = false,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Textarea } from '@/components/ui/textarea'
 import type { MentionDraft } from '../mentions'
 import type { CommentAuthor } from '../actions/comments'
@@ -13,6 +14,12 @@ const MAX_MATCHES = 50
 
 /** Keep in step with the max-h-60 on the list (15rem). */
 const PICKER_MAX_HEIGHT = 240
+
+/** Wide enough for a name and email, without spanning a full-width composer. */
+const PICKER_MAX_WIDTH = 320
+
+/** Where the portalled picker pins itself, in viewport coordinates. */
+type Anchor = { left: number; top: number; bottom: number; width: number }
 
 export function displayNameOf(user: Pick<CommentAuthor, 'firstName' | 'lastName' | 'email'>) {
   return (
@@ -50,6 +57,7 @@ export function MentionInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [openUpward, setOpenUpward] = useState(true)
+  const [anchor, setAnchor] = useState<Anchor | null>(null)
   const [query, setQuery] = useState<string | null>(null)
   const [triggerIndex, setTriggerIndex] = useState<number | null>(null)
   const [highlighted, setHighlighted] = useState(0)
@@ -173,19 +181,51 @@ export function MentionInput({
     item?.scrollIntoView({ block: 'nearest' })
   }, [highlighted])
 
-  // The picker normally opens upward, which suits a composer sitting at the
-  // bottom of its card. Near the top of the viewport there is no room, and the
-  // dashboard's scroll container would clip it — so flip it downward instead.
-  useEffect(() => {
-    if (query === null) return
+  /**
+   * Measures the textarea so the portalled picker can be pinned to it.
+   *
+   * The picker normally opens upward, which suits a composer sitting at the
+   * bottom of its card; near the top of the viewport there is no room, so it
+   * flips downward instead.
+   */
+  const measure = useCallback(() => {
     const box = textareaRef.current?.getBoundingClientRect()
     if (!box) return
+
+    // Scrolled out of sight inside a panel — nothing to anchor to.
+    if (box.bottom < 0 || box.top > window.innerHeight) {
+      setAnchor(null)
+      return
+    }
+
     const spaceAbove = box.top
     const spaceBelow = window.innerHeight - box.bottom
     setOpenUpward(spaceAbove >= PICKER_MAX_HEIGHT || spaceAbove >= spaceBelow)
-  }, [query])
 
-  const showPicker = query !== null && matches.length > 0
+    const width = Math.min(box.width, PICKER_MAX_WIDTH)
+    setAnchor({
+      // Keep it on screen if the composer sits near the right edge.
+      left: Math.max(8, Math.min(box.left, window.innerWidth - width - 8)),
+      top: box.top,
+      bottom: box.bottom,
+      width,
+    })
+  }, [])
+
+  // Re-measure while anything scrolls or the window resizes. The listener is
+  // capturing so it also fires for scrolls inside the panel, not just the page.
+  useEffect(() => {
+    if (query === null) return
+    measure()
+    window.addEventListener('scroll', measure, true)
+    window.addEventListener('resize', measure)
+    return () => {
+      window.removeEventListener('scroll', measure, true)
+      window.removeEventListener('resize', measure)
+    }
+  }, [query, measure])
+
+  const showPicker = query !== null && matches.length > 0 && anchor !== null
 
   return (
     <div className="relative">
@@ -200,18 +240,27 @@ export function MentionInput({
         className="resize-none text-sm"
       />
 
-      {showPicker && (
-        <div
-          role="listbox"
-          aria-label="Mention a team member"
-          ref={listRef}
-          // max-h + overflow-y so a long member list scrolls instead of running
-          // off the top of the card. overscroll-contain stops the scroll
-          // chaining to the page once the list hits its end.
-          className={`absolute left-0 right-0 z-50 max-h-60 overflow-y-auto sm:right-auto sm:w-64 overscroll-contain rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900 ${
-            openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
-          }`}
-        >
+      {showPicker &&
+        createPortal(
+          <div
+            role="listbox"
+            aria-label="Mention a team member"
+            ref={listRef}
+            // Portalled to the body and positioned in viewport coordinates, so
+            // no scrolling ancestor can clip it — the discussion pane scrolls
+            // its own comments, and this used to be cut off by that.
+            // max-h + overflow-y so a long member list scrolls; overscroll-contain
+            // stops that scroll chaining to whatever is behind it.
+            style={{
+              position: 'fixed',
+              left: anchor.left,
+              width: anchor.width,
+              ...(openUpward
+                ? { bottom: window.innerHeight - anchor.top + 4 }
+                : { top: anchor.bottom + 4 }),
+            }}
+            className="z-50 max-h-60 overflow-y-auto overscroll-contain rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+          >
           {matches.map((member, i) => (
             <button
               key={member.id}
@@ -241,8 +290,9 @@ export function MentionInput({
               </span>
             </button>
           ))}
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   )
 }

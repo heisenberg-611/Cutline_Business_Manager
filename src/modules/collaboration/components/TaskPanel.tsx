@@ -30,9 +30,24 @@ import {
   type TaskRow,
 } from '../actions/tasks'
 import { displayNameOf } from './MentionInput'
+import { Panel, PanelEmpty } from './Panel'
 import type { CommentAuthor } from '../actions/comments'
 
 const UNASSIGNED = '__unassigned__'
+
+/**
+ * The task list shows four rows and then scrolls.
+ *
+ * A row is a fixed 57px from `sm` up — py-2.5 either side, one truncated title
+ * line, and the timing line under it — so four rows is 228px (14.25rem). Nothing
+ * in a row wraps at that width: the title truncates and the controls sit inline.
+ * Change the row's padding or drop the timing line and this needs to move with it.
+ *
+ * Below `sm` the controls wrap onto their own line, which makes rows taller and
+ * the count wrong — but the cap is `sm:`-gated anyway, because a nested scroll
+ * area on a phone fights the page scroll.
+ */
+const TASK_LIST_MAX_HEIGHT = 'sm:max-h-[14.25rem]'
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   TODO: 'To do',
@@ -170,23 +185,48 @@ export function TaskPanel({
     run({ type: 'reorder', ids }, () => reorderTasks(projectId, ids))
   }
 
-  return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
-        <CheckSquare className="h-4 w-4 text-zinc-500" />
-        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Tasks</h3>
-        {tasks.length > 0 && (
-          <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-            {doneCount}/{tasks.length}
-          </span>
-        )}
-      </div>
+  const composer = canEdit ? (
+    <div className="flex gap-2">
+      <Input
+        value={newTitle}
+        onChange={(e) => setNewTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            handleAdd()
+          }
+        }}
+        placeholder="Add a task and press Enter"
+        disabled={isPending}
+        className="text-sm"
+      />
+      {/* size="icon" is the 32px square that matches Input's default height —
+          size="sm" left a 28px button sitting short against a 36px field. */}
+      <Button size="icon" onClick={handleAdd} disabled={isPending || !newTitle.trim()}>
+        <Plus className="h-4 w-4" />
+        <span className="sr-only">Add task</span>
+      </Button>
+    </div>
+  ) : undefined
 
+  return (
+    <Panel
+      icon={CheckSquare}
+      title="Tasks"
+      count={tasks.length > 0 ? `${doneCount}/${tasks.length}` : undefined}
+      action={
+        tasks.length > 0 ? (
+          <ProgressMeter done={doneCount} total={tasks.length} />
+        ) : undefined
+      }
+      scrollClassName={TASK_LIST_MAX_HEIGHT}
+      footer={composer}
+    >
       <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
         {tasks.length === 0 ? (
-          <p className="py-8 text-center text-sm text-zinc-500">
+          <PanelEmpty>
             No tasks yet. Break the project into steps your team can pick up.
-          </p>
+          </PanelEmpty>
         ) : !isMounted ? (
           // Static list until mounted, so dnd does not run during hydration.
           tasks.map((task) => (
@@ -248,31 +288,23 @@ export function TaskPanel({
           </DragDropContext>
         )}
       </div>
+    </Panel>
+  )
+}
 
-      {canEdit && (
-        <div className="border-t border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
-          <div className="flex gap-2">
-            <Input
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  handleAdd()
-                }
-              }}
-              placeholder="Add a task and press Enter"
-              disabled={isPending}
-              className="h-9 text-sm"
-            />
-            <Button size="sm" onClick={handleAdd} disabled={isPending || !newTitle.trim()}>
-              <Plus className="h-4 w-4" />
-              <span className="sr-only">Add task</span>
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
+/** Completion at a glance, so the counter is not the only signal of progress. */
+function ProgressMeter({ done, total }: { done: number; total: number }) {
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100)
+  return (
+    <span className="flex items-center gap-2" title={`${done} of ${total} tasks done`}>
+      <span className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-zinc-200 sm:block dark:bg-zinc-800">
+        <span
+          className="block h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+          style={{ width: `${pct}%` }}
+        />
+      </span>
+      <span className="text-[11px] font-medium tabular-nums text-zinc-500">{pct}%</span>
+    </span>
   )
 }
 
@@ -303,7 +335,7 @@ function TaskTiming({ task }: { task: TaskRow }) {
   const done = task.status === 'DONE' && task.completedAt ? new Date(task.completedAt) : null
 
   return (
-    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] text-zinc-400">
+    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] text-zinc-400 dark:text-zinc-500">
       <Clock className="h-3 w-3 shrink-0" />
       <span title={format(created, 'PPpp')}>created {format(created, STAMP)}</span>
       {done && (
@@ -353,7 +385,7 @@ function TaskRowView({
     // Wraps on small screens: the status and assignee controls alone are wider
     // than a phone once the title has any room, so they drop to their own line
     // rather than crushing it. Unchanged from `sm` up.
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
+    <div className="group flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 transition-colors hover:bg-zinc-50/70 dark:hover:bg-zinc-800/30">
       {canEdit && (
         <span
           {...(dragHandleProps ?? {})}

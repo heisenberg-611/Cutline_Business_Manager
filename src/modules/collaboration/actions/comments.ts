@@ -57,9 +57,11 @@ export async function getComments(
 
   const toNode = (row: (typeof rows)[number]): CommentNode => ({
     id: row.id,
+    // Deleting removes what was said, not who said it: the thread still has to
+    // show whose comment was withdrawn, and replies below it need that context.
     body: row.deletedAt ? '' : row.body,
-    authorId: row.deletedAt ? null : row.authorId,
-    author: row.deletedAt ? null : row.author,
+    authorId: row.authorId,
+    author: row.author,
     createdAt: row.createdAt,
     editedAt: row.editedAt,
     isDeleted: !!row.deletedAt,

@@ -5,6 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { Activity } from 'lucide-react'
 import { toast } from 'sonner'
 import { getProjectActivity, type ActivityEntry } from '../actions/activity'
+import { Panel, PanelEmpty, PANEL_SCROLL_SIDE } from './Panel'
 
 /**
  * Turns an audit row into a sentence.
@@ -74,10 +75,13 @@ export function ActivityFeed({
   projectId,
   initialEntries,
   initialCursor,
+  grow = false,
 }: {
   projectId: string
   initialEntries: ActivityEntry[]
   initialCursor: string | null
+  /** Fill the sidebar's leftover height so the card ends level with the column beside it. */
+  grow?: boolean
 }) {
   // Only the first page is rendered by the server; the rest is fetched on
   // demand, so opening a long-running project does not pay for its whole
@@ -104,39 +108,44 @@ export function ActivityFeed({
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/50">
-        <Activity className="h-4 w-4 text-zinc-500" />
-        <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Activity</h3>
-        {entries.length > 0 && (
-          <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-            {entries.length}
-            {cursor ? '+' : ''}
-          </span>
-        )}
-      </div>
-
+    <Panel
+      icon={Activity}
+      title="Activity"
+      count={entries.length > 0 ? `${entries.length}${cursor ? '+' : ''}` : undefined}
+      scrollClassName={PANEL_SCROLL_SIDE}
+      grow={grow}
+    >
       {entries.length === 0 ? (
-        <p className="py-8 text-center text-sm text-zinc-500">
-          Nothing has happened on this project yet.
-        </p>
+        <PanelEmpty>Nothing has happened on this project yet.</PanelEmpty>
       ) : (
-        <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+        // A timeline rather than a list of rows: the rail and dots make the
+        // order of events legible without a divider between every entry.
+        <ul className="space-y-3 px-4 py-4">
           {entries.map((entry) => (
-            <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-4 py-2.5 text-sm">
-              <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                {entry.actorName ?? 'Someone'}
-              </span>
-              <span className="min-w-0 flex-1 basis-40 text-zinc-600 dark:text-zinc-400">
+            <li key={entry.id} className="group relative flex gap-3 pl-4">
+              <span
+                aria-hidden
+                className="absolute left-0 top-1.5 h-1.5 w-1.5 rounded-full bg-zinc-300 ring-4 ring-white dark:bg-zinc-600 dark:ring-zinc-900"
+              />
+              {/* Rail between dots; hidden on the last entry so it does not
+                  trail off the end of the timeline. */}
+              <span
+                aria-hidden
+                className="absolute bottom-[-0.75rem] left-[2.5px] top-4 w-px bg-zinc-100 group-last:hidden dark:bg-zinc-800"
+              />
+              <p className="min-w-0 flex-1 text-sm leading-snug text-zinc-600 dark:text-zinc-400">
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {entry.actorName ?? 'Someone'}
+                </span>{' '}
                 {describe(entry)}
-              </span>
-              <span className="shrink-0 text-xs text-zinc-400">
-                {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
-              </span>
+                <span className="ml-1.5 whitespace-nowrap text-xs text-zinc-400">
+                  {formatDistanceToNow(new Date(entry.createdAt), { addSuffix: true })}
+                </span>
+              </p>
             </li>
           ))}
           {cursor && (
-            <li className="px-4 py-2.5 text-center">
+            <li className="pl-4 pt-1">
               <button
                 type="button"
                 onClick={loadMore}
@@ -149,6 +158,6 @@ export function ActivityFeed({
           )}
         </ul>
       )}
-    </div>
+    </Panel>
   )
 }
