@@ -66,7 +66,7 @@ export default async function CollaborationPage() {
   return (
     <div className="space-y-6">
       <div className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
-        <h3 className="text-2xl font-bold leading-6 text-zinc-900 dark:text-zinc-100">
+        <h3 className="text-xl font-bold leading-tight text-zinc-900 sm:text-2xl sm:leading-6 dark:text-zinc-100">
           Collaboration
         </h3>
         <p className="mt-2 text-sm text-zinc-500">
@@ -113,7 +113,7 @@ export default async function CollaborationPage() {
                 </span>
               )}
 
-              <div className="mt-4 flex items-center gap-4 border-t border-zinc-100 pt-3 text-xs text-zinc-500 dark:border-zinc-800">
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-zinc-100 pt-3 text-xs text-zinc-500 dark:border-zinc-800">
                 <span className="flex items-center gap-1.5">
                   <CheckSquare className="h-3.5 w-3.5" />
                   {project.tasks.length} open
@@ -140,7 +140,7 @@ function UpgradeNotice() {
   return (
     <div className="space-y-6">
       <div className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
-        <h3 className="text-2xl font-bold leading-6 text-zinc-900 dark:text-zinc-100">
+        <h3 className="text-xl font-bold leading-tight text-zinc-900 sm:text-2xl sm:leading-6 dark:text-zinc-100">
           Collaboration
         </h3>
       </div>

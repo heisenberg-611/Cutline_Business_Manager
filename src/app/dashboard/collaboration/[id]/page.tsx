@@ -88,7 +88,7 @@ export default async function ProjectCollaborationPage({
         </Link>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h3 className="text-2xl font-bold leading-6 text-zinc-900 dark:text-zinc-100">
+          <h3 className="break-words text-xl font-bold leading-tight text-zinc-900 sm:text-2xl sm:leading-6 dark:text-zinc-100">
             {project.title}
           </h3>
           {project.displayId && (
@@ -103,7 +103,7 @@ export default async function ProjectCollaborationPage({
           )}
         </div>
 
-        <p className="mt-2 flex items-center gap-3 text-sm text-zinc-500">
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-zinc-500">
           {project.client?.displayName}
           <Link
             href={`/dashboard/projects/${project.id}`}

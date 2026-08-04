@@ -350,7 +350,10 @@ function TaskRowView({
     !!task.dueDate && !isDone && isBefore(new Date(task.dueDate), startOfDay(new Date()))
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5">
+    // Wraps on small screens: the status and assignee controls alone are wider
+    // than a phone once the title has any room, so they drop to their own line
+    // rather than crushing it. Unchanged from `sm` up.
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
       {canEdit && (
         <span
           {...(dragHandleProps ?? {})}
@@ -366,7 +369,7 @@ function TaskRowView({
         onClick={onToggle}
         disabled={!canEdit || isPending}
         aria-label={isDone ? 'Mark as not done' : 'Mark as done'}
-        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors disabled:opacity-50 ${
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors disabled:opacity-50 [box-sizing:content-box] p-1.5 -m-1.5 sm:p-0 sm:m-0 ${
           isDone
             ? 'border-emerald-500 bg-emerald-500 text-white'
             : 'border-zinc-300 hover:border-zinc-400 dark:border-zinc-600'
@@ -375,7 +378,7 @@ function TaskRowView({
         {isDone && <CheckSquare className="h-3 w-3" />}
       </button>
 
-      <span className="min-w-0 flex-1">
+      <span className="min-w-0 flex-1 basis-40">
         <span
           className={`block truncate text-sm ${
             isDone
@@ -389,9 +392,12 @@ function TaskRowView({
         <TaskTiming task={task} />
       </span>
 
+      {/* Controls group: its own full-width line on mobile, inline from sm up.
+          Indented to line up under the title rather than the drag handle. */}
+      <div className="flex w-full items-center gap-2 pl-7 sm:w-auto sm:pl-0">
       {task.dueDate && (
         <span
-          className={`hidden shrink-0 text-xs sm:inline ${
+          className={`shrink-0 text-xs ${
             overdue ? 'font-medium text-red-600 dark:text-red-400' : 'text-zinc-400'
           }`}
         >
@@ -401,7 +407,7 @@ function TaskRowView({
 
       {canEdit ? (
         <Select value={task.status} onValueChange={(v) => v && onStatus(v as TaskStatus)}>
-          <SelectTrigger className="h-7 w-[118px] shrink-0 text-xs" disabled={isPending}>
+          <SelectTrigger className="h-7 min-w-0 flex-1 text-xs sm:w-[118px] sm:flex-none" disabled={isPending}>
             <SelectValue>{STATUS_LABEL[task.status]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -425,7 +431,7 @@ function TaskRowView({
           value={task.assigneeId ?? UNASSIGNED}
           onValueChange={(v) => v && onAssign(v)}
         >
-          <SelectTrigger className="h-7 w-[128px] shrink-0 text-xs" disabled={isPending}>
+          <SelectTrigger className="h-7 min-w-0 flex-1 text-xs sm:w-[128px] sm:flex-none" disabled={isPending}>
             <SelectValue>{assignee ? displayNameOf(assignee) : 'Unassigned'}</SelectValue>
           </SelectTrigger>
           <SelectContent>
@@ -449,11 +455,12 @@ function TaskRowView({
           onClick={onDelete}
           disabled={isPending}
           aria-label="Delete task"
-          className="shrink-0 text-zinc-300 transition-colors hover:text-red-600 disabled:opacity-50 dark:text-zinc-600 dark:hover:text-red-400"
+          className="-m-2 shrink-0 p-2 text-zinc-300 transition-colors hover:text-red-600 disabled:opacity-50 dark:text-zinc-600 dark:hover:text-red-400"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
       )}
+      </div>
     </div>
   )
 }

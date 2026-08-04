@@ -123,11 +123,11 @@ export function ActivityFeed({
       ) : (
         <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
           {entries.map((entry) => (
-            <li key={entry.id} className="flex items-baseline gap-2 px-4 py-2.5 text-sm">
+            <li key={entry.id} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-4 py-2.5 text-sm">
               <span className="font-medium text-zinc-900 dark:text-zinc-100">
                 {entry.actorName ?? 'Someone'}
               </span>
-              <span className="min-w-0 flex-1 text-zinc-600 dark:text-zinc-400">
+              <span className="min-w-0 flex-1 basis-40 text-zinc-600 dark:text-zinc-400">
                 {describe(entry)}
               </span>
               <span className="shrink-0 text-xs text-zinc-400">

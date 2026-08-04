@@ -75,7 +75,7 @@ export function MemberPanel({
         )}
 
         {members.map((member) => (
-          <li key={member.userId} className="flex items-center gap-3 px-4 py-2.5">
+          <li key={member.userId} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full border border-zinc-200 bg-zinc-100 text-[10px] font-semibold uppercase text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
               {member.imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -85,7 +85,7 @@ export function MemberPanel({
               )}
             </span>
 
-            <span className="min-w-0 flex-1">
+            <span className="min-w-0 flex-1 basis-40">
               <span className="flex items-center gap-1.5">
                 <span className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">
                   {displayNameOf(member)}
@@ -110,7 +110,7 @@ export function MemberPanel({
                   v && run(() => updateProjectMemberRole(projectId, member.userId, v as ProjectMemberRole))
                 }
               >
-                <SelectTrigger className="h-7 w-[132px] shrink-0 text-xs" disabled={isPending}>
+                <SelectTrigger className="h-7 min-w-0 flex-1 text-xs sm:w-[132px] sm:flex-none" disabled={isPending}>
                   <SelectValue>{ROLE_LABEL[member.role]}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -136,7 +136,7 @@ export function MemberPanel({
                 onClick={() => run(() => removeProjectMember(projectId, member.userId))}
                 disabled={isPending}
                 aria-label={`Remove ${displayNameOf(member)}`}
-                className="shrink-0 text-zinc-300 transition-colors hover:text-red-600 disabled:opacity-50 dark:text-zinc-600 dark:hover:text-red-400"
+                className="-m-2 shrink-0 p-2 text-zinc-300 transition-colors hover:text-red-600 disabled:opacity-50 dark:text-zinc-600 dark:hover:text-red-400"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -154,7 +154,7 @@ export function MemberPanel({
           ) : (
             <div className="flex gap-2">
               <Select value={picked} onValueChange={(v) => setPicked(v || '')}>
-                <SelectTrigger className="h-9 flex-1 text-sm" disabled={isPending}>
+                <SelectTrigger className="h-9 min-w-0 flex-1 text-sm" disabled={isPending}>
                   <SelectValue placeholder="Add a teammate">
                     {picked
                       ? displayNameOf(addable.find((u) => u.id === picked)!)

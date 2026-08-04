@@ -99,7 +99,7 @@ export function CommentItem({
   }
 
   return (
-    <div className={isReply ? 'ml-11 mt-3' : ''}>
+    <div className={isReply ? 'ml-4 mt-3 sm:ml-11' : ''}>
       <div className="flex gap-3">
         <Avatar author={comment.author} />
 

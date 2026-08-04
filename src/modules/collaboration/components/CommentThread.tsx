@@ -69,7 +69,7 @@ export function CommentThread({
         )}
       </div>
 
-      <div className="space-y-5 p-4">
+      <div className="space-y-5 p-3 sm:p-4">
         {comments.length === 0 ? (
           <p className="py-6 text-center text-sm text-zinc-500">
             No comments yet. Start the discussion — type @ to mention a teammate.
@@ -93,7 +93,7 @@ export function CommentThread({
               />
 
               {replyTo && (replyTo === comment.id || comment.replies.some((r) => r.id === replyTo)) && (
-                <div className="ml-11 mt-3 space-y-2">
+                <div className="ml-4 mt-3 space-y-2 sm:ml-11">
                   <MentionInput
                     draft={replyBody}
                     onChange={setReplyBody}
@@ -161,7 +161,9 @@ export function CommentThread({
             onSubmit={() => submit(body, null, () => setBody(EMPTY_DRAFT))}
           />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-400">⌘↵ to post</span>
+            {/* Keyboard hint is meaningless on a touch device. */}
+            <span className="hidden text-xs text-zinc-400 sm:inline">⌘↵ to post</span>
+            <span className="sm:hidden" />
             <Button
               size="sm"
               disabled={isPending || !body.text.trim()}

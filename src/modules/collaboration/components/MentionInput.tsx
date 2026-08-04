@@ -208,7 +208,7 @@ export function MentionInput({
           // max-h + overflow-y so a long member list scrolls instead of running
           // off the top of the card. overscroll-contain stops the scroll
           // chaining to the page once the list hits its end.
-          className={`absolute left-0 z-50 max-h-60 w-64 overflow-y-auto overscroll-contain rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900 ${
+          className={`absolute left-0 right-0 z-50 max-h-60 overflow-y-auto sm:right-auto sm:w-64 overscroll-contain rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900 ${
             openUpward ? 'bottom-full mb-1' : 'top-full mt-1'
           }`}
         >
