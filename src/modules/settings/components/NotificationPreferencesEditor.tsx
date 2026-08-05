@@ -1,132 +1,53 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import { useAuth } from '@clerk/nextjs'
+import { toast } from 'sonner'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Play } from 'lucide-react'
 import { updateNotificationPreferences } from '@/modules/settings/actions'
+import {
+  DEFAULT_NOTIFICATION_PREFS,
+  playSound,
+  writeStoredPrefs,
+  type NotificationPrefs,
+  type NotificationTone,
+} from '@/modules/notifications/sound'
 
-export type NotificationTone = 'chime' | 'beep' | 'bell' | 'bird' | 'raindrop' | 'none'
-
-export interface NotificationPrefs {
-  tone: NotificationTone
-  dnd: boolean
-}
-
-let sharedAudioContext: any = null;
-
-export function playSound(tone: NotificationTone) {
-  if (tone === 'none') return
-
-  try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext
-    if (!AudioContext) return
-    
-    if (!sharedAudioContext) {
-      sharedAudioContext = new AudioContext()
-    }
-    
-    if (sharedAudioContext.state === 'suspended') {
-      sharedAudioContext.resume()
-    }
-    
-    const ctx = sharedAudioContext
-    
-    const playNote = (freq: number, startTime: number, type: OscillatorType = 'triangle', duration = 0.4) => {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      
-      osc.type = type
-      osc.frequency.setValueAtTime(freq, startTime)
-      
-      gain.gain.setValueAtTime(0.3, startTime)
-      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration)
-      
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      
-      osc.start(startTime)
-      osc.stop(startTime + duration + 0.1)
-    }
-    
-    if (tone === 'chime') {
-      playNote(1046.50, ctx.currentTime)        // C6
-      playNote(1318.51, ctx.currentTime + 0.15) // E6
-    } else if (tone === 'beep') {
-      playNote(880.00, ctx.currentTime, 'sine', 0.2) // A5 short beep
-    } else if (tone === 'bell') {
-      playNote(1567.98, ctx.currentTime, 'sine', 0.6) // G6 longer
-      playNote(1174.66, ctx.currentTime, 'triangle', 0.6) // D6 mixed
-    } else if (tone === 'bird') {
-      // High pitched quick sweeps (two chirps)
-      const playChirp = (startFreq: number, endFreq: number, timeOff: number) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(startFreq, ctx.currentTime + timeOff)
-        osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + timeOff + 0.1)
-        gain.gain.setValueAtTime(0.2, ctx.currentTime + timeOff)
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + timeOff + 0.15)
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.start(ctx.currentTime + timeOff)
-        osc.stop(ctx.currentTime + timeOff + 0.2)
-      }
-      playChirp(2000, 3000, 0)
-      playChirp(2200, 3200, 0.15)
-    } else if (tone === 'raindrop') {
-      // Quick high to low freq drop
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'
-      osc.frequency.setValueAtTime(800, ctx.currentTime)
-      osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.08)
-      gain.gain.setValueAtTime(0.3, ctx.currentTime)
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.start(ctx.currentTime)
-      osc.stop(ctx.currentTime + 0.15)
-    }
-  } catch (e) {
-    console.log("Audio playback failed", e)
-  }
-}
+// Re-exported for the pages that already import these from here.
+export type { NotificationPrefs, NotificationTone }
+export { playSound }
 
 export function NotificationPreferencesEditor({ initialPreferences }: { initialPreferences?: NotificationPrefs }) {
-  const [prefs, setPrefs] = useState<NotificationPrefs>(initialPreferences || { tone: 'chime', dnd: false })
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    if (initialPreferences) {
-      setPrefs(initialPreferences)
-      localStorage.setItem('cutline_notification_prefs', JSON.stringify(initialPreferences))
-    } else {
-      const stored = localStorage.getItem('cutline_notification_prefs')
-      if (stored) {
-        try {
-          setPrefs(JSON.parse(stored))
-        } catch (e) {}
-      }
-    }
-    setMounted(true)
-  }, [initialPreferences])
+  const { userId } = useAuth()
+  // The saved account value is the starting point; edits below shadow it until
+  // the page reloads. Syncing it back in through an effect used to snap the
+  // controls to a stale server copy mid-edit.
+  const [edited, setEdited] = useState<NotificationPrefs | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const prefs = edited ?? initialPreferences ?? DEFAULT_NOTIFICATION_PREFS
 
   const savePrefs = async (newPrefs: NotificationPrefs) => {
-    setPrefs(newPrefs)
-    localStorage.setItem('cutline_notification_prefs', JSON.stringify(newPrefs))
-    // Dispatch a custom event so the NotificationCenter can immediately pick it up if needed
-    window.dispatchEvent(new Event('cutline_notification_prefs_changed'))
-    
+    const previous = prefs
+    setEdited(newPrefs)
+    setIsSaving(true)
+
     try {
       await updateNotificationPreferences(newPrefs)
+      // Only publish to the bell once the account row actually has it.
+      writeStoredPrefs(userId, newPrefs)
     } catch (e) {
-      console.error("Failed to sync notification preferences", e)
+      console.error('Failed to save notification preferences', e)
+      // Reporting success for a write that never landed is worse than the
+      // failure itself — the switch stayed flipped and nothing was saved.
+      setEdited(previous)
+      toast.error('Could not save your notification preferences.')
+    } finally {
+      setIsSaving(false)
     }
   }
-
-  if (!mounted) return <div className="h-24 animate-pulse bg-zinc-100 dark:bg-zinc-900 rounded-md" />
 
   return (
     <div className="space-y-6">
@@ -135,9 +56,10 @@ export function NotificationPreferencesEditor({ initialPreferences }: { initialP
           <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Do Not Disturb</label>
           <p className="text-xs text-zinc-500">Mute all notification sounds completely.</p>
         </div>
-        <Switch 
-          checked={prefs.dnd} 
-          onCheckedChange={(checked) => savePrefs({ ...prefs, dnd: checked })} 
+        <Switch
+          checked={prefs.dnd}
+          disabled={isSaving}
+          onCheckedChange={(checked) => savePrefs({ ...prefs, dnd: checked })}
         />
       </div>
 
@@ -145,10 +67,10 @@ export function NotificationPreferencesEditor({ initialPreferences }: { initialP
         <label className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Notification Tone</label>
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <Select 
-              value={prefs.tone} 
+            <Select
+              value={prefs.tone}
               onValueChange={(val) => { if (val) savePrefs({ ...prefs, tone: val as NotificationTone }) }}
-              disabled={prefs.dnd}
+              disabled={prefs.dnd || isSaving}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a tone" />
@@ -163,9 +85,9 @@ export function NotificationPreferencesEditor({ initialPreferences }: { initialP
               </SelectContent>
             </Select>
           </div>
-          <Button 
-            variant="outline" 
-            size="icon" 
+          <Button
+            variant="outline"
+            size="icon"
             disabled={prefs.dnd || prefs.tone === 'none'}
             onClick={() => playSound(prefs.tone)}
             title="Test Sound"

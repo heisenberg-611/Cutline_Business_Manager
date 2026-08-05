@@ -1,5 +1,6 @@
 'use server'
 
+import { auth } from '@clerk/nextjs/server'
 import { requireAdmin } from '@/lib/auth'
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
@@ -332,9 +333,17 @@ export async function restoreDefaults() {
 
 /**
  * Update the user's notification preferences.
+ *
+ * Guarded by plain sign-in, not requireAdmin: a tone and a Do Not Disturb
+ * switch are personal to the signed-in account, not organisation settings, and
+ * the admin guard left members with no way to silence their own alerts.
  */
 export async function updateNotificationPreferences(preferences: { tone: string; dnd: boolean }) {
-  const { userId } = await requireAdmin()
+  const { userId } = await auth()
+
+  if (!userId) {
+    throw new Error('Unauthorized')
+  }
 
   await prisma.user.update({
     where: { id: userId },

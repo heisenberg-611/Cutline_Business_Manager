@@ -2,13 +2,32 @@
 
 import * as React from "react"
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
-import { Bell, Check, Loader2, Trash2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@clerk/nextjs"
+import {
+  Bell,
+  Check,
+  ChevronRight,
+  FolderKanban,
+  ListChecks,
+  Loader2,
+  MessageSquare,
+  Settings2,
+  Star,
+  Trash2,
+  type LucideIcon,
+} from "lucide-react"
+import { toast } from "sonner"
 import { getNotifications, markAsRead, markAllAsRead, clearAllNotifications } from "../actions"
 import { useNotificationsRealtime } from "../useNotificationsRealtime"
+import {
+  coercePrefs,
+  DEFAULT_NOTIFICATION_PREFS,
+  playNotificationFor,
+  subscribeToPrefs,
+  type NotificationPrefs,
+} from "../sound"
 import { cn } from "@/lib/utils"
-import { motion, AnimatePresence } from "framer-motion"
-
-
 
 type Notification = {
   id: string
@@ -20,118 +39,214 @@ type Notification = {
   createdAt: Date
 }
 
+const TICK_MS = 30_000
+
+// The `type` column is free-form text written by whoever created the row, so a
+// Map keeps an unrecognised value (or one colliding with an Object prototype
+// key) from resolving to something it shouldn't.
+const TYPE_GROUPS = new Map<string, { label: string; icon: LucideIcon }>([
+  ['project', { label: 'Projects', icon: FolderKanban }],
+  ['message', { label: 'Messages', icon: MessageSquare }],
+  ['task', { label: 'Tasks', icon: ListChecks }],
+  ['feedback', { label: 'Feedback', icon: Star }],
+  ['system', { label: 'System', icon: Settings2 }],
+])
+
+const OTHER_GROUP = { label: 'Other', icon: Bell }
+
+type NotificationGroup = {
+  key: string
+  label: string
+  icon: LucideIcon
+  items: Notification[]
+  unread: number
+}
+
+function groupByType(notifications: Notification[]): NotificationGroup[] {
+  const byKey = new Map<string, NotificationGroup>()
+
+  for (const notification of notifications) {
+    const meta = TYPE_GROUPS.get(notification.type)
+    const key = meta ? notification.type : 'other'
+
+    let group = byKey.get(key)
+    if (!group) {
+      const { label, icon } = meta ?? OTHER_GROUP
+      group = { key, label, icon, items: [], unread: 0 }
+      byKey.set(key, group)
+    }
+
+    group.items.push(notification)
+    if (!notification.isRead) group.unread++
+  }
+
+  // No sort needed: the server hands rows back newest-first, so a Map keyed in
+  // encounter order already lists groups by how recent their newest item is —
+  // whatever just happened stays at the top of the pane.
+  return [...byKey.values()]
+}
+
+function timeAgo(date: Date, now: number) {
+  // Clamp: a row created a moment ago can read as slightly in the future when
+  // the server clock leads the browser's, and "-2s ago" looks broken.
+  const seconds = Math.max(0, Math.floor((now - new Date(date).getTime()) / 1000))
+  if (seconds < 5) return "just now"
+  if (seconds < 60) return `${seconds}s ago`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+function NotificationRow({
+  notification,
+  now,
+  onOpen,
+  onMarkAsRead
+}: {
+  notification: Notification
+  now: number
+  onOpen: (notification: Notification) => void
+  onMarkAsRead: (id: string) => void
+}) {
+  return (
+    <div
+      // Reachable by keyboard, not only by pointer, when there is somewhere to go.
+      role={notification.actionUrl ? "button" : undefined}
+      tabIndex={notification.actionUrl ? 0 : undefined}
+      onClick={() => onOpen(notification)}
+      onKeyDown={(e) => {
+        if (!notification.actionUrl) return
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen(notification)
+        }
+      }}
+      className={cn(
+        "relative flex gap-3 rounded-lg p-3 pr-10 text-sm transition-colors cursor-default group",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+        notification.actionUrl && "cursor-pointer",
+        notification.isRead
+          ? "hover:bg-zinc-50 dark:hover:bg-white/5"
+          : "bg-indigo-50/50 dark:bg-indigo-500/10 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
+      )}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <p className={cn(
+            "font-medium truncate",
+            notification.isRead ? "text-zinc-700 dark:text-zinc-300" : "text-zinc-900 dark:text-zinc-100"
+          )}>
+            {notification.title}
+          </p>
+          <span className="text-[10px] whitespace-nowrap text-zinc-400 shrink-0 mt-0.5">
+            {timeAgo(notification.createdAt, now)}
+          </span>
+        </div>
+        <p className={cn(
+          "line-clamp-2 leading-snug",
+          notification.isRead ? "text-zinc-500 dark:text-zinc-500" : "text-zinc-600 dark:text-zinc-400"
+        )}>
+          {notification.message}
+        </p>
+      </div>
+
+      {!notification.isRead && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onMarkAsRead(notification.id)
+          }}
+          // Always visible where there is no hover to reveal it; it was the only
+          // way to read a single item, and on a phone it could never be shown.
+          className="absolute right-3 top-3 p-1 rounded-full text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 flex-shrink-0"
+          title="Mark as read"
+          aria-label="Mark as read"
+        >
+          <Check className="h-4 w-4" />
+        </button>
+      )}
+      {!notification.isRead && (
+        <div className="absolute left-1.5 top-4 h-1.5 w-1.5 rounded-full bg-indigo-500 group-hover:opacity-0 transition-opacity" />
+      )}
+    </div>
+  )
+}
+
 export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: string; dnd: boolean } }) {
+  const router = useRouter()
+  const { userId } = useAuth()
   const [notifications, setNotifications] = React.useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = React.useState(0)
   const [loading, setLoading] = React.useState(true)
   const [open, setOpen] = React.useState(false)
-  const prevTopNotificationId = React.useRef<string | null>(null)
-  const isInitialFetch = React.useRef(true)
+  const [confirmingClear, setConfirmingClear] = React.useState(false)
+  const [now, setNow] = React.useState(() => Date.now())
+  // Collapsed rather than expanded, so a category added later starts open.
+  const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(() => new Set())
 
-  const playNotificationSound = React.useCallback(() => {
-    try {
-      // Get preferences from local storage or fallback to DB initial prefs
-      const stored = localStorage.getItem('cutline_notification_prefs')
-      let prefs = initialPrefs || { tone: 'chime', dnd: false }
-      if (stored) {
-        try {
-          prefs = JSON.parse(stored)
-        } catch (e) { }
-      }
+  const groups = React.useMemo(() => groupByType(notifications), [notifications])
 
-      // Respect DND mode or none tone
-      if (prefs.dnd || prefs.tone === 'none') return
-
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-
-      const playNote = (freq: number, startTime: number, type: OscillatorType = 'triangle', duration = 0.4) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, startTime);
-
-        gain.gain.setValueAtTime(0.3, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start(startTime);
-        osc.stop(startTime + duration + 0.1);
-      }
-
-      if (prefs.tone === 'chime') {
-        playNote(1046.50, ctx.currentTime);        // C6
-        playNote(1318.51, ctx.currentTime + 0.15); // E6
-      } else if (prefs.tone === 'beep') {
-        playNote(880.00, ctx.currentTime, 'sine', 0.2); // A5 short beep
-      } else if (prefs.tone === 'bell') {
-        playNote(1567.98, ctx.currentTime, 'sine', 0.6); // G6 longer
-        playNote(1174.66, ctx.currentTime, 'triangle', 0.6); // D6 mixed
-      } else if (prefs.tone === 'bird') {
-        const playChirp = (startFreq: number, endFreq: number, timeOff: number) => {
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.type = 'sine'
-          osc.frequency.setValueAtTime(startFreq, ctx.currentTime + timeOff)
-          osc.frequency.exponentialRampToValueAtTime(endFreq, ctx.currentTime + timeOff + 0.1)
-          gain.gain.setValueAtTime(0.2, ctx.currentTime + timeOff)
-          gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + timeOff + 0.15)
-          osc.connect(gain)
-          gain.connect(ctx.destination)
-          osc.start(ctx.currentTime + timeOff)
-          osc.stop(ctx.currentTime + timeOff + 0.2)
-        }
-        playChirp(2000, 3000, 0)
-        playChirp(2200, 3200, 0.15)
-      } else if (prefs.tone === 'raindrop') {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(800, ctx.currentTime)
-        osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.08)
-        gain.gain.setValueAtTime(0.3, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1)
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-        osc.start(ctx.currentTime)
-        osc.stop(ctx.currentTime + 0.15)
-      }
-
-    } catch (e) {
-      console.log("Audio playback failed or blocked", e);
-    }
+  const toggleGroup = React.useCallback((key: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
   }, [])
 
-  const fetchNotifications = async () => {
+  const prevTopNotificationId = React.useRef<string | null>(null)
+  const isInitialFetch = React.useRef(true)
+  // Responses can land out of order, and a refetch that started before a local
+  // change must not overwrite it. Both are settled by comparing generations.
+  const fetchGeneration = React.useRef(0)
+
+  // The account row is the source of truth. localStorage used to win over it
+  // unconditionally, so preferences never followed the user to another device
+  // and a shared browser handed the previous person's tone to the next one.
+  // It is now only a live channel for a change made on the settings page.
+  const [livePrefs, setLivePrefs] = React.useState<NotificationPrefs | null>(null)
+  // coerced, not cast: notificationPreferences is a free-form JSON column.
+  const prefs = livePrefs ?? coercePrefs(initialPrefs) ?? DEFAULT_NOTIFICATION_PREFS
+
+  React.useEffect(() => subscribeToPrefs(userId, setLivePrefs), [userId])
+
+  // Held in a ref so a tone change does not re-create the fetch callback and
+  // re-run the listener effect.
+  const prefsRef = React.useRef(prefs)
+  React.useEffect(() => {
+    prefsRef.current = prefs
+  }, [prefs])
+
+  const fetchNotifications = React.useCallback(async () => {
+    const generation = ++fetchGeneration.current
     try {
       const data = await getNotifications()
-      setNotifications(data)
+      // A newer fetch or a local mutation has superseded this response.
+      if (generation !== fetchGeneration.current) return
 
+      setNotifications(data.notifications as Notification[])
+      setUnreadCount(data.unreadCount)
+
+      const top = data.notifications[0]
       if (isInitialFetch.current) {
         isInitialFetch.current = false
-        if (data.length > 0) {
-          prevTopNotificationId.current = data[0].id
-        }
-      } else {
-        // Check if there is a new unread notification at the top
-        if (data.length > 0 && !data[0].isRead) {
-          if (prevTopNotificationId.current !== data[0].id) {
-            playNotificationSound()
-          }
-        }
-        if (data.length > 0) {
-          prevTopNotificationId.current = data[0].id
-        }
+      } else if (top && !top.isRead && prevTopNotificationId.current !== top.id) {
+        playNotificationFor(prefsRef.current)
       }
+      if (top) prevTopNotificationId.current = top.id
     } catch (e) {
       console.error(e)
     } finally {
+      // Unconditional: a superseded response must still retire the spinner, or
+      // a mutation landing during the first fetch would leave it spinning.
       setLoading(false)
     }
-  }
+  }, [])
 
   React.useEffect(() => {
     fetchNotifications()
@@ -155,23 +270,39 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
       window.removeEventListener('onesignal-push-received', handlePushReceived)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [])
+  }, [fetchNotifications])
 
   // Delivery is pushed over Ably rather than polled. Polling cost one Vercel
   // invocation per user per interval, nearly always to find nothing new.
   useNotificationsRealtime(fetchNotifications)
 
-  const unreadCount = notifications.filter(n => !n.isRead).length
+  const handleOpenChange = React.useCallback((next: boolean) => {
+    setOpen(next)
+    // Never reopen mid-confirmation.
+    setConfirmingClear(false)
+    if (next) setNow(Date.now())
+  }, [])
+
+  // Relative timestamps only need to keep moving while someone is reading them;
+  // they used to be frozen at whatever they said when the list last rendered.
+  React.useEffect(() => {
+    if (!open) return
+    const id = setInterval(() => setNow(Date.now()), TICK_MS)
+    return () => clearInterval(id)
+  }, [open])
 
   React.useEffect(() => {
-    const updateTitle = () => {
-      const titleEl = document.querySelector('title')
-      if (!titleEl) return
+    const titleEl = document.querySelector('title')
+    if (!titleEl) return
 
+    const strip = (text: string) => text.replace(/^\(\d+\)\s*/, '')
+    const originalTitle = strip(titleEl.textContent || document.title || '')
+
+    const updateTitle = () => {
       const currentText = titleEl.textContent || document.title || ''
       if (!currentText) return
 
-      const cleanTitle = currentText.replace(/^\(\d+\)\s*/, '')
+      const cleanTitle = strip(currentText)
       const newTitle = unreadCount > 0 ? `(${unreadCount}) ${cleanTitle}` : cleanTitle
 
       if (titleEl.textContent !== newTitle) {
@@ -198,39 +329,108 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
       characterData: true
     })
 
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      // Hand the title back without our count, or it outlives the bell.
+      const live = document.querySelector('title')
+      if (live && live.textContent !== strip(live.textContent || '')) {
+        live.textContent = strip(live.textContent || '')
+      }
+      if (document.title !== strip(document.title)) {
+        document.title = strip(document.title) || originalTitle
+      }
+    }
   }, [unreadCount])
 
-  const handleMarkAsRead = async (id: string) => {
-    // Optimistic UI update
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
-    await markAsRead(id)
-  }
+  /**
+   * Applies a local change immediately, then reconciles with the server. On
+   * failure the previous state is put back and the reader is told — silently
+   * keeping the optimistic view meant the rows reappeared later with no
+   * explanation.
+   */
+  const mutate = React.useCallback(
+    async (
+      apply: (current: Notification[]) => { notifications: Notification[]; unreadCount: number },
+      commit: () => Promise<void>,
+      failureMessage: string
+    ) => {
+      const previousNotifications = notifications
+      const previousUnread = unreadCount
+      // Claim the current generation so an in-flight refetch cannot land on top
+      // of this change.
+      fetchGeneration.current++
 
-  const handleMarkAllAsRead = async () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })))
-    await markAllAsRead()
-  }
+      const next = apply(notifications)
+      setNotifications(next.notifications)
+      setUnreadCount(next.unreadCount)
 
-  const handleClearAll = async () => {
-    setNotifications([])
-    await clearAllNotifications()
-  }
+      try {
+        await commit()
+      } catch (e) {
+        console.error(e)
+        setNotifications(previousNotifications)
+        setUnreadCount(previousUnread)
+        toast.error(failureMessage)
+      }
+    },
+    [notifications, unreadCount]
+  )
 
-  const timeAgo = (date: Date) => {
-    const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000)
-    if (seconds < 60) return `${seconds}s ago`
-    const minutes = Math.floor(seconds / 60)
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
-  }
+  const handleMarkAsRead = React.useCallback(
+    (id: string) =>
+      mutate(
+        current => {
+          const target = current.find(n => n.id === id)
+          const wasUnread = target !== undefined && !target.isRead
+          return {
+            notifications: current.map(n => (n.id === id ? { ...n, isRead: true } : n)),
+            unreadCount: Math.max(0, unreadCount - (wasUnread ? 1 : 0))
+          }
+        },
+        () => markAsRead(id),
+        'Could not mark that notification as read.'
+      ),
+    [mutate, unreadCount]
+  )
+
+  const handleMarkAllAsRead = React.useCallback(
+    () =>
+      mutate(
+        current => ({ notifications: current.map(n => ({ ...n, isRead: true })), unreadCount: 0 }),
+        () => markAllAsRead(),
+        'Could not mark your notifications as read.'
+      ),
+    [mutate]
+  )
+
+  const handleClearAll = React.useCallback(() => {
+    setConfirmingClear(false)
+    return mutate(
+      () => ({ notifications: [], unreadCount: 0 }),
+      () => clearAllNotifications(),
+      'Could not clear your notifications.'
+    )
+  }, [mutate])
+
+  // Opening one should clear its badge, not leave it unread behind you.
+  const handleOpen = React.useCallback(
+    (notification: Notification) => {
+      if (!notification.actionUrl) return
+      handleOpenChange(false)
+      if (!notification.isRead) handleMarkAsRead(notification.id)
+      // Client navigation: this was a full page reload, which threw away the
+      // whole app just to move between two dashboard routes.
+      router.push(notification.actionUrl)
+    },
+    [handleMarkAsRead, handleOpenChange, router]
+  )
 
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-      <PopoverPrimitive.Trigger className="relative flex items-center justify-center p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+    <PopoverPrimitive.Root open={open} onOpenChange={handleOpenChange}>
+      <PopoverPrimitive.Trigger
+        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        className="relative flex items-center justify-center p-2 rounded-full hover:bg-zinc-200/50 dark:hover:bg-white/5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+      >
         <Bell className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
         {unreadCount > 0 && (
           <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#0A0A0A]" />
@@ -251,6 +451,7 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
               <div className="flex gap-3">
                 {unreadCount > 0 && (
                   <button
+                    type="button"
                     onClick={handleMarkAllAsRead}
                     className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
                   >
@@ -258,18 +459,41 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
                   </button>
                 )}
                 {notifications.length > 0 && (
-                  <button
-                    onClick={handleClearAll}
-                    className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 flex items-center gap-1"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Clear
-                  </button>
+                  confirmingClear ? (
+                    // Deleting every notification is not undoable, so it takes a
+                    // second, deliberate click rather than one stray one.
+                    <span className="flex items-center gap-2 text-xs">
+                      <span className="text-zinc-500 dark:text-zinc-400">Delete all?</span>
+                      <button
+                        type="button"
+                        onClick={handleClearAll}
+                        className="font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingClear(false)}
+                        className="font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                      >
+                        No
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingClear(true)}
+                      className="text-xs font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300 flex items-center gap-1"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Clear
+                    </button>
+                  )
                 )}
               </div>
             </div>
 
-            <div className="max-h-[350px] overflow-y-auto overflow-x-hidden p-1">
+            <div className="max-h-[350px] overflow-y-auto overflow-x-hidden">
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
@@ -280,61 +504,62 @@ export function NotificationCenter({ initialPrefs }: { initialPrefs?: { tone: st
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">No notifications yet</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-1">
-                  {notifications.map(notification => (
-                    <div
-                      key={notification.id}
-                      onClick={() => {
-                        if (notification.actionUrl) {
-                          window.location.href = notification.actionUrl;
-                        }
-                      }}
-                      className={cn(
-                        "relative flex gap-3 rounded-lg p-3 text-sm transition-colors cursor-default group",
-                        notification.actionUrl && "cursor-pointer",
-                        notification.isRead
-                          ? "hover:bg-zinc-50 dark:hover:bg-white/5"
-                          : "bg-indigo-50/50 dark:bg-indigo-500/10 hover:bg-indigo-50 dark:hover:bg-indigo-500/20"
-                      )}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <p className={cn(
-                            "font-medium truncate",
-                            notification.isRead ? "text-zinc-700 dark:text-zinc-300" : "text-zinc-900 dark:text-zinc-100"
-                          )}>
-                            {notification.title}
-                          </p>
-                          <span className="text-[10px] whitespace-nowrap text-zinc-400 shrink-0 mt-0.5">
-                            {timeAgo(notification.createdAt)}
-                          </span>
-                        </div>
-                        <p className={cn(
-                          "line-clamp-2 leading-snug",
-                          notification.isRead ? "text-zinc-500 dark:text-zinc-500" : "text-zinc-600 dark:text-zinc-400"
-                        )}>
-                          {notification.message}
-                        </p>
-                      </div>
-
-                      {!notification.isRead && (
+                <div className="pb-1">
+                  {groups.map(group => {
+                    const GroupIcon = group.icon
+                    const collapsed = collapsedGroups.has(group.key)
+                    return (
+                      <section key={group.key}>
                         <button
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            handleMarkAsRead(notification.id)
-                          }}
-                          className="absolute right-3 top-3 p-1 rounded-full text-indigo-500 opacity-0 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all focus:opacity-100 [.group:hover_&]:opacity-100 group flex-shrink-0"
-                          title="Mark as read"
+                          type="button"
+                          onClick={() => toggleGroup(group.key)}
+                          aria-expanded={!collapsed}
+                          // Sticky so the category stays legible while scrolling
+                          // a long section. Needs an opaque background or the
+                          // rows show through it.
+                          className={cn(
+                            "sticky top-0 z-10 w-full flex items-center gap-2 px-3 py-2",
+                            "bg-white dark:bg-[#121212] border-b border-zinc-100 dark:border-white/5",
+                            "text-[11px] font-semibold uppercase tracking-wide",
+                            "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200",
+                            "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-inset"
+                          )}
                         >
-                          <Check className="h-4 w-4" />
+                          <ChevronRight
+                            className={cn("h-3 w-3 shrink-0 transition-transform", !collapsed && "rotate-90")}
+                          />
+                          <GroupIcon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="flex-1 text-left truncate">{group.label}</span>
+                          <span
+                            className={cn(
+                              "tabular-nums font-medium",
+                              // Colour carries the unread signal so the header
+                              // does not need two competing numbers.
+                              group.unread > 0
+                                ? "text-indigo-600 dark:text-indigo-400"
+                                : "text-zinc-400 dark:text-zinc-600"
+                            )}
+                          >
+                            ({group.items.length})
+                          </span>
                         </button>
-                      )}
-                      {!notification.isRead && (
-                        <div className="absolute left-1.5 top-4 h-1.5 w-1.5 rounded-full bg-indigo-500 group-hover:opacity-0 transition-opacity" />
-                      )}
-                    </div>
-                  ))}
+
+                        {!collapsed && (
+                          <div className="flex flex-col gap-1 p-1">
+                            {group.items.map(notification => (
+                              <NotificationRow
+                                key={notification.id}
+                                notification={notification}
+                                now={now}
+                                onOpen={handleOpen}
+                                onMarkAsRead={handleMarkAsRead}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    )
+                  })}
                 </div>
               )}
             </div>
