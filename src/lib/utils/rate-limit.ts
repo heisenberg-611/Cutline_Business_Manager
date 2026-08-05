@@ -2,24 +2,77 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { headers } from "next/headers";
 
-// Note: If UPSTASH_REDIS_REST_URL is missing, it will throw.
-// We fallback to a mock limiter if Redis isn't configured in dev, 
-// to prevent breaking the app if the user hasn't set it up yet.
+/**
+ * Rate limiting, backed by Upstash Redis.
+ *
+ * Redis rather than in-process counters because the app runs across many
+ * serverless instances, and a limit is only a limit if every instance sees the
+ * same tally.
+ *
+ * Two distinct failure modes, deliberately handled differently:
+ *
+ * - Not configured (no UPSTASH_* variables): limiters stay null and the checks
+ *   do nothing. Logged loudly in production, because silence here is how it
+ *   went unnoticed that the public endpoints had no throttle at all.
+ *
+ * - Configured but erroring (outage, network blip, out-of-memory with eviction
+ *   disabled): the request is allowed through. A limiter is a safeguard, not a
+ *   dependency — an infrastructure blip must not take a customer's public
+ *   feedback form offline. An actual limit breach is still enforced; only
+ *   errors reaching Redis fail open.
+ */
 
+function isConfigured(): boolean {
+  return Boolean(
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  );
+}
+
+function warnUnconfigured(scope: string) {
+  const message = `[rate-limit] Upstash Redis not configured — ${scope} is UNTHROTTLED.`;
+  // An error in production: unthrottled public endpoints are a real exposure,
+  // not a development convenience.
+  if (process.env.NODE_ENV === "production") console.error(message);
+  else console.warn(message);
+}
+
+/**
+ * Runs a limiter, translating an unreachable Redis into "allowed".
+ * Returns true when the caller should proceed.
+ */
+async function allow(
+  limiter: Ratelimit | null,
+  key: string,
+  scope: string
+): Promise<{ allowed: boolean; reset?: number }> {
+  if (!limiter) return { allowed: true };
+
+  try {
+    const { success, reset } = await limiter.limit(key);
+    return { allowed: success, reset };
+  } catch (error) {
+    console.error(`[rate-limit] ${scope} check failed, allowing request:`, error);
+    return { allowed: true };
+  }
+}
+
+// -----------------------------------------------------------------------------
+// PUBLIC ACTION RATE LIMITER
+// -----------------------------------------------------------------------------
 let publicActionLimiter: Ratelimit | null = null;
 
 try {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  if (isConfigured()) {
     publicActionLimiter = new Ratelimit({
       redis: Redis.fromEnv(),
       limiter: Ratelimit.slidingWindow(5, "1 m"),
       analytics: true,
     });
   } else {
-    console.warn("Upstash Redis not configured. Rate limiting is disabled.");
+    warnUnconfigured("public form submissions (intake, feedback, review notes)");
   }
 } catch (error) {
-  console.warn("Failed to initialize Upstash Redis:", error);
+  console.error("[rate-limit] Failed to initialize Upstash Redis:", error);
 }
 
 export async function checkRateLimit() {
@@ -27,9 +80,9 @@ export async function checkRateLimit() {
 
   const headerList = await headers();
   const ip = headerList.get("x-forwarded-for") ?? "anonymous";
-  
-  const { success } = await publicActionLimiter.limit(`ratelimit_${ip}`);
-  if (!success) {
+
+  const { allowed } = await allow(publicActionLimiter, `ratelimit_${ip}`, "public");
+  if (!allowed) {
     throw new Error("Too many requests. Please try again later.");
   }
 }
@@ -40,7 +93,7 @@ export async function checkRateLimit() {
 let messageActionLimiter: Ratelimit | null = null;
 
 try {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  if (isConfigured()) {
     messageActionLimiter = new Ratelimit({
       redis: Redis.fromEnv(),
       // Max 30 messages per 1 minute per user
@@ -49,14 +102,18 @@ try {
     });
   }
 } catch (error) {
-  console.warn("Failed to initialize Upstash Redis for messaging:", error);
+  console.error("[rate-limit] Failed to initialize Upstash Redis for messaging:", error);
 }
 
 export async function checkMessageRateLimit(userId: string) {
   if (!messageActionLimiter) return;
-  
-  const { success } = await messageActionLimiter.limit(`msg_ratelimit_${userId}`);
-  if (!success) {
+
+  const { allowed } = await allow(
+    messageActionLimiter,
+    `msg_ratelimit_${userId}`,
+    "messaging"
+  );
+  if (!allowed) {
     throw new Error("You are sending messages too quickly. Please wait a moment.");
   }
 }
@@ -67,7 +124,7 @@ export async function checkMessageRateLimit(userId: string) {
 let adminAuthLimiter: Ratelimit | null = null;
 
 try {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  if (isConfigured()) {
     adminAuthLimiter = new Ratelimit({
       redis: Redis.fromEnv(),
       // Max 5 attempts per 5 minutes
@@ -76,18 +133,26 @@ try {
     });
   }
 } catch (error) {
-  console.warn("Failed to initialize Upstash Redis for admin auth:", error);
+  console.error("[rate-limit] Failed to initialize Upstash Redis for admin auth:", error);
 }
 
+/**
+ * Failing open here is safe in a way it would not be on its own: admin login is
+ * also protected by a per-account lockout in the database, which counts
+ * failures and locks at GlobalSettings.maxFailedLogins regardless of Redis.
+ */
 export async function checkAdminAuthRateLimit(ip: string) {
   if (!adminAuthLimiter) return { success: true };
-  
-  const { success, remaining, reset } = await adminAuthLimiter.limit(`admin_auth_${ip}`);
-  if (!success) {
-    return { 
-      success: false, 
-      error: `Too many login attempts. Please try again after ${Math.ceil((reset - Date.now()) / 1000 / 60)} minutes.` 
+
+  const { allowed, reset } = await allow(adminAuthLimiter, `admin_auth_${ip}`, "admin auth");
+
+  if (!allowed) {
+    const minutes = Math.max(1, Math.ceil(((reset ?? Date.now()) - Date.now()) / 1000 / 60));
+    return {
+      success: false,
+      error: `Too many login attempts. Please try again after ${minutes} minutes.`,
     };
   }
+
   return { success: true };
 }
