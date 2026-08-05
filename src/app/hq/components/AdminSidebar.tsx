@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { Home, Users, CreditCard, Activity, LogOut, ShieldAlert, Settings, Building2, Megaphone, ShieldCheck, MessageSquare, Flag } from 'lucide-react';
+import { Home, Users, CreditCard, Activity, LogOut, ShieldAlert, Settings, Building2, Megaphone, ShieldCheck, MessageSquare, Flag, UserX } from 'lucide-react';
 import { motion, LayoutGroup } from 'framer-motion';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { AdminNotifications } from './AdminNotifications';
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/hq/users', label: 'Users', icon: Users },
   { href: '/hq/broadcasts', label: 'Broadcasts', icon: Megaphone },
   { href: '/hq/feedback', label: 'Feedback', icon: Flag },
+  { href: '/hq/deletions', label: 'Deletions', icon: UserX },
   { href: '/hq/audit', label: 'Audit Logs', icon: ShieldCheck },
   { href: '/hq/admins', label: 'Admins', icon: ShieldAlert },
   { href: '/hq/settings', label: 'Platform Settings', icon: Settings },

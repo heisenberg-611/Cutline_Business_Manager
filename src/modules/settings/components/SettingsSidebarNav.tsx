@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Building2, CreditCard, Mail, Workflow, LayoutList, BellRing } from 'lucide-react'
+import { Building2, CreditCard, Mail, Workflow, LayoutList, BellRing, UserX } from 'lucide-react'
 
 const SETTINGS_NAV = [
   { href: '/dashboard/settings/general', label: 'General', icon: Building2 },
@@ -12,6 +12,7 @@ const SETTINGS_NAV = [
   { href: '/dashboard/settings/workflow', label: 'Pipeline & Workflow', icon: Workflow },
   { href: '/dashboard/settings/navigation', label: 'Navigation & Actions', icon: LayoutList },
   { href: '/dashboard/settings/notifications', label: 'Notifications', icon: BellRing },
+  { href: '/dashboard/settings/account', label: 'Account', icon: UserX },
 ]
 
 export function SettingsSidebarNav() {

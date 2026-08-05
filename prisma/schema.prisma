@@ -1133,3 +1133,42 @@ model PlatformFeedback {
 
   @@map("platform_feedback")
 }
+
+// -----------------------------------------------------------------------------
+// ACCOUNT DELETION
+// -----------------------------------------------------------------------------
+
+enum AccountDeletionStatus {
+  // Requested; the data export still has to be sent by an admin.
+  AWAITING_DATA
+  // Export delivered and confirmed. Only now may the user complete deletion.
+  DATA_DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+model AccountDeletionRequest {
+  id String @id @default(cuid())
+
+  // Both nullable so they can be cleared once the deletion completes. The row
+  // survives as evidence that a request was made and honoured, holding only a
+  // timestamp and the stated reason — keeping the email or the Clerk id would
+  // contradict the promise shown to the user that no copies remain.
+  userId    String?
+  userEmail String?
+
+  reason String                @db.Text
+  status AccountDeletionStatus @default(AWAITING_DATA)
+
+  requestedAt     DateTime  @default(now())
+  dataDeliveredAt DateTime?
+  // Which admin confirmed the export actually reached the user.
+  deliveredBy     String?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@map("account_deletion_requests")
+}
