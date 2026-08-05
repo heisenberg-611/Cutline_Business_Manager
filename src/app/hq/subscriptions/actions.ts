@@ -21,6 +21,9 @@ export async function approveRequest(requestId: string, businessId: string, plan
       where: { id: businessId },
       data: {
         subscriptionPlan: plan,
+        // The entitlement, not just the active plan — this is what a later
+        // voluntary downgrade can be restored back up to.
+        purchasedPlan: plan,
         subscriptionPeriodEnd: periodEnd,
       },
     }),

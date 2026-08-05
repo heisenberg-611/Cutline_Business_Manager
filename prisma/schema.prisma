@@ -45,7 +45,16 @@ model Business {
   realtimeMessagesEnabled      Boolean @default(false)
 
   // Subscription Details
-  subscriptionPlan      SubscriptionPlan @default(FREE)
+  //
+  // subscriptionPlan is what is active right now; purchasedPlan is what was
+  // paid for, until subscriptionPeriodEnd. They differ when a customer
+  // voluntarily sits on a lower plan mid-period — the paid entitlement is still
+  // theirs and can be restored. Recorded rather than inferred from
+  // SubscriptionRequest history, which cannot distinguish a sale from an
+  // administrative adjustment and silently picks the wrong row when a business
+  // has bought more than one plan. Null means nothing is currently purchased.
+  subscriptionPlan      SubscriptionPlan  @default(FREE)
+  purchasedPlan         SubscriptionPlan?
   subscriptionPeriodEnd DateTime?
   customProjectLimit    Int?
 

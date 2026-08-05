@@ -47,6 +47,7 @@ export async function claimFreeTrial() {
       where: { id: orgId },
       data: {
         subscriptionPlan: PLANS.PRO,
+        purchasedPlan: PLANS.PRO,
         subscriptionPeriodEnd: trialEndDate,
         hasUsedFreeTrial: true
       }

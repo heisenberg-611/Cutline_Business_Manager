@@ -40,14 +40,11 @@ describe('billing actions require an admin', () => {
 })
 
 describe('restoreBusinessPlan', () => {
-  it('restores a self-downgraded Pro plan backed by a real payment', async () => {
+  it('returns a mid-period downgrader to the plan they purchased', async () => {
     mockPrisma.business.findUnique.mockResolvedValue({
       subscriptionPlan: 'PRO',
+      purchasedPlan: 'BUSINESS',
       subscriptionPeriodEnd: FUTURE,
-    })
-    mockPrisma.subscriptionRequest.findFirst.mockResolvedValue({
-      planRequested: 'BUSINESS',
-      paymentMethod: 'bkash',
     })
 
     await restoreBusinessPlan()
@@ -58,44 +55,54 @@ describe('restoreBusinessPlan', () => {
     expect(mockSyncClerkSeatCap).toHaveBeenCalledWith(ORG, 'BUSINESS')
   })
 
-  it('accepts an HQ-granted Business plan as proof of purchase', async () => {
-    // Payment is manual (bKash) and fulfilled by an HQ admin setting the plan,
-    // so admin_override is how most real sales are recorded here. Filtering it
-    // out denied restore to genuine customers while the billing page, which
-    // does not filter, still showed them the button.
+  it('no longer consults subscription request history', async () => {
+    // The whole class of bugs here came from inferring entitlement from past
+    // requests: admin_override was indistinguishable from a sale, and the
+    // most-recent-request lookup returned the wrong row for anyone who had
+    // bought more than one plan.
     mockPrisma.business.findUnique.mockResolvedValue({
       subscriptionPlan: 'PRO',
+      purchasedPlan: 'BUSINESS',
       subscriptionPeriodEnd: FUTURE,
-    })
-    mockPrisma.subscriptionRequest.findFirst.mockResolvedValue({
-      planRequested: 'BUSINESS',
-      paymentMethod: 'admin_override',
     })
 
     await restoreBusinessPlan()
 
-    expect(mockPrisma.business.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { subscriptionPlan: 'BUSINESS' } })
-    )
-  })
-
-  it('refuses to climb from Free, which is not a self-downgrade', async () => {
-    mockPrisma.business.findUnique.mockResolvedValue({
-      subscriptionPlan: 'FREE',
-      subscriptionPeriodEnd: FUTURE,
-    })
-
-    await expect(restoreBusinessPlan()).rejects.toThrow('self-downgraded Pro plan')
-    expect(mockPrisma.business.update).not.toHaveBeenCalled()
+    expect(mockPrisma.subscriptionRequest.findFirst).not.toHaveBeenCalled()
   })
 
   it('refuses once the paid period has lapsed', async () => {
     mockPrisma.business.findUnique.mockResolvedValue({
       subscriptionPlan: 'PRO',
+      purchasedPlan: 'BUSINESS',
       subscriptionPeriodEnd: new Date(Date.now() - 86_400_000),
     })
 
-    await expect(restoreBusinessPlan()).rejects.toThrow('No active subscription period')
+    await expect(restoreBusinessPlan()).rejects.toThrow('no paid plan to restore')
+    expect(mockPrisma.business.update).not.toHaveBeenCalled()
+  })
+
+  it('refuses when the plan was reduced by an HQ admin', async () => {
+    // forceUpdateSubscription lowers purchasedPlan too, so there is nothing
+    // left to climb back to.
+    mockPrisma.business.findUnique.mockResolvedValue({
+      subscriptionPlan: 'PRO',
+      purchasedPlan: 'PRO',
+      subscriptionPeriodEnd: FUTURE,
+    })
+
+    await expect(restoreBusinessPlan()).rejects.toThrow('no paid plan to restore')
+    expect(mockPrisma.business.update).not.toHaveBeenCalled()
+  })
+
+  it('refuses when nothing was ever purchased', async () => {
+    mockPrisma.business.findUnique.mockResolvedValue({
+      subscriptionPlan: 'FREE',
+      purchasedPlan: null,
+      subscriptionPeriodEnd: FUTURE,
+    })
+
+    await expect(restoreBusinessPlan()).rejects.toThrow('no paid plan to restore')
     expect(mockPrisma.business.update).not.toHaveBeenCalled()
   })
 })

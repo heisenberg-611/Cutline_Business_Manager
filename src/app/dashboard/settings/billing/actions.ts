@@ -2,7 +2,7 @@
 
 import prisma from '@/modules/core/db/prisma';
 import { revalidatePath } from 'next/cache';
-import { PLANS } from '@/lib/subscription';
+import { PLANS, restorablePlan } from '@/lib/subscription';
 import { createAdminNotification } from '@/lib/admin-notifications';
 import { requireAdmin } from '@/lib/auth';
 import { syncClerkSeatCap } from '@/lib/plan-guard';
@@ -14,6 +14,8 @@ export async function cancelSubscription() {
     where: { id: orgId },
     data: {
       subscriptionPlan: PLANS.FREE,
+      // Cancelling gives up the entitlement, so there is nothing to restore.
+      purchasedPlan: null,
       subscriptionPeriodEnd: null,
     }
   });
@@ -54,46 +56,27 @@ export async function restoreBusinessPlan() {
 
   const business = await prisma.business.findUnique({
     where: { id: orgId },
-    select: { subscriptionPlan: true, subscriptionPeriodEnd: true }
+    select: { subscriptionPlan: true, purchasedPlan: true, subscriptionPeriodEnd: true }
   });
 
-  if (!business || !business.subscriptionPeriodEnd || new Date() > business.subscriptionPeriodEnd) {
-    throw new Error('No active subscription period');
-  }
+  if (!business) throw new Error('Business not found');
 
-  // This action exists to undo the user's own downgradeToPro, which leaves the
-  // paid period intact — so PRO is the only state it may reverse. Without this,
-  // it would also let a business climb back to BUSINESS from FREE, or from a
-  // plan an HQ admin had deliberately reduced.
-  if (business.subscriptionPlan !== PLANS.PRO) {
-    throw new Error('Only a self-downgraded Pro plan can be restored to Business');
-  }
+  // The same helper the billing page uses to decide whether to show the button,
+  // so the two cannot disagree about who is entitled to restore.
+  const restorable = restorablePlan(business);
 
-  // Deliberately does NOT filter out admin_override. Payment is taken manually
-  // over bKash and fulfilled by an HQ admin setting the plan, so those rows are
-  // the normal record of a sale rather than an administrative artifact —
-  // excluding them denied restore to most genuine Business customers while the
-  // billing page, which does not filter, still offered them the button.
-  const lastRequest = await prisma.subscriptionRequest.findFirst({
-    where: {
-      businessId: orgId,
-      status: 'APPROVED'
-    },
-    orderBy: { updatedAt: 'desc' }
-  });
-
-  if (!lastRequest || lastRequest.planRequested !== PLANS.BUSINESS) {
-    throw new Error('You do not have a previously approved Business plan');
+  if (!restorable) {
+    throw new Error('You have no paid plan to restore for the current period');
   }
 
   await prisma.business.update({
     where: { id: orgId },
     data: {
-      subscriptionPlan: PLANS.BUSINESS
+      subscriptionPlan: restorable
     }
   });
 
-  await syncClerkSeatCap(orgId, PLANS.BUSINESS);
+  await syncClerkSeatCap(orgId, restorable);
 
   revalidatePath('/dashboard/settings/billing');
 }

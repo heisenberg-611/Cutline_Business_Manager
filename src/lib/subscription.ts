@@ -74,6 +74,45 @@ export function getPlanFeatures(settings?: { freeTierProjectLimit?: number | nul
 
 
 
+/** Plan ordering, so "is this an upgrade" is asked in one place. */
+const PLAN_RANK: Record<SubscriptionPlan, number> = {
+  FREE: 0,
+  PRO: 1,
+  BUSINESS: 2,
+} as Record<SubscriptionPlan, number>
+
+export function planRank(plan: SubscriptionPlan): number {
+  return PLAN_RANK[plan] ?? 0
+}
+
+/**
+ * The plan a business may return to, or null if there is nothing to restore.
+ *
+ * A customer who buys Business and voluntarily drops to Pro keeps the Business
+ * entitlement until the period they paid for runs out. Deliberately pure and
+ * shared by the billing page and the restore action: when those two each
+ * derived the answer for themselves, they drifted, and the page offered a
+ * button the action refused.
+ */
+export function restorablePlan(business: {
+  subscriptionPlan: SubscriptionPlan
+  purchasedPlan: SubscriptionPlan | null
+  subscriptionPeriodEnd: Date | null
+}): SubscriptionPlan | null {
+  const { subscriptionPlan, purchasedPlan, subscriptionPeriodEnd } = business
+
+  if (!purchasedPlan) return null
+
+  // Expiry is the whole point: the entitlement lasts exactly as long as the
+  // period that was paid for. No period means nothing was bought.
+  if (!subscriptionPeriodEnd || new Date() >= subscriptionPeriodEnd) return null
+
+  // Only ever a restore, never an upgrade — equal or lower means nothing owed.
+  if (planRank(purchasedPlan) <= planRank(subscriptionPlan)) return null
+
+  return purchasedPlan
+}
+
 export function isSubscriptionActive(business: { subscriptionPlan: SubscriptionPlan; subscriptionPeriodEnd: Date | null }) {
   if (business.subscriptionPlan === PLANS.FREE) return true;
   if (!business.subscriptionPeriodEnd) return true; // Admin override: no expiry = indefinite access

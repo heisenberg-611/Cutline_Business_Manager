@@ -15,6 +15,9 @@ export async function forceUpdateSubscription(businessId: string, plan: Subscrip
       where: { id: businessId },
       data: {
         subscriptionPlan: plan,
+        // Reducing a plan here also reduces the entitlement, so an
+        // administratively lowered plan cannot be self-restored afterwards.
+        purchasedPlan: plan === 'FREE' ? null : plan,
         subscriptionPeriodEnd: periodEnd,
       }
     }),
@@ -59,6 +62,7 @@ export async function revokeSubscription(businessId: string) {
     where: { id: businessId },
     data: {
       subscriptionPlan: 'FREE',
+      purchasedPlan: null,
       subscriptionPeriodEnd: null,
     }
   });

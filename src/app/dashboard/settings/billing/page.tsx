@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import prisma from '@/modules/core/db/prisma'
-import { getActivePlan, PLANS, PLAN_PRICES, getPlanFeatures } from '@/lib/subscription'
+import { getActivePlan, restorablePlan, PLANS, PLAN_PRICES, getPlanFeatures } from '@/lib/subscription'
 import { cancelSubscription, downgradeToPro, restoreBusinessPlan } from './actions'
 import { Check, X } from 'lucide-react'
 import Link from 'next/link'
@@ -17,7 +17,7 @@ export default async function BillingPage() {
 
   const business = await prisma.business.findUnique({
     where: { id: orgId },
-    select: { subscriptionPlan: true, subscriptionPeriodEnd: true, customProjectLimit: true }
+    select: { subscriptionPlan: true, purchasedPlan: true, subscriptionPeriodEnd: true, customProjectLimit: true }
   })
 
   if (!business) redirect('/dashboard/select-business')
@@ -32,19 +32,11 @@ export default async function BillingPage() {
     features[activePlan][0].name = `Up to ${business.customProjectLimit} Active Projects (Custom)`;
   }
 
-  let canRestoreBusiness = false;
-  if (activePlan === PLANS.PRO && business.subscriptionPeriodEnd && new Date() < business.subscriptionPeriodEnd) {
-    const lastSubRequest = await prisma.subscriptionRequest.findFirst({
-      where: {
-        businessId: orgId,
-        status: 'APPROVED'
-      },
-      orderBy: { updatedAt: 'desc' }
-    });
-    if (lastSubRequest?.planRequested === PLANS.BUSINESS) {
-      canRestoreBusiness = true;
-    }
-  }
+  // Shared with restoreBusinessPlan so the button and the action always agree.
+  // These were previously two separate inferences over request history and they
+  // drifted: the page offered a restore the action then refused.
+  const restorable = restorablePlan(business);
+  const canRestoreBusiness = restorable === PLANS.BUSINESS;
 
   // Check UpgradeRequest
   const lastUpgradeRequest = await prisma.upgradeRequest.findFirst({
