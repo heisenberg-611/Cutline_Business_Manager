@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+// Signing needs a secret, and the module fails closed without one.
+process.env.ADMIN_SESSION_SECRET = 'a-sufficiently-long-test-secret-of-at-least-32-chars'
+
 const mockPrisma = {
   globalAdmin: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn(), count: vi.fn(), delete: vi.fn() },
   globalSettings: { findUnique: vi.fn() },
@@ -8,11 +11,15 @@ const mockPrisma = {
 vi.mock('@/modules/core/db/prisma', () => ({ default: mockPrisma }))
 
 const mockSet = vi.fn()
-/** Drives requireAdmin: the session cookie holds the admin's email. */
-let sessionEmail: string | undefined
+/**
+ * Drives requireAdmin. Holds a genuinely signed cookie rather than a bare
+ * email — verifyAdminSession now rejects anything it did not sign, which is
+ * the whole point of the change.
+ */
+let sessionCookie: string | undefined
 vi.mock('next/headers', () => ({
   cookies: async () => ({
-    get: () => (sessionEmail ? { value: sessionEmail } : undefined),
+    get: () => (sessionCookie ? { value: sessionCookie } : undefined),
     set: mockSet,
     delete: vi.fn(),
   }),
@@ -34,13 +41,19 @@ vi.mock('bcryptjs', () => ({
 }))
 
 const { loginAdmin, addAdmin, removeAdmin } = await import('./actions')
+const { signAdminSession } = await import('@/lib/admin-session')
+
+/** Signs in as `email` for requireAdmin's benefit. */
+async function asAdmin(email: string) {
+  sessionCookie = await signAdminSession(email, 900)
+}
 
 /** The audit actions written during the call. */
 const loggedActions = () => mockPrisma.adminAuditLog.create.mock.calls.map((c) => c[0].data.action)
 
 beforeEach(() => {
   vi.clearAllMocks()
-  sessionEmail = undefined
+  sessionCookie = undefined
   mockRateLimit.mockResolvedValue({ success: true })
   mockPrisma.globalSettings.findUnique.mockResolvedValue({ maxFailedLogins: 5, sessionTimeoutMinutes: 15 })
   mockPrisma.adminAuditLog.create.mockResolvedValue({})
@@ -164,8 +177,8 @@ describe('loginAdmin — account lockout', () => {
 })
 
 describe('addAdmin', () => {
-  beforeEach(() => {
-    sessionEmail = 'boss@test.local'
+  beforeEach(async () => {
+    await asAdmin('boss@test.local')
     mockPrisma.globalAdmin.findUnique.mockResolvedValue({
       email: 'boss@test.local',
       passwordHash: 'x',
@@ -210,7 +223,7 @@ describe('addAdmin', () => {
 
 describe('removeAdmin', () => {
   it('refuses to remove your own account', async () => {
-    sessionEmail = 'boss@test.local'
+    await asAdmin('boss@test.local')
     mockPrisma.globalAdmin.findUnique.mockResolvedValue({
       email: 'boss@test.local',
       passwordHash: 'x',
@@ -226,7 +239,7 @@ describe('removeAdmin', () => {
   })
 
   it('refuses to remove the last active admin', async () => {
-    sessionEmail = 'boss@test.local'
+    await asAdmin('boss@test.local')
     mockPrisma.globalAdmin.findUnique.mockResolvedValue({
       email: 'boss@test.local',
       passwordHash: 'x',

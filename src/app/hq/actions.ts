@@ -8,16 +8,27 @@ import { revalidatePath } from 'next/cache';
 import { checkAdminAuthRateLimit } from '@/lib/utils/rate-limit';
 import { getAppUrl } from '@/lib/utils';
 import { INVITE_TTL_HOURS, LOCKOUT_MINUTES, hashInviteToken } from '@/lib/admin-auth';
+import { signAdminSession, verifyAdminSessionCookie } from '@/lib/admin-session';
 
 const COOKIE_NAME = 'admin_session';
 
 export async function verifyAdminSession() {
   const cookieStore = await cookies();
-  const email = cookieStore.get(COOKIE_NAME)?.value;
-  if (!email) return null;
 
-  const admin = await prisma.globalAdmin.findUnique({ where: { email } });
+  // The cookie is signed, so a forged or tampered one never reaches the
+  // database lookup. Verification proves we issued it and it has not expired;
+  // it is not on its own proof the account still exists.
+  const session = await verifyAdminSessionCookie(cookieStore.get(COOKIE_NAME)?.value);
+  if (!session) return null;
+
+  const admin = await prisma.globalAdmin.findUnique({ where: { email: session.email } });
   if (!admin || !admin.passwordHash) return null;
+
+  // Revocation without a session table: any cookie issued before this instant
+  // is stale, which is how a password change signs out other devices.
+  if (admin.sessionsValidFrom && session.iat * 1000 < admin.sessionsValidFrom.getTime()) {
+    return null;
+  }
 
   return admin;
 }
@@ -117,7 +128,7 @@ export async function loginAdmin(email: string, password: string) {
   const timeoutMinutes = settings?.sessionTimeoutMinutes || 15;
 
   const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, email, {
+  cookieStore.set(COOKIE_NAME, await signAdminSession(email, timeoutMinutes * 60), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',

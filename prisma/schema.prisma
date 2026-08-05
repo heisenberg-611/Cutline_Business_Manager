@@ -1009,6 +1009,11 @@ model GlobalAdmin {
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
 
+  // Sessions issued before this instant are rejected. Moving it forward — on a
+  // password change, or a deliberate "sign out everywhere" — revokes every
+  // outstanding cookie without needing a session table.
+  sessionsValidFrom DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
