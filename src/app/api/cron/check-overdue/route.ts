@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/modules/core/db/prisma'
+import { isAuthorizedCron } from '@/lib/cron-auth'
 
 export async function GET(request: NextRequest) {
-  // Simple auth for Vercel Cron
-  const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(request)) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

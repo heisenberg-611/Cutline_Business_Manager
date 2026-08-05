@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import prisma from '@/modules/core/db/prisma'
 import { Client } from '@upstash/qstash'
+import { isAuthorizedCron } from '@/lib/cron-auth'
 
 // Lazy initialization
 let qstashClient: Client | null = null
@@ -13,13 +14,8 @@ function getQStashClient() {
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: Request) {
-  // Optional: verify this came from Vercel Cron
-  const authHeader = request.headers.get('authorization')
-  if (
-    process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
+export async function GET(request: NextRequest) {
+  if (!isAuthorizedCron(request)) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 

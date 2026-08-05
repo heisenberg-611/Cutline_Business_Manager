@@ -4,6 +4,7 @@ import { requireAdmin } from './actions';
 import { PLAN_PRICES } from '@/lib/subscription';
 import { RevenueChart } from './components/RevenueChart';
 import { GrowthChart } from './components/GrowthChart';
+import { ExpiringSoon } from './components/ExpiringSoon';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 
 export const metadata = {
@@ -15,7 +16,7 @@ export default async function AdminOverviewPage() {
 
   const sixMonthsAgo = subMonths(startOfMonth(new Date()), 5);
 
-  const [totalBusinesses, totalUsers, pendingRequests, businessesByPlan, liveSubscriptions] =
+  const [totalBusinesses, totalUsers, pendingRequests, businessesByPlan, liveSubscriptions, expiringRaw] =
     await Promise.all([
       prisma.business.count(),
       prisma.user.count(),
@@ -36,8 +37,32 @@ export default async function AdminOverviewPage() {
           ],
         },
         select: { subscriptionPlan: true },
+      }),
+      // Renewals are collected by hand, so a lapse has to be seen coming.
+      prisma.business.findMany({
+        where: {
+          subscriptionPlan: { not: 'FREE' },
+          subscriptionPeriodEnd: {
+            not: null,
+            gte: new Date(),
+            lte: new Date(new Date().getTime() + 14 * 86_400_000),
+          },
+        },
+        orderBy: { subscriptionPeriodEnd: 'asc' },
+        select: { id: true, name: true, subscriptionPlan: true, subscriptionPeriodEnd: true },
       })
     ]);
+
+  const expiringSoon = expiringRaw.map((b) => ({
+    id: b.id,
+    name: b.name,
+    plan: b.subscriptionPlan.charAt(0) + b.subscriptionPlan.slice(1).toLowerCase(),
+    daysLeft: Math.max(
+      0,
+      Math.ceil((b.subscriptionPeriodEnd!.getTime() - new Date().getTime()) / 86_400_000)
+    ),
+    endsOn: format(b.subscriptionPeriodEnd!, 'd MMM yyyy'),
+  }));
 
   // Current Monthly Recurring Revenue
   const currentMrr = liveSubscriptions.reduce((acc, business) => {
@@ -135,11 +160,13 @@ export default async function AdminOverviewPage() {
             </div>
             <div>
               <p className="text-sm text-zinc-500 font-medium">Current MRR</p>
-              <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">${currentMrr}</h3>
+              <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">৳{currentMrr.toLocaleString()}</h3>
             </div>
           </div>
         </div>
       </div>
+
+      <ExpiringSoon businesses={expiringSoon} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
