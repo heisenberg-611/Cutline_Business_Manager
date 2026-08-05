@@ -7,7 +7,15 @@ import { cookies, headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { checkAdminAuthRateLimit } from '@/lib/utils/rate-limit';
 import { getAppUrl } from '@/lib/utils';
-import { INVITE_TTL_HOURS, LOCKOUT_MINUTES, MIN_ADMIN_PASSWORD_LENGTH, hashInviteToken } from '@/lib/admin-auth';
+import {
+  INVITE_TTL_HOURS,
+  LOCKOUT_MINUTES,
+  MIN_ADMIN_PASSWORD_LENGTH,
+  MAX_FAILED_LOGINS,
+  SESSION_TIMEOUT_MINUTES,
+  clampSetting,
+  hashInviteToken,
+} from '@/lib/admin-auth';
 import { signAdminSession, verifyAdminSessionCookie } from '@/lib/admin-session';
 
 const COOKIE_NAME = 'admin_session';
@@ -76,7 +84,7 @@ export async function loginAdmin(email: string, password: string) {
 
   if (!isValid) {
     const settings = await prisma.globalSettings.findUnique({ where: { id: 'default' } });
-    const threshold = settings?.maxFailedLogins || 5;
+    const threshold = clampSetting(settings?.maxFailedLogins, MAX_FAILED_LOGINS);
     const attempts = admin.failedLoginAttempts + 1;
     const shouldLock = attempts >= threshold;
 
@@ -125,7 +133,7 @@ export async function loginAdmin(email: string, password: string) {
   }
 
   const settings = await prisma.globalSettings.findUnique({ where: { id: 'default' } });
-  const timeoutMinutes = settings?.sessionTimeoutMinutes || 15;
+  const timeoutMinutes = clampSetting(settings?.sessionTimeoutMinutes, SESSION_TIMEOUT_MINUTES);
 
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, await signAdminSession(email, timeoutMinutes * 60), {

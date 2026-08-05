@@ -190,11 +190,13 @@ export function SettingsForm({ initialData }: { initialData: any }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Max Failed Logins</label>
-                    <Input type="number" name="maxFailedLogins" value={formData.maxFailedLogins} onChange={handleInputChange} />
+                    <Input type="number" min={1} max={50} name="maxFailedLogins" value={formData.maxFailedLogins} onChange={handleInputChange} />
+                    <p className="text-xs text-muted-foreground">Failed attempts before an admin account locks for 15 minutes. Between 1 and 50.</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Admin Session Timeout (Minutes)</label>
-                    <Input type="number" name="sessionTimeoutMinutes" value={formData.sessionTimeoutMinutes} onChange={handleInputChange} />
+                    <Input type="number" min={1} max={1440} name="sessionTimeoutMinutes" value={formData.sessionTimeoutMinutes} onChange={handleInputChange} />
+                    <p className="text-xs text-muted-foreground">How long an HQ session lasts before re-authentication. Between 1 minute and 24 hours.</p>
                   </div>
                 </div>
               </div>

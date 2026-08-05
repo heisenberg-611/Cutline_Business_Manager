@@ -2,6 +2,11 @@
 
 import prisma from '@/modules/core/db/prisma';
 import { requireAdmin } from '../actions';
+import {
+  MAX_FAILED_LOGINS,
+  SESSION_TIMEOUT_MINUTES,
+  clampSetting,
+} from '@/lib/admin-auth';
 import { revalidatePath } from 'next/cache';
 
 export async function getGlobalSettings() {
@@ -20,7 +25,7 @@ export async function getGlobalSettings() {
   return settings;
 }
 
-export async function updateGlobalSettings(data: {
+export async function updateGlobalSettings(raw: {
   paymentMethods: any[];
   maintenanceMode: boolean;
   allowNewSignups: boolean;
@@ -42,6 +47,19 @@ export async function updateGlobalSettings(data: {
     const oldSettings = await prisma.globalSettings.findUnique({
       where: { id: 'default' }
     });
+
+    // Clamped before storing as well as when read. A number input accepts
+    // anything typed into it, and a negative maxFailedLogins would lock an
+    // admin out on their first mistyped password.
+    const data = {
+      ...raw,
+      maxFailedLogins: clampSetting(raw.maxFailedLogins, MAX_FAILED_LOGINS),
+      sessionTimeoutMinutes: clampSetting(raw.sessionTimeoutMinutes, SESSION_TIMEOUT_MINUTES),
+      freeTierProjectLimit: Math.max(0, Math.trunc(raw.freeTierProjectLimit || 0)),
+      proTierProjectLimit: Math.max(0, Math.trunc(raw.proTierProjectLimit || 0)),
+      businessTierSeatLimit: Math.max(0, Math.trunc(raw.businessTierSeatLimit || 0)),
+      defaultTrialDays: Math.max(0, Math.trunc(raw.defaultTrialDays || 0)),
+    };
 
     await prisma.globalSettings.upsert({
       where: { id: 'default' },
