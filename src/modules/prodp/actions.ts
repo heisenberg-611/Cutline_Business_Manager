@@ -9,6 +9,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { visibleProjectFilter } from '@/modules/projects/authz'
+import { requirePlan } from '@/lib/plan-guard'
 
 const IntakeFormSchema = z.object({
   clientName: z.string().min(1, 'Client name is required').max(100),
@@ -107,6 +108,8 @@ export async function getPendingProjectRequests() {
 export async function approveProjectRequest(requestId: string) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
+
+  await requirePlan(orgId, 'prodp')
 
   const request = await prisma.projectRequest.findFirst({
     where: { id: requestId, businessId: orgId, status: 'PENDING' }
@@ -218,6 +221,8 @@ export async function rejectProjectRequest(requestId: string) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
 
+  await requirePlan(orgId, 'prodp')
+
   await prisma.projectRequest.updateMany({
     where: { id: requestId, businessId: orgId, status: 'PENDING' },
     data: { status: 'REJECTED', resolvedAt: new Date() }
@@ -233,6 +238,8 @@ export async function createReviewRequest(projectId: string, draftLink: string) 
   const { orgId, userId, orgRole } = await auth()
   const isAdmin = orgRole === 'org:admin'
   if (!orgId) throw new Error('Unauthorized')
+
+  await requirePlan(orgId, 'prodp')
 
   const project = await prisma.project.findFirst({
     where: { 
@@ -340,6 +347,8 @@ export async function deleteReviewRequest(id: string) {
   const isAdmin = orgRole === 'org:admin'
   if (!orgId) throw new Error('Unauthorized')
 
+  await requirePlan(orgId, 'prodp')
+
   const request = await prisma.reviewRequest.findFirst({
     where: {
       id,
@@ -362,6 +371,8 @@ export async function resolveReviewRequest(id: string) {
   const { orgId, userId, orgRole } = await auth()
   const isAdmin = orgRole === 'org:admin'
   if (!orgId) throw new Error('Unauthorized')
+
+  await requirePlan(orgId, 'prodp')
 
   const request = await prisma.reviewRequest.findFirst({
     where: {

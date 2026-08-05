@@ -1,8 +1,6 @@
 import { auth } from '@clerk/nextjs/server'
-import prisma from '@/modules/core/db/prisma'
 import { authorizeProjectAccess, type ProjectAccessLevel } from '@/modules/projects/authz'
-import { canUseTeamCollaboration } from '@/lib/subscription'
-import { getActivePlan } from '@/lib/subscription'
+import { requirePlan } from '@/lib/plan-guard'
 
 /**
  * Entity types that can be commented on. Adding one here is deliberate: each
@@ -21,14 +19,7 @@ export function isCommentableType(value: string): value is CommentableType {
  * mutation — hiding the UI is not access control.
  */
 export async function requireCollaborationPlan(businessId: string) {
-  const business = await prisma.business.findUnique({
-    where: { id: businessId },
-    select: { subscriptionPlan: true, subscriptionPeriodEnd: true },
-  })
-
-  if (!business || !canUseTeamCollaboration(getActivePlan(business))) {
-    throw new Error('Team collaboration is available on the Business plan.')
-  }
+  await requirePlan(businessId, 'collaboration')
 }
 
 /**

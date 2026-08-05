@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { requireAdmin } from '@/lib/auth'
+import { requirePlan } from '@/lib/plan-guard'
 import { revalidatePath } from 'next/cache'
 import { generateInvoiceNumber } from '@/lib/invoices/number-generator'
 import { sendDynamicInvoiceEmail } from '@/lib/emails/send-invoice'
@@ -241,6 +242,13 @@ export async function voidInvoice(id: string) {
 
 export async function sendInvoice(id: string) {
   const { orgId } = await requireBusiness()
+
+  // Matches what the UI already enforces: the send control is disabled outright
+  // below Pro, so reaching this action means a disabled control was bypassed.
+  // Gating the whole action rather than just the email keeps server and UI
+  // saying the same thing — loosen to wrap only sendDynamicInvoiceEmail below
+  // if FREE should be able to mark an invoice sent without emailing it.
+  await requirePlan(orgId, 'emails')
 
   const result = await withAudit('Invoice', id, 'SENT', {}, async (tx) => {
     const existing = await tx.invoice.findFirst({

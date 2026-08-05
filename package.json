@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "eslint --max-warnings=377",
     "reset-db": "tsx scripts/reset-db.ts",
+    "backfill-owners": "tsx scripts/backfill-business-owner.ts",
+    "sync-seat-caps": "tsx scripts/sync-seat-caps.ts",
     "postinstall": "prisma generate",
     "vercel-build": "prisma generate && next build",
     "test": "vitest run",

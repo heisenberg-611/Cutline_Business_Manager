@@ -50,6 +50,7 @@ export function SettingsForm({ initialData }: { initialData: any }) {
     privacyUrl: initialData.privacyUrl ?? '',
     freeTierProjectLimit: initialData.freeTierProjectLimit ?? 3,
     proTierProjectLimit: initialData.proTierProjectLimit ?? 20,
+    businessTierSeatLimit: initialData.businessTierSeatLimit ?? 25,
     maxFailedLogins: initialData.maxFailedLogins ?? 5,
     sessionTimeoutMinutes: initialData.sessionTimeoutMinutes ?? 15,
   });
@@ -146,6 +147,11 @@ export function SettingsForm({ initialData }: { initialData: any }) {
                     <label className="text-sm font-medium">Pro Tier Project Limit</label>
                     <Input type="number" name="proTierProjectLimit" value={formData.proTierProjectLimit} onChange={handleInputChange} />
                     <p className="text-xs text-muted-foreground">Max projects allowed on pro plan.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Business Tier Seat Limit</label>
+                    <Input type="number" name="businessTierSeatLimit" value={formData.businessTierSeatLimit} onChange={handleInputChange} />
+                    <p className="text-xs text-muted-foreground">Team seats pushed to Clerk for Business plans. Cannot exceed your Clerk instance limit. 0 means unlimited. Lower plans are always pinned to 1.</p>
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <label className="text-sm font-medium">Terms of Service URL</label>

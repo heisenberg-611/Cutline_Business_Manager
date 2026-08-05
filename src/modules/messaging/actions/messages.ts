@@ -7,6 +7,7 @@ import { authorizeConversationRead, authorizeConversationWrite } from '../auth'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
 import { createManyNotifications } from '@/modules/notifications/services'
 import { conversationChannel, userSidebarChannel } from '@/lib/ably/channels'
+import { requirePlan } from '@/lib/plan-guard'
 
 /**
  * Sends a message to a conversation.
@@ -171,6 +172,8 @@ export async function deleteMessage(messageId: string) {
   const { auth: clerkAuth } = await import('@clerk/nextjs/server')
   const { userId, orgId, orgRole } = await clerkAuth()
   if (!userId || !orgId || orgRole !== 'org:admin') throw new Error('Unauthorized')
+
+  await requirePlan(orgId, 'messages')
 
   const message = await prisma.message.findUnique({
     where: { id: messageId },

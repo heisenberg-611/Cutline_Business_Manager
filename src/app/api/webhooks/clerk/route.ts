@@ -2,6 +2,8 @@ import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
+import { getActivePlan, canInviteMembers } from '@/lib/subscription'
+import { syncClerkSeatCap } from '@/lib/plan-guard'
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
@@ -49,21 +51,40 @@ export async function POST(req: Request) {
 
   try {
     if (eventType === 'organization.created' || eventType === 'organization.updated') {
-      const { id, name } = evt.data
-      
+      const { id, name, created_by } = evt.data
+
       const settings = await prisma.globalSettings.findUnique({ where: { id: 'default' } });
       const planId = settings?.defaultPlanId || 'FREE';
-      
-      await prisma.business.upsert({
+
+      const business = await prisma.business.upsert({
         where: { id },
         update: { name },
         create: {
           id,
           name,
           defaultCurrency: 'USD',
-          subscriptionPlan: planId as any
+          subscriptionPlan: planId as any,
+          ownerUserId: created_by || null
         }
       })
+
+      // Fills the owner only when it is still unknown — the membership branch
+      // below can create a business row defensively without ever seeing
+      // created_by. Scoped to ownerUserId: null so an established owner is
+      // never reassigned by a later organization.updated event.
+      if (created_by && !business.ownerUserId) {
+        await prisma.business.updateMany({
+          where: { id, ownerUserId: null },
+          data: { ownerUserId: created_by }
+        })
+        business.ownerUserId = created_by
+      }
+
+      // New organizations start capped at the owner's single seat unless the
+      // default plan includes team members.
+      if (eventType === 'organization.created') {
+        await syncClerkSeatCap(id, getActivePlan(business))
+      }
     }
 
     if (eventType === 'user.created' || eventType === 'user.updated') {
@@ -103,7 +124,7 @@ export async function POST(req: Request) {
         const planId = settings?.defaultPlanId || 'FREE';
 
         // Defensively ensure parent rows exist — Clerk doesn't guarantee webhook ordering
-        await prisma.business.upsert({
+        const business = await prisma.business.upsert({
           where: { id: organization.id },
           update: {},
           create: {
@@ -113,6 +134,76 @@ export async function POST(req: Request) {
             subscriptionPlan: planId as any
           }
         })
+
+        // Seat backstop. The Clerk-side cap is the primary control, but it is
+        // set by a separate API call that can fail or be missed on a plan path
+        // added later — and an invite never touches this app, so this webhook
+        // is the last point at which an over-seat membership can be caught.
+        //
+        // Only brand-new memberships are policed: an existing row means this is
+        // a role change (or a webhook retry), and revoking on those would eject
+        // legitimate members. Members already present when a plan lapses are
+        // deliberately left alone here and handled by the seat lock instead, so
+        // that re-upgrading restores the team rather than requiring re-invites.
+        const existingMembership = await prisma.businessMembership.findUnique({
+          where: {
+            businessId_userId: {
+              businessId: organization.id,
+              userId: public_user_data.user_id
+            }
+          },
+          select: { userId: true }
+        })
+
+        if (!existingMembership && !canInviteMembers(getActivePlan(business))) {
+          // The owner always keeps their seat. Where the owner is not yet known
+          // — a business row created defensively below, or one predating the
+          // column and not yet backfilled — fall back to "is anyone here yet",
+          // which identifies the founding membership on a brand-new org.
+          const isOwnerSeat = business.ownerUserId
+            ? business.ownerUserId === public_user_data.user_id
+            : (await prisma.businessMembership.count({
+                where: { businessId: organization.id }
+              })) === 0
+
+          if (!isOwnerSeat) {
+            console.warn(
+              `[clerk-webhook] Revoking over-seat membership: user ${public_user_data.user_id} ` +
+              `joined ${organization.id} on the ${business.subscriptionPlan} plan`
+            )
+
+            let revoked = false
+            try {
+              const { clerkClient } = await import('@clerk/nextjs/server')
+              const client = await clerkClient()
+              await client.organizations.deleteOrganizationMembership({
+                organizationId: organization.id,
+                userId: public_user_data.user_id
+              })
+              revoked = true
+            } catch (revokeError) {
+              // Deliberately swallowed. Letting this reach the outer handler
+              // would return a 500 and Clerk would redeliver the same event
+              // indefinitely. Skipping the BusinessMembership upsert below is
+              // the part that actually matters: without that row the user has
+              // no membership in this app, and the seat lock in the dashboard
+              // layout keeps them out even though Clerk still lists them.
+              console.error(
+                `[clerk-webhook] Could not revoke over-seat membership for ` +
+                `${public_user_data.user_id} in ${organization.id}:`,
+                revokeError
+              )
+            }
+
+            // Re-assert the cap: reaching here means it was wrong in Clerk.
+            await syncClerkSeatCap(organization.id, getActivePlan(business))
+
+            return new Response(
+              JSON.stringify({ success: true, revoked: revoked ? 'over_seat_limit' : 'membership_denied' }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            )
+          }
+        }
 
         await prisma.user.upsert({
           where: { id: public_user_data.user_id },

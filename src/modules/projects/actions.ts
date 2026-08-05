@@ -8,6 +8,7 @@ import { ensureDefaultTemplate } from '@/modules/workflow/actions'
 import { createNotification } from '@/modules/notifications/services'
 import { syncAssigneeMembership } from './authz'
 import { visibleProjectFilter } from './authz'
+import { getActivePlan } from '@/lib/subscription'
 
 // -----------------------------------------------------------------------------
 // DUPLICATE CHECK QUERIES (for live form validation)
@@ -76,7 +77,7 @@ export async function createProject(data: FormData) {
 
   // --- Quota Enforcement ---
   const [businessData, globalSettings, currentProjectCount] = await Promise.all([
-    prisma.business.findUnique({ where: { id: orgId }, select: { subscriptionPlan: true, customProjectLimit: true } }),
+    prisma.business.findUnique({ where: { id: orgId }, select: { subscriptionPlan: true, subscriptionPeriodEnd: true, customProjectLimit: true } }),
     prisma.globalSettings.findUnique({ where: { id: 'default' } }),
     prisma.project.count({ where: { businessId: orgId } })
   ])
@@ -85,8 +86,10 @@ export async function createProject(data: FormData) {
     throw new Error('Business not found')
   }
 
-  const plan = businessData.subscriptionPlan
-  
+  // Active plan, not the raw column: an expired Business subscription must fall
+  // back to the FREE quota rather than keep granting unlimited projects.
+  const plan = getActivePlan(businessData)
+
   if (businessData.customProjectLimit !== null) {
     if (currentProjectCount >= businessData.customProjectLimit) {
       throw new Error(`Custom project limit reached (${businessData.customProjectLimit} projects). Please contact support.`)

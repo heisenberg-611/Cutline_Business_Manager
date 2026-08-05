@@ -5,6 +5,8 @@ import prisma from '@/modules/core/db/prisma'
 import { authorizeConversationRead, authorizeConversationWrite } from '../auth'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
 import { createManyNotifications } from '@/modules/notifications/services'
+import { requirePlan, getActivePlanFor } from '@/lib/plan-guard'
+import { canUseMessages } from '@/lib/subscription'
 
 /**
  * Gets or creates a DIRECT conversation between the current user and a target user.
@@ -16,7 +18,9 @@ export async function getOrCreateDirectConversation(targetUserId: string) {
 
   const { userId, orgId } = await auth()
   if (!userId || !orgId) throw new Error('Unauthorized')
-  
+
+  await requirePlan(orgId, 'messages')
+
   if (userId === targetUserId) {
     throw new Error('Cannot create a conversation with yourself')
   }
@@ -105,6 +109,11 @@ export async function updateSlowMode(conversationId: string, enabled: boolean, c
 export async function getConversations() {
   const { userId, orgId } = await auth()
   if (!userId || !orgId) return []
+
+  // Empty rather than thrown, matching how this read already handles a missing
+  // session — and it must not fall through, because the next step creates a
+  // BROADCAST conversation as a side effect.
+  if (!canUseMessages(await getActivePlanFor(orgId))) return []
 
   // Ensure at least one BROADCAST conversation exists for the business
   const existingBroadcast = await prisma.conversation.findFirst({
@@ -268,6 +277,8 @@ export async function createBroadcast(content: string) {
   if (!userId || !orgId) throw new Error('Unauthorized')
   if (orgRole !== 'org:admin') throw new Error('Forbidden: Admins only')
 
+  await requirePlan(orgId, 'messages')
+
   // Fetch all active members in the business
   const members = await prisma.businessMembership.findMany({
     where: { businessId: orgId }
@@ -372,7 +383,9 @@ export async function createGroupConversation(memberIds: string[], title?: strin
   
   const { userId, orgId } = await auth()
   if (!userId || !orgId) throw new Error('Unauthorized')
-  
+
+  await requirePlan(orgId, 'messages')
+
   // Create a clean set of valid string IDs (limit to 1000 for generous scale)
   const uniqueMemberIds = Array.from(new Set(memberIds)).filter(id => typeof id === 'string')
   
@@ -453,6 +466,10 @@ export async function createBusinessGuestChatLink() {
   const { auth: clerkAuth } = await import('@clerk/nextjs/server')
   const { userId, orgId } = await clerkAuth()
   if (!userId || !orgId) throw new Error('Unauthorized')
+
+  // Issuing a new guest link is gated; links already handed out keep working,
+  // so a lapsed plan never breaks a chat a client is mid-conversation in.
+  await requirePlan(orgId, 'messages')
 
   const { v4: uuidv4 } = await import('uuid')
   const token = uuidv4()

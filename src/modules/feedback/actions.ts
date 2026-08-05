@@ -11,6 +11,7 @@ import { getAppUrl } from '@/lib/utils'
 import { z } from 'zod'
 import { checkRateLimit } from '@/lib/utils/rate-limit'
 import { requireAdmin } from '@/lib/auth'
+import { requirePlan } from '@/lib/plan-guard'
 
 const FeedbackSchema = z.object({
   overallScore: z.number().int().min(1).max(10),
@@ -26,6 +27,7 @@ const FeedbackSchema = z.object({
 
 export async function createFeedbackRequest(projectId: string, clientId: string) {
   const { orgId } = await requireAdmin()
+  await requirePlan(orgId, 'feedback')
 
   const project = await prisma.project.findFirst({
     where: { id: projectId, businessId: orgId }
@@ -64,6 +66,8 @@ export async function createFeedbackRequest(projectId: string, clientId: string)
 
 export async function sendFeedbackEmailAction(projectId: string, token: string, providedDriveLink?: string) {
   const { orgId } = await requireAdmin()
+  // Gated before anything is sent: this action spends real Resend credits.
+  await requirePlan(orgId, 'feedback')
 
   const request = await prisma.feedbackRequest.findFirst({
     where: { token, businessId: orgId, projectId },
@@ -168,6 +172,8 @@ export async function convertToTestimonial(responseId: string, displayText: stri
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
 
+  await requirePlan(orgId, 'feedback')
+
   const response = await prisma.feedbackResponse.findFirst({
     where: { id: responseId, businessId: orgId },
     include: { request: true }
@@ -218,6 +224,8 @@ export async function getTestimonials() {
 export async function toggleTestimonialPublishStatus(testimonialId: string, isPublished: boolean) {
   const { orgId } = await auth()
   if (!orgId) throw new Error('Unauthorized')
+
+  await requirePlan(orgId, 'feedback')
 
   await prisma.testimonial.update({
     where: { id: testimonialId, businessId: orgId },

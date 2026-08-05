@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '../actions';
 import { SubscriptionPlan } from '@prisma/client';
 import { PLAN_PRICES } from '@/lib/subscription';
+import { syncClerkSeatCap } from '@/lib/plan-guard';
 
 export async function forceUpdateSubscription(businessId: string, plan: SubscriptionPlan, periodEnd: Date | null) {
   const admin = await requireAdmin();
@@ -44,6 +45,8 @@ export async function forceUpdateSubscription(businessId: string, plan: Subscrip
 
   await prisma.$transaction(operations);
 
+  await syncClerkSeatCap(businessId, plan);
+
   revalidatePath('/hq/organizations');
   revalidatePath('/hq/finances');
   revalidatePath('/dashboard/settings/billing');
@@ -68,6 +71,8 @@ export async function revokeSubscription(businessId: string) {
       metadata: { plan: 'FREE' }
     }
   });
+
+  await syncClerkSeatCap(businessId, 'FREE');
 
   revalidatePath('/hq/organizations');
   revalidatePath('/dashboard/settings/billing');

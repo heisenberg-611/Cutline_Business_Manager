@@ -32,6 +32,7 @@ export async function updateGlobalSettings(data: {
   privacyUrl: string;
   freeTierProjectLimit: number;
   proTierProjectLimit: number;
+  businessTierSeatLimit: number;
   maxFailedLogins: number;
   sessionTimeoutMinutes: number;
 }) {
@@ -55,7 +56,7 @@ export async function updateGlobalSettings(data: {
     const changesByCat: Record<string, any> = {};
 
     const categories = {
-      BILLING: ['paymentMethods', 'defaultTrialDays', 'defaultPlanId', 'freeTierProjectLimit', 'proTierProjectLimit'],
+      BILLING: ['paymentMethods', 'defaultTrialDays', 'defaultPlanId', 'freeTierProjectLimit', 'proTierProjectLimit', 'businessTierSeatLimit'],
       SECURITY: ['maintenanceMode', 'allowNewSignups', 'maxFailedLogins', 'sessionTimeoutMinutes'],
       SUPPORT: ['supportEmail', 'replyToEmail', 'termsUrl', 'privacyUrl']
     };

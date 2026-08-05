@@ -49,6 +49,17 @@ model Business {
   subscriptionPeriodEnd DateTime?
   customProjectLimit    Int?
 
+  // Clerk user id of the organization creator. Identifies whose seat survives
+  // when a plan drops below BUSINESS — checking org:admin instead would leave a
+  // downgraded org with as many full-access seats as it has admins.
+  // Nullable only for rows predating this column; see scripts/backfill-business-owner.ts.
+  ownerUserId String?
+
+  // Tracked per business as well as per user (User.hasUsedFreeTrial), because
+  // the trial upgrades the *business*. Without this, cancelling back to FREE and
+  // having any never-trialed member claim again renews Pro indefinitely.
+  hasUsedFreeTrial Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1017,6 +1028,11 @@ model GlobalSettings {
   // 4. Platform Limitations & Quotas
   freeTierProjectLimit Int @default(3)
   proTierProjectLimit  Int @default(20)
+
+  // Seats pushed to Clerk's maxAllowedMemberships for Business-plan orgs.
+  // Must not exceed what the Clerk instance allows, or the write is rejected.
+  // 0 means unlimited to Clerk. Plans below Business are always pinned to 1.
+  businessTierSeatLimit Int @default(25)
 
   // 5. Security & Rate Limiting
   maxFailedLogins       Int @default(5)

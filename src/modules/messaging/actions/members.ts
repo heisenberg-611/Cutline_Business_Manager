@@ -3,6 +3,8 @@
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { authorizeConversationRead, authorizeConversationWrite } from '../auth'
+import { getActivePlanFor } from '@/lib/plan-guard'
+import { canUseMessages } from '@/lib/subscription'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
 import { sendPushNotification } from '@/lib/onesignal'
 
@@ -15,6 +17,11 @@ export async function getMembersForMessaging() {
   const { userId, orgId, orgRole } = await clerkAuth()
   
   if (!userId || !orgId) {
+    return []
+  }
+
+  // Empty rather than thrown, matching the missing-session case above.
+  if (!canUseMessages(await getActivePlanFor(orgId))) {
     return []
   }
 
