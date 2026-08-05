@@ -3,6 +3,7 @@ import prisma from '@/modules/core/db/prisma'
 import { isAuthorizedCron } from '@/lib/cron-auth'
 import { syncClerkSeatCap } from '@/lib/plan-guard'
 import { PLANS } from '@/lib/subscription'
+import { ORG_DELETION_GRACE_DAYS } from '@/lib/account-deletion'
 import { createAdminNotification } from '@/lib/admin-notifications'
 
 /**
@@ -79,10 +80,42 @@ export async function GET(request: NextRequest) {
     })
   }
 
+  // Purge workspaces whose Clerk organization was deleted long enough ago that
+  // the grace period has passed. Deletion is deferred rather than immediate so
+  // that an admin deleting an organization in Clerk — which reaches none of the
+  // account-deletion flow — can still be undone.
+  const purgeBefore = new Date(Date.now() - ORG_DELETION_GRACE_DAYS * 86_400_000)
+  const duePurge = await prisma.business.findMany({
+    where: { pendingDeletionAt: { not: null, lt: purgeBefore } },
+    select: { id: true, name: true },
+  })
+
+  const purged: string[] = []
+  for (const business of duePurge) {
+    try {
+      await prisma.business.delete({ where: { id: business.id } })
+      purged.push(business.name)
+    } catch (error) {
+      console.error('[expire-subscriptions] purge of %s failed:', business.id, error)
+    }
+  }
+
+  if (purged.length > 0) {
+    await prisma.adminAuditLog.create({
+      data: {
+        adminEmail: 'system@cron',
+        action: 'PURGE_DELETED_WORKSPACES',
+        targetId: 'global',
+        metadata: { purged, graceDays: ORG_DELETION_GRACE_DAYS },
+      },
+    })
+  }
+
   return NextResponse.json({
     success: true,
     checked: lapsed.length,
     expired: expired.length,
     failed: failures.length,
+    purged: purged.length,
   })
 }

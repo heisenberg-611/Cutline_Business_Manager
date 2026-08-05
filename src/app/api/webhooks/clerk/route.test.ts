@@ -25,7 +25,14 @@ vi.mock('next/headers', () => ({
 
 const mockPrisma = {
   globalSettings: { findUnique: vi.fn() },
-  business: { upsert: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
+  business: {
+    upsert: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    deleteMany: vi.fn(),
+    findUnique: vi.fn(),
+  },
+  adminAuditLog: { create: vi.fn() },
   user: { upsert: vi.fn(), deleteMany: vi.fn() },
   businessMembership: { upsert: vi.fn(), findUnique: vi.fn(), count: vi.fn(), deleteMany: vi.fn() },
 }
@@ -33,20 +40,43 @@ vi.mock('@/modules/core/db/prisma', () => ({ default: mockPrisma }))
 
 const mockDeleteMembership = vi.fn()
 const mockUpdateOrganization = vi.fn()
+const mockUpdateMembership = vi.fn()
 vi.mock('@clerk/nextjs/server', () => ({
   clerkClient: async () => ({
     organizations: {
       deleteOrganizationMembership: (...a: unknown[]) => mockDeleteMembership(...a),
       updateOrganization: (...a: unknown[]) => mockUpdateOrganization(...a),
+      updateOrganizationMembership: (...a: unknown[]) => mockUpdateMembership(...a),
     },
   }),
 }))
+
+vi.mock('@/lib/admin-notifications', () => ({ createAdminNotification: vi.fn() }))
 
 const { POST } = await import('./route')
 
 const ORG = 'org_1'
 const OWNER = 'user_owner'
 const INVITEE = 'user_invitee'
+
+/** A membership.updated event changing `userId` to `role`. */
+function membershipUpdated(userId: string, role: string) {
+  verified = {
+    type: 'organizationMembership.updated',
+    data: {
+      organization: { id: ORG, name: 'Acme' },
+      role,
+      public_user_data: { user_id: userId, identifier: 'x@test.local', first_name: 'X', last_name: 'Y' },
+    },
+  }
+  return new Request('http://localhost/api/webhooks/clerk', { method: 'POST', body: '{}' })
+}
+
+/** An organization.deleted event. */
+function orgDeleted() {
+  verified = { type: 'organization.deleted', data: { id: ORG } }
+  return new Request('http://localhost/api/webhooks/clerk', { method: 'POST', body: '{}' })
+}
 
 /** A membership.created event for `userId` joining ORG. */
 function membershipCreated(userId: string) {
@@ -154,5 +184,71 @@ describe('clerk webhook seat backstop', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ revoked: 'membership_denied' })
     expect(mockPrisma.businessMembership.upsert).not.toHaveBeenCalled()
+  })
+})
+
+describe('owner protection', () => {
+  it('restores the owner when another admin demotes them', async () => {
+    // Clerk has no owner concept beyond created_by, so any org:admin can demote
+    // any other — including the person whose workspace it is. Combined with an
+    // admin's ability to delete the organization, that is a full takeover.
+    businessOn('BUSINESS')
+
+    const res = await POST(membershipUpdated(OWNER, 'org:member'))
+
+    expect(await res.json()).toMatchObject({ restored: 'owner_role' })
+    expect(mockUpdateMembership).toHaveBeenCalledWith({
+      organizationId: ORG,
+      userId: OWNER,
+      role: 'org:admin',
+    })
+    // The demotion must not be written; the restore's own webhook writes the
+    // correct role.
+    expect(mockPrisma.businessMembership.upsert).not.toHaveBeenCalled()
+  })
+
+  it('leaves a non-owner demotion alone', async () => {
+    businessOn('BUSINESS')
+    mockPrisma.businessMembership.findUnique.mockResolvedValue({ userId: INVITEE })
+
+    await POST(membershipUpdated(INVITEE, 'org:member'))
+
+    expect(mockUpdateMembership).not.toHaveBeenCalled()
+    expect(mockPrisma.businessMembership.upsert).toHaveBeenCalled()
+  })
+
+  it('leaves an owner promotion alone', async () => {
+    businessOn('BUSINESS')
+    mockPrisma.businessMembership.findUnique.mockResolvedValue({ userId: OWNER })
+
+    await POST(membershipUpdated(OWNER, 'org:admin'))
+
+    expect(mockUpdateMembership).not.toHaveBeenCalled()
+  })
+})
+
+describe('organization deletion', () => {
+  it('marks the workspace instead of destroying it', async () => {
+    // Deleting an organization in Clerk reaches none of the account-deletion
+    // flow. Holding the data makes that single click recoverable.
+    mockPrisma.business.findUnique.mockResolvedValue({ name: 'Acme', pendingDeletionAt: null })
+
+    await POST(orgDeleted())
+
+    expect(mockPrisma.business.deleteMany).not.toHaveBeenCalled()
+    expect(mockPrisma.business.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { pendingDeletionAt: expect.any(Date) },
+      })
+    )
+  })
+
+  it('does not restart the clock on a repeated event', async () => {
+    const alreadyMarked = new Date('2026-01-01')
+    mockPrisma.business.findUnique.mockResolvedValue({ name: 'Acme', pendingDeletionAt: alreadyMarked })
+
+    await POST(orgDeleted())
+
+    expect(mockPrisma.business.update).not.toHaveBeenCalled()
   })
 })

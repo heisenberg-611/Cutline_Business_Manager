@@ -1,6 +1,13 @@
 import prisma from '@/modules/core/db/prisma'
 
 /**
+ * How long a workspace's data is kept after its Clerk organization is deleted.
+ * Long enough that an accidental or malicious deletion can be noticed and
+ * undone, short enough that it is not indefinite retention.
+ */
+export const ORG_DELETION_GRACE_DAYS = 7
+
+/**
  * Account deletion: deciding what "delete my account" means for a given person,
  * and carrying it out.
  *

@@ -69,6 +69,14 @@ model Business {
   // having any never-trialed member claim again renews Pro indefinitely.
   hasUsedFreeTrial Boolean @default(false)
 
+  // Set when the Clerk organization is deleted, instead of destroying the rows
+  // there and then. Any org:admin can delete an organization from Clerk's own
+  // UI, which bypasses the account-deletion flow entirely — no export, no
+  // reason, no confirmation. Keeping the data for a grace period turns a single
+  // irreversible click into something recoverable. Safe to retain because with
+  // no Clerk organization there is no session that can reach this workspace.
+  pendingDeletionAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -4,6 +4,8 @@ import { WebhookEvent } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import { getActivePlan, canInviteMembers } from '@/lib/subscription'
 import { syncClerkSeatCap } from '@/lib/plan-guard'
+import { createAdminNotification } from '@/lib/admin-notifications'
+import { ORG_DELETION_GRACE_DAYS } from '@/lib/account-deletion'
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
@@ -135,6 +137,50 @@ export async function POST(req: Request) {
           }
         })
 
+        // The owner's role is not another admin's to take. Clerk has no notion
+        // of an owner beyond created_by, so any org:admin can demote any other
+        // — including the person whose workspace it is. Combined with an admin's
+        // ability to delete the organization outright, that is a complete
+        // takeover, so the demotion is reversed rather than merely recorded.
+        if (
+          eventType === 'organizationMembership.updated' &&
+          business.ownerUserId === public_user_data.user_id &&
+          role !== 'org:admin'
+        ) {
+          console.warn(
+            '[clerk-webhook] Restoring owner %s demoted to %s in %s',
+            public_user_data.user_id,
+            role,
+            organization.id
+          )
+
+          try {
+            const { clerkClient } = await import('@clerk/nextjs/server')
+            const client = await clerkClient()
+            await client.organizations.updateOrganizationMembership({
+              organizationId: organization.id,
+              userId: public_user_data.user_id,
+              role: 'org:admin',
+            })
+          } catch (restoreError) {
+            console.error('[clerk-webhook] Could not restore owner role:', restoreError)
+          }
+
+          await createAdminNotification({
+            title: 'Workspace owner was demoted',
+            message: `Someone tried to remove admin rights from the owner of ${organization.name || organization.id}. The role has been restored.`,
+            type: 'security',
+            actionUrl: '/hq/organizations',
+          })
+
+          // Restoring triggers a fresh webhook carrying org:admin, which writes
+          // the correct role. Recording the demotion here would race with it.
+          return new Response(
+            JSON.stringify({ success: true, restored: 'owner_role' }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+
         // Seat backstop. The Clerk-side cap is the primary control, but it is
         // set by a separate API call that can fail or be missed on a plan path
         // added later — and an invite never touches this app, so this webhook
@@ -262,9 +308,34 @@ export async function POST(req: Request) {
     if (eventType === 'organization.deleted') {
       const { id } = evt.data
       if (id) {
-        await prisma.business.deleteMany({
-          where: { id }
+        // Marked, not destroyed. Any org:admin can delete an organization from
+        // Clerk's own UI, which reaches none of the account-deletion flow — no
+        // export, no stated reason, no confirmation of the terms. Deleting here
+        // made that single click irreversible for every client, project and
+        // invoice in the workspace.
+        //
+        // Retaining the rows is safe: without a Clerk organization there is no
+        // session that can reach this workspace, so nothing is exposed by the
+        // delay. The purge runs from the scheduled job once the grace period
+        // has passed.
+        const business = await prisma.business.findUnique({
+          where: { id },
+          select: { name: true, pendingDeletionAt: true },
         })
+
+        if (business && !business.pendingDeletionAt) {
+          await prisma.business.update({
+            where: { id },
+            data: { pendingDeletionAt: new Date() },
+          })
+
+          await createAdminNotification({
+            title: 'Workspace deleted in Clerk',
+            message: `${business.name} was deleted from Clerk. Its data is held for ${ORG_DELETION_GRACE_DAYS} days before being purged, and can still be recovered until then.`,
+            type: 'security',
+            actionUrl: '/hq/organizations',
+          })
+        }
       }
     }
 
