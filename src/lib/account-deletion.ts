@@ -126,7 +126,8 @@ export async function performAccountDeletion(userId: string): Promise<DeletionSc
     await client.users.deleteUser(userId)
   } catch (error) {
     console.error(
-      `[account-deletion] Local data for ${userId} is deleted but Clerk cleanup failed:`,
+      '[account-deletion] Local data for %s is deleted but Clerk cleanup failed:',
+      userId,
       error
     )
   }

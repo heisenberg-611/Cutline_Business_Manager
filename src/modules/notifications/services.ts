@@ -174,7 +174,7 @@ export async function broadcastNotification(data: {
       
       targetUserIds.push(userId)
     } catch (err) {
-      console.error(`Failed to create notification for user ${userId}:`, err)
+      console.error('Failed to create notification for user %s:', userId, err)
     }
   }
 

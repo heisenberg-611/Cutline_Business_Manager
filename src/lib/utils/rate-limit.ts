@@ -51,7 +51,9 @@ async function allow(
     const { success, reset } = await limiter.limit(key);
     return { allowed: success, reset };
   } catch (error) {
-    console.error(`[rate-limit] ${scope} check failed, allowing request:`, error);
+    // scope is a literal from this module's own call sites, never request
+    // data, but passed as an argument anyway to keep one rule for all logs.
+    console.error('[rate-limit] %s check failed, allowing request:', scope, error);
     return { allowed: true };
   }
 }

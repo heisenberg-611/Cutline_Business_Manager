@@ -159,6 +159,9 @@ export async function syncClerkSeatCap(
       maxAllowedMemberships: await seatCapFor(plan),
     })
   } catch (error) {
-    console.error(`[plan-guard] Failed to sync seat cap for ${orgId}:`, error)
+    // Value passed as an argument rather than interpolated: console.* runs the
+    // first argument through util.format, so an id containing a format
+    // specifier could otherwise garble or forge surrounding log entries.
+    console.error('[plan-guard] Failed to sync seat cap for %s:', orgId, error)
   }
 }

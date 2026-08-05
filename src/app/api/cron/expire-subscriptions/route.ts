@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
       expired.push({ id: business.id, name: business.name, from: business.subscriptionPlan })
     } catch (error) {
       // One failure must not abandon the rest of the sweep.
-      console.error(`[expire-subscriptions] ${business.id} failed:`, error)
+      console.error('[expire-subscriptions] %s failed:', business.id, error)
       failures.push(business.id)
     }
   }

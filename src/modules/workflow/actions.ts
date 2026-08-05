@@ -52,7 +52,7 @@ export async function ensureDefaultTemplate(orgId: string) {
   })
 
   if (!business) {
-    console.warn(`Business ${orgId} not found. Creating it now.`)
+    console.warn('Business %s not found. Creating it now.', orgId)
     // Create business if it doesn't exist (synced from Clerk webhook)
     await prisma.business.create({
       data: {

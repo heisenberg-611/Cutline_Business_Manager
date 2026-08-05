@@ -168,8 +168,10 @@ export async function POST(req: Request) {
 
           if (!isOwnerSeat) {
             console.warn(
-              `[clerk-webhook] Revoking over-seat membership: user ${public_user_data.user_id} ` +
-              `joined ${organization.id} on the ${business.subscriptionPlan} plan`
+              '[clerk-webhook] Revoking over-seat membership: user %s joined %s on the %s plan',
+              public_user_data.user_id,
+              organization.id,
+              business.subscriptionPlan
             )
 
             let revoked = false
