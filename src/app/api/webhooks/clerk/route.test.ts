@@ -316,3 +316,23 @@ describe('owner removal', () => {
     expect(mockPrisma.businessMembership.deleteMany).toHaveBeenCalled()
   })
 })
+
+describe('when the owner cannot be restored', () => {
+  it('deletes the row so the database matches Clerk', async () => {
+    // Leaving the row behind is what produced a real stuck state: this database
+    // said the owner was a member while Clerk had removed them, so the app
+    // showed them as present while they could not reach the workspace at all.
+    mockPrisma.business.findUnique.mockResolvedValue({
+      ownerUserId: OWNER,
+      name: 'Acme',
+      pendingDeletionAt: null,
+    })
+    mockCreateMembership.mockRejectedValue(new Error('Clerk rejected it'))
+
+    await POST(membershipDeleted(OWNER))
+
+    expect(mockPrisma.businessMembership.deleteMany).toHaveBeenCalledWith({
+      where: { businessId: ORG, userId: OWNER },
+    })
+  })
+})

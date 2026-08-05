@@ -310,6 +310,7 @@ export async function POST(req: Request) {
             organization.id
           )
 
+          let restored = false
           try {
             const { clerkClient } = await import('@clerk/nextjs/server')
             const client = await clerkClient()
@@ -318,22 +319,36 @@ export async function POST(req: Request) {
               userId: public_user_data.user_id,
               role: 'org:admin',
             })
+            restored = true
           } catch (restoreError) {
             console.error('[clerk-webhook] Could not restore owner membership:', restoreError)
           }
 
           await createAdminNotification({
-            title: 'Workspace owner was removed',
-            message: `Someone tried to remove the owner of ${business.name} from their own workspace. The membership has been restored.`,
+            title: restored ? 'Workspace owner was removed' : 'Could not restore workspace owner',
+            message: restored
+              ? `Someone removed the owner of ${business.name} from their own workspace. The membership has been restored.`
+              : `The owner of ${business.name} was removed and could NOT be restored — Clerk rejected the attempt. They cannot reach their workspace until they are re-invited.`,
             type: 'security',
             actionUrl: '/hq/organizations',
           })
 
-          // The restore raises its own membership.created event, which writes
-          // the row back. Deleting it here would race with that.
-          return new Response(
-            JSON.stringify({ success: true, restored: 'owner_membership' }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          if (restored) {
+            // The restore raises its own membership.created event, which writes
+            // the row back. Deleting it here would race with that.
+            return new Response(
+              JSON.stringify({ success: true, restored: 'owner_membership' }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            )
+          }
+
+          // Restore failed, so fall through and delete the row. Keeping it would
+          // leave this database claiming a membership Clerk does not have — the
+          // owner would appear present here while being locked out in reality,
+          // and every seat and deletion check would read the wrong answer.
+          console.error(
+            '[clerk-webhook] Owner %s is now out of sync: removed in Clerk, not restored',
+            public_user_data.user_id
           )
         }
 
