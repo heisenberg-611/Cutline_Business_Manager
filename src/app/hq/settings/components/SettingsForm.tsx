@@ -51,6 +51,7 @@ export function SettingsForm({ initialData }: { initialData: any }) {
     freeTierProjectLimit: initialData.freeTierProjectLimit ?? 3,
     proTierProjectLimit: initialData.proTierProjectLimit ?? 20,
     businessTierSeatLimit: initialData.businessTierSeatLimit ?? 25,
+    currencyCode: initialData.currencyCode ?? 'BDT',
     maxFailedLogins: initialData.maxFailedLogins ?? 5,
     sessionTimeoutMinutes: initialData.sessionTimeoutMinutes ?? 15,
   });
@@ -147,6 +148,11 @@ export function SettingsForm({ initialData }: { initialData: any }) {
                     <label className="text-sm font-medium">Pro Tier Project Limit</label>
                     <Input type="number" name="proTierProjectLimit" value={formData.proTierProjectLimit} onChange={handleInputChange} />
                     <p className="text-xs text-muted-foreground">Max projects allowed on pro plan.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Reporting Currency</label>
+                    <Input name="currencyCode" maxLength={3} value={formData.currencyCode} onChange={handleInputChange} />
+                    <p className="text-xs text-muted-foreground">Three-letter code Cutline&apos;s own revenue is shown in across HQ, e.g. BDT or USD. Separate from what each tenant bills their clients in.</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Business Tier Seat Limit</label>

@@ -1,5 +1,6 @@
 import prisma from '@/modules/core/db/prisma';
 import { PLAN_PRICES } from '@/lib/subscription';
+import { formatHqMoney, DEFAULT_HQ_CURRENCY } from '@/lib/hq-money';
 import { requireAdmin } from '../actions';
 import { DeleteRequestButton } from './DeleteRequestButton';
 import { PaginationControls } from '../components/PaginationControls';
@@ -12,6 +13,12 @@ export default async function AdminFinancesPage(props: {
   searchParams: Promise<{ page?: string }>;
 }) {
   await requireAdmin();
+
+  const hqSettings = await prisma.globalSettings.findUnique({
+    where: { id: 'default' },
+    select: { currencyCode: true },
+  });
+  const currency = hqSettings?.currencyCode ?? DEFAULT_HQ_CURRENCY;
 
   const resolvedParams = await props.searchParams;
   const currentPage = Math.max(1, parseInt(resolvedParams?.page || '1', 10));
@@ -60,15 +67,15 @@ export default async function AdminFinancesPage(props: {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
           <p className="text-sm text-zinc-500 font-medium">Total Recorded (All Time)</p>
-          <h3 className="text-3xl font-bold text-green-600 mt-2">৳{totalRevenue.toLocaleString()}</h3>
+          <h3 className="text-3xl font-bold text-green-600 mt-2">{formatHqMoney(totalRevenue, currency)}</h3>
         </div>
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
           <p className="text-sm text-zinc-500 font-medium">Paid by customers</p>
-          <h3 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">৳{customerPaid.toLocaleString()}</h3>
+          <h3 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100 mt-2">{formatHqMoney(customerPaid, currency)}</h3>
         </div>
         <div className="bg-white dark:bg-zinc-900 border border-amber-200 dark:border-amber-900 rounded-xl p-6">
           <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">Admin-granted</p>
-          <h3 className="text-3xl font-bold text-amber-600 mt-2">৳{adminGrantedRevenue.toLocaleString()}</h3>
+          <h3 className="text-3xl font-bold text-amber-600 mt-2">{formatHqMoney(adminGrantedRevenue, currency)}</h3>
           <p className="text-xs text-amber-600/80 dark:text-amber-500/80 mt-1">
             {adminGranted._count} grant{adminGranted._count === 1 ? '' : 's'} set by hand
           </p>
@@ -78,7 +85,7 @@ export default async function AdminFinancesPage(props: {
       {adminGrantedRevenue > 0 && (
         <div className="rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 px-5 py-4 mb-8">
           <p className="text-sm text-amber-900 dark:text-amber-200">
-            ৳{adminGrantedRevenue.toLocaleString()} of the total came from plans set by an
+            {formatHqMoney(adminGrantedRevenue, currency)} of the total came from plans set by an
             admin rather than a customer payment, and was recorded automatically at list price.
             Review those rows below and correct any that were comps, tests or corrections —
             new admin grants no longer record revenue unless an amount is entered.
@@ -115,7 +122,7 @@ export default async function AdminFinancesPage(props: {
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  ৳{(req.amountPaid ?? PLAN_PRICES[req.planRequested as keyof typeof PLAN_PRICES] ?? 0).toLocaleString()}
+                  {formatHqMoney(req.amountPaid ?? PLAN_PRICES[req.planRequested as keyof typeof PLAN_PRICES] ?? 0, currency)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <DeleteRequestButton requestId={req.id} />

@@ -1089,6 +1089,11 @@ model GlobalSettings {
   freeTierProjectLimit Int @default(3)
   proTierProjectLimit  Int @default(20)
 
+  // Currency HQ reports its own money in. Distinct from Business.defaultCurrency,
+  // which is what a tenant bills *their* clients in — this one is Cutline's.
+  // Amounts were previously rendered with a hardcoded symbol in five places.
+  currencyCode String @default("BDT")
+
   // Seats pushed to Clerk's maxAllowedMemberships for Business-plan orgs.
   // Must not exceed what the Clerk instance allows, or the write is rejected.
   // 0 means unlimited to Clerk. Plans below Business are always pinned to 1.

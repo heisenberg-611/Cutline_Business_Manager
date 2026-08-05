@@ -1,11 +1,11 @@
 import prisma from '@/modules/core/db/prisma';
-import { Users, Briefcase, Activity, CreditCard, TrendingUp, DollarSign } from 'lucide-react';
+import { Users, Briefcase, Activity, TrendingUp, DollarSign } from 'lucide-react';
 import { requireAdmin } from './actions';
-import { PLAN_PRICES } from '@/lib/subscription';
 import { RevenueChart } from './components/RevenueChart';
 import { GrowthChart } from './components/GrowthChart';
 import { ExpiringSoon } from './components/ExpiringSoon';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { formatHqMoney, DEFAULT_HQ_CURRENCY } from '@/lib/hq-money';
 
 export const metadata = {
   title: 'Admin Overview',
@@ -14,29 +14,41 @@ export const metadata = {
 export default async function AdminOverviewPage() {
   await requireAdmin();
 
-  const sixMonthsAgo = subMonths(startOfMonth(new Date()), 5);
-
-  const [totalBusinesses, totalUsers, pendingRequests, businessesByPlan, liveSubscriptions, expiringRaw] =
+  const [hqSettings, totalBusinesses, totalUsers, pendingRequests, liveSubscriptions, expiringRaw] =
     await Promise.all([
+      prisma.globalSettings.findUnique({
+        where: { id: 'default' },
+        select: { currencyCode: true },
+      }),
       prisma.business.count(),
       prisma.user.count(),
       prisma.subscriptionRequest.count({ where: { status: 'PENDING' } }),
-      prisma.business.groupBy({
-        by: ['subscriptionPlan'],
-        _count: { id: true }
-      }),
-      // Only subscriptions still inside the period they paid for. Grouping on
-      // the raw column counted lapsed plans as revenue, and nothing transitions
-      // a plan when its period ends, so that number could only drift upward.
+      // Monthly recurring revenue, from what each subscriber last actually paid.
+      //
+      // Pricing this from PLAN_PRICES counted anything on a paid plan at list
+      // price, whether or not money had ever arrived: free trials (which set a
+      // plan and an expiry but create no payment), comped admin grants, and test
+      // workspaces all showed up as recurring income.
+      //
+      // Three exclusions, each for its own reason:
+      //  - no expiry is a perpetual admin grant, so nothing recurs
+      //  - a workspace pending deletion is not going to pay again
+      //  - a subscriber with no completed payment is a trial or a comp
       prisma.business.findMany({
         where: {
           subscriptionPlan: { not: 'FREE' },
-          OR: [
-            { subscriptionPeriodEnd: null }, // admin override: no expiry
-            { subscriptionPeriodEnd: { gt: new Date() } },
-          ],
+          subscriptionPeriodEnd: { not: null, gt: new Date() },
+          pendingDeletionAt: null,
         },
-        select: { subscriptionPlan: true },
+        select: {
+          subscriptionPlan: true,
+          subscriptionRequests: {
+            where: { status: 'APPROVED', amountPaid: { gt: 0 } },
+            orderBy: { paidAt: 'desc' },
+            take: 1,
+            select: { amountPaid: true },
+          },
+        },
       }),
       // Renewals are collected by hand, so a lapse has to be seen coming.
       prisma.business.findMany({
@@ -64,10 +76,17 @@ export default async function AdminOverviewPage() {
     endsOn: format(b.subscriptionPeriodEnd!, 'd MMM yyyy'),
   }));
 
-  // Current Monthly Recurring Revenue
-  const currentMrr = liveSubscriptions.reduce((acc, business) => {
-    return acc + (PLAN_PRICES[business.subscriptionPlan as keyof typeof PLAN_PRICES] || 0);
-  }, 0);
+  const currency = hqSettings?.currencyCode ?? DEFAULT_HQ_CURRENCY;
+
+  // Current Monthly Recurring Revenue, and how many active plans contribute
+  // nothing to it — shown alongside rather than hidden, because a run of
+  // non-paying plans is a thing worth noticing.
+  const paying = liveSubscriptions.filter((b) => b.subscriptionRequests.length > 0);
+  const currentMrr = paying.reduce(
+    (acc, b) => acc + (b.subscriptionRequests[0]?.amountPaid ?? 0),
+    0
+  );
+  const nonPayingActive = liveSubscriptions.length - paying.length;
 
   // Compute last 6 months charts natively using DB aggregations
   const revenueData: { month: string; revenue: number }[] = [];
@@ -162,7 +181,12 @@ export default async function AdminOverviewPage() {
             </div>
             <div>
               <p className="text-sm text-zinc-500 font-medium">Current MRR</p>
-              <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">৳{currentMrr.toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">{formatHqMoney(currentMrr, currency)}</h3>
+              {nonPayingActive > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                  +{nonPayingActive} active plan{nonPayingActive === 1 ? '' : 's'} not paying
+                </p>
+              )}
             </div>
           </div>
         </div>

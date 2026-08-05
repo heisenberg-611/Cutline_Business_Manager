@@ -38,6 +38,7 @@ export async function updateGlobalSettings(raw: {
   freeTierProjectLimit: number;
   proTierProjectLimit: number;
   businessTierSeatLimit: number;
+  currencyCode: string;
   maxFailedLogins: number;
   sessionTimeoutMinutes: number;
 }) {
@@ -53,6 +54,9 @@ export async function updateGlobalSettings(raw: {
     // admin out on their first mistyped password.
     const data = {
       ...raw,
+      // Uppercased and length-bounded: Intl needs a plausible ISO code, and an
+      // unrecognised one would otherwise reach every money label in HQ.
+      currencyCode: (raw.currencyCode || 'BDT').trim().toUpperCase().slice(0, 3),
       maxFailedLogins: clampSetting(raw.maxFailedLogins, MAX_FAILED_LOGINS),
       sessionTimeoutMinutes: clampSetting(raw.sessionTimeoutMinutes, SESSION_TIMEOUT_MINUTES),
       freeTierProjectLimit: Math.max(0, Math.trunc(raw.freeTierProjectLimit || 0)),
@@ -74,7 +78,7 @@ export async function updateGlobalSettings(raw: {
     const changesByCat: Record<string, any> = {};
 
     const categories = {
-      BILLING: ['paymentMethods', 'defaultTrialDays', 'defaultPlanId', 'freeTierProjectLimit', 'proTierProjectLimit', 'businessTierSeatLimit'],
+      BILLING: ['paymentMethods', 'defaultTrialDays', 'defaultPlanId', 'freeTierProjectLimit', 'proTierProjectLimit', 'businessTierSeatLimit', 'currencyCode'],
       SECURITY: ['maintenanceMode', 'allowNewSignups', 'maxFailedLogins', 'sessionTimeoutMinutes'],
       SUPPORT: ['supportEmail', 'replyToEmail', 'termsUrl', 'privacyUrl']
     };
