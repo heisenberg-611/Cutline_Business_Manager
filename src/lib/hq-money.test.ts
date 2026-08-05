@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatHqMoney, currencySymbol, DEFAULT_HQ_CURRENCY } from './hq-money'
+import { formatHqMoney, currencySymbol, compactNumber, HQ_CURRENCIES, DEFAULT_HQ_CURRENCY } from './hq-money'
 
 describe('formatHqMoney', () => {
   it('formats the configured currency', () => {
@@ -49,5 +49,48 @@ describe('currencySymbol', () => {
   it('formats amounts with the symbol and Latin digits', () => {
     expect(formatHqMoney(2988, 'BDT')).toBe('৳2,988')
     expect(formatHqMoney(996, 'USD')).toBe('$996')
+  })
+})
+
+describe('compactNumber', () => {
+  it('keeps axis ticks short', () => {
+    // The y-axis was unreadable because every tick carried a full formatted
+    // amount. Short ticks are what let the axis fit at all.
+    expect(compactNumber(0)).toBe('0')
+    expect(compactNumber(300)).toBe('300')
+    expect(compactNumber(1200)).toBe('1.2K')
+    expect(compactNumber(2988)).toBe('3K')
+    expect(compactNumber(1_500_000)).toBe('1.5M')
+  })
+
+  it('never produces a tick long enough to clip', () => {
+    // Six characters is what the reserved 44px axis width comfortably holds.
+    for (const v of [0, 99, 999, 2988, 45_000, 1_200_000]) {
+      expect(compactNumber(v).length).toBeLessThanOrEqual(6)
+    }
+  })
+
+  it('carries no currency, since the unit is stated once on the axis', () => {
+    expect(compactNumber(2988)).not.toMatch(/[৳$€£₹]|BDT|USD/)
+  })
+})
+
+describe('HQ_CURRENCIES', () => {
+  it('no two offered currencies format identically', () => {
+    // The real risk is ambiguity, not a missing symbol. AUD, CAD and SGD all
+    // render as a bare "$" under narrowSymbol, so picking one would silently
+    // relabel every figure in HQ as dollars. This is what keeps them out.
+    const rendered = HQ_CURRENCIES.map((c) => formatHqMoney(1000, c.code))
+    expect(new Set(rendered).size).toBe(HQ_CURRENCIES.length)
+  })
+
+  it('every offered code renders the amount readably', () => {
+    for (const { code } of HQ_CURRENCIES) {
+      expect(formatHqMoney(1000, code)).toContain('1,000')
+    }
+  })
+
+  it('includes the default', () => {
+    expect(HQ_CURRENCIES.some((c) => c.code === DEFAULT_HQ_CURRENCY)).toBe(true)
   })
 })

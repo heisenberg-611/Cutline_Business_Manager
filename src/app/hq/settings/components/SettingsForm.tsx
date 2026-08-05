@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Trash2, Plus, Shield, Zap, Mail, Settings, CreditCard, Database, DownloadCloud, UserSearch } from 'lucide-react';
 import { UserDataExport } from './UserDataExport';
+import { HQ_CURRENCIES } from '@/lib/hq-money';
 
 type PaymentMethod = {
   id: string;
@@ -151,8 +152,17 @@ export function SettingsForm({ initialData }: { initialData: any }) {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Reporting Currency</label>
-                    <Input name="currencyCode" maxLength={3} value={formData.currencyCode} onChange={handleInputChange} />
-                    <p className="text-xs text-muted-foreground">Three-letter code Cutline&apos;s own revenue is shown in across HQ, e.g. BDT or USD. Separate from what each tenant bills their clients in.</p>
+                    <select
+                      name="currencyCode"
+                      value={formData.currencyCode}
+                      onChange={handleInputChange}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {HQ_CURRENCIES.map((c) => (
+                        <option key={c.code} value={c.code}>{c.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">What Cutline&apos;s own revenue is reported in across HQ. Separate from the currency each tenant bills their own clients in.</p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Business Tier Seat Limit</label>

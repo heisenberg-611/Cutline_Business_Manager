@@ -200,13 +200,13 @@ export default async function AdminOverviewPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Monthly Revenue</h3>
-              <p className="text-sm text-zinc-500">Total revenue from all subscriptions</p>
+              <p className="text-sm text-zinc-500">Payments received per month, in {currency}</p>
             </div>
             <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-md">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <RevenueChart data={revenueData} />
+          <RevenueChart data={revenueData} currencyCode={currency} />
         </div>
 
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">

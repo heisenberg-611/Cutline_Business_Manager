@@ -57,3 +57,42 @@ export function currencySymbol(currencyCode = DEFAULT_HQ_CURRENCY): string | nul
     return null
   }
 }
+
+/**
+ * Currencies offered in HQ, so the setting is a choice rather than free text.
+ * Kept short and regional-first; formatting works for any ISO code, so adding one
+ * here is a one-line change.
+ */
+export const HQ_CURRENCIES = [
+  { code: 'BDT', label: 'BDT — Bangladeshi Taka' },
+  { code: 'USD', label: 'USD — US Dollar' },
+  { code: 'EUR', label: 'EUR — Euro' },
+  { code: 'GBP', label: 'GBP — British Pound' },
+  { code: 'INR', label: 'INR — Indian Rupee' },
+  { code: 'JPY', label: 'JPY — Japanese Yen' },
+  { code: 'AED', label: 'AED — UAE Dirham' },
+] as const
+
+// AUD, CAD and SGD are deliberately absent. Under narrowSymbol they all render
+// as a bare "$", indistinguishable from USD, so choosing one would silently
+// mislabel every figure in HQ. Offering a currency that cannot be told apart is
+// worse than not offering it; the exclusion is enforced by a test asserting no
+// two entries format alike. Add one only with a disambiguating display.
+
+/**
+ * Short number for an axis tick: 1200 -> "1.2K".
+ *
+ * Deliberately carries no currency. A full "৳1,200" on every tick is what made
+ * the y-axis unreadable and clipped — the unit belongs on the axis once, not on
+ * each label.
+ */
+export function compactNumber(value: number): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+    }).format(value)
+  } catch {
+    return String(value)
+  }
+}
