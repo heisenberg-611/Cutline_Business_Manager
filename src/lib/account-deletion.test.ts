@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const mockPrisma = {
   business: { findMany: vi.fn(), delete: vi.fn() },
-  businessMembership: { deleteMany: vi.fn() },
+  businessMembership: { deleteMany: vi.fn(), findMany: vi.fn() },
   user: { deleteMany: vi.fn() },
 }
 vi.mock('@/modules/core/db/prisma', () => ({ default: mockPrisma }))
@@ -26,6 +26,11 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockPrisma.business.delete.mockResolvedValue({})
   mockPrisma.businessMembership.deleteMany.mockResolvedValue({ count: 0 })
+  // Default: still a member of everything they own.
+  mockPrisma.businessMembership.findMany.mockResolvedValue([
+    { businessId: 'org_1' },
+    { businessId: 'org_2' },
+  ])
   mockPrisma.user.deleteMany.mockResolvedValue({ count: 1 })
 })
 
@@ -158,5 +163,36 @@ describe('performAccountDeletion', () => {
     await performAccountDeletion(USER)
 
     expect(order).toEqual(['local', 'clerk'])
+  })
+})
+
+describe('an owner who was removed from their own workspace', () => {
+  it('cannot delete a workspace they are no longer a member of', async () => {
+    // Any org:admin can remove any member in Clerk, including the owner.
+    // ownerUserId still points at them, and the membership count drops to just
+    // the usurper — so the "> 1 means shared" test passes and they would be
+    // classified SOLO_OWNER, free to destroy a workspace containing someone
+    // else's work.
+    mockPrisma.business.findMany.mockResolvedValue([
+      {
+        id: 'org_1',
+        name: 'Agency',
+        _count: { memberships: 1 },
+        // The remaining member is somebody else — the owner is not in here.
+        memberships: [{ user: { firstName: 'Usurper', lastName: null, email: 'u@t.l' } }],
+      },
+    ])
+
+    // No membership rows for this user: they are not in it any more.
+    mockPrisma.businessMembership.findMany.mockResolvedValue([])
+
+    const scope = await classifyDeletion(USER)
+    expect(scope.kind).toBe('MEMBER_ONLY')
+
+    // They can still close their own account — it just must not take the
+    // workspace with it.
+    await performAccountDeletion(USER)
+    expect(mockPrisma.business.delete).not.toHaveBeenCalled()
+    expect(mockPrisma.user.deleteMany).toHaveBeenCalledWith({ where: { id: USER } })
   })
 })

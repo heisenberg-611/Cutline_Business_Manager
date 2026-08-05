@@ -38,24 +38,41 @@ export type DeletionScope =
  * before the user commits to it.
  */
 export async function classifyDeletion(userId: string): Promise<DeletionScope> {
-  const ownedBusinesses = await prisma.business.findMany({
-    where: { ownerUserId: userId },
-    select: {
-      id: true,
-      name: true,
-      _count: { select: { memberships: true } },
-      memberships: {
-        where: { userId: { not: userId } },
-        select: { user: { select: { firstName: true, lastName: true, email: true } } },
-        take: 20,
+  const [ownedBusinesses, myMemberships] = await Promise.all([
+    prisma.business.findMany({
+      where: { ownerUserId: userId },
+      select: {
+        id: true,
+        name: true,
+        _count: { select: { memberships: true } },
+        memberships: {
+          where: { userId: { not: userId } },
+          select: { user: { select: { firstName: true, lastName: true, email: true } } },
+          take: 20,
+        },
       },
-    },
-  })
+    }),
+    prisma.businessMembership.findMany({
+      where: { userId },
+      select: { businessId: true },
+    }),
+  ])
+
+  // Owning a workspace is not enough — they have to still be in it.
+  //
+  // Any org:admin can remove any member in Clerk, the owner included.
+  // ownerUserId still pointed at the removed person while the member count
+  // dropped to just the remaining admin, so "more than one member means shared"
+  // came out false and they were classified as a solo owner: free to delete a
+  // workspace they had been ejected from, taking somebody else's clients,
+  // projects and invoices with them.
+  const memberOf = new Set(myMemberships.map((m) => m.businessId))
+  const actionable = ownedBusinesses.filter((b) => memberOf.has(b.id))
 
   // A workspace with anyone else in it is not this person's to delete. Refusing
   // is the whole point: one departing owner must not be able to erase the
   // clients, projects and invoices their colleagues depend on.
-  const shared = ownedBusinesses.find((b) => b._count.memberships > 1)
+  const shared = actionable.find((b) => b._count.memberships > 1)
   if (shared) {
     return {
       kind: 'SHARED_OWNER',
@@ -68,7 +85,7 @@ export async function classifyDeletion(userId: string): Promise<DeletionScope> {
     }
   }
 
-  const solo = ownedBusinesses[0]
+  const solo = actionable[0]
   if (solo) {
     return { kind: 'SOLO_OWNER', businessId: solo.id, businessName: solo.name }
   }

@@ -285,8 +285,58 @@ export async function POST(req: Request) {
 
     if (eventType === 'organizationMembership.deleted') {
       const { organization, public_user_data } = evt.data
-      
+
       if (public_user_data && public_user_data.user_id) {
+        const business = await prisma.business.findUnique({
+          where: { id: organization.id },
+          select: { ownerUserId: true, name: true, pendingDeletionAt: true },
+        })
+
+        // The owner cannot be ejected from their own workspace. Any org:admin
+        // can remove any member in Clerk, so without this an admin could remove
+        // the owner and take the workspace — the counterpart to demotion, and
+        // reached by a different Clerk action.
+        //
+        // Skipped when the workspace is already being deleted, where every
+        // membership is expected to disappear and restoring one would fight the
+        // teardown.
+        if (
+          business?.ownerUserId === public_user_data.user_id &&
+          !business.pendingDeletionAt
+        ) {
+          console.warn(
+            '[clerk-webhook] Restoring owner %s removed from %s',
+            public_user_data.user_id,
+            organization.id
+          )
+
+          try {
+            const { clerkClient } = await import('@clerk/nextjs/server')
+            const client = await clerkClient()
+            await client.organizations.createOrganizationMembership({
+              organizationId: organization.id,
+              userId: public_user_data.user_id,
+              role: 'org:admin',
+            })
+          } catch (restoreError) {
+            console.error('[clerk-webhook] Could not restore owner membership:', restoreError)
+          }
+
+          await createAdminNotification({
+            title: 'Workspace owner was removed',
+            message: `Someone tried to remove the owner of ${business.name} from their own workspace. The membership has been restored.`,
+            type: 'security',
+            actionUrl: '/hq/organizations',
+          })
+
+          // The restore raises its own membership.created event, which writes
+          // the row back. Deleting it here would race with that.
+          return new Response(
+            JSON.stringify({ success: true, restored: 'owner_membership' }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          )
+        }
+
         await prisma.businessMembership.deleteMany({
           where: {
             businessId: organization.id,

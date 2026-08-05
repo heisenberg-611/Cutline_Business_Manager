@@ -41,12 +41,14 @@ vi.mock('@/modules/core/db/prisma', () => ({ default: mockPrisma }))
 const mockDeleteMembership = vi.fn()
 const mockUpdateOrganization = vi.fn()
 const mockUpdateMembership = vi.fn()
+const mockCreateMembership = vi.fn()
 vi.mock('@clerk/nextjs/server', () => ({
   clerkClient: async () => ({
     organizations: {
       deleteOrganizationMembership: (...a: unknown[]) => mockDeleteMembership(...a),
       updateOrganization: (...a: unknown[]) => mockUpdateOrganization(...a),
       updateOrganizationMembership: (...a: unknown[]) => mockUpdateMembership(...a),
+      createOrganizationMembership: (...a: unknown[]) => mockCreateMembership(...a),
     },
   }),
 }))
@@ -67,6 +69,18 @@ function membershipUpdated(userId: string, role: string) {
       organization: { id: ORG, name: 'Acme' },
       role,
       public_user_data: { user_id: userId, identifier: 'x@test.local', first_name: 'X', last_name: 'Y' },
+    },
+  }
+  return new Request('http://localhost/api/webhooks/clerk', { method: 'POST', body: '{}' })
+}
+
+/** A membership.deleted event removing `userId` from ORG. */
+function membershipDeleted(userId: string) {
+  verified = {
+    type: 'organizationMembership.deleted',
+    data: {
+      organization: { id: ORG, name: 'Acme' },
+      public_user_data: { user_id: userId },
     },
   }
   return new Request('http://localhost/api/webhooks/clerk', { method: 'POST', body: '{}' })
@@ -250,5 +264,55 @@ describe('organization deletion', () => {
     await POST(orgDeleted())
 
     expect(mockPrisma.business.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('owner removal', () => {
+  it('restores the owner when another admin removes them', async () => {
+    // The counterpart to demotion, reached by a different Clerk action. Left
+    // unguarded it also mis-classified the ejected owner as a solo owner, free
+    // to delete a workspace they were no longer in.
+    mockPrisma.business.findUnique.mockResolvedValue({
+      ownerUserId: OWNER,
+      name: 'Acme',
+      pendingDeletionAt: null,
+    })
+
+    const res = await POST(membershipDeleted(OWNER))
+
+    expect(await res.json()).toMatchObject({ restored: 'owner_membership' })
+    expect(mockCreateMembership).toHaveBeenCalledWith({
+      organizationId: ORG,
+      userId: OWNER,
+      role: 'org:admin',
+    })
+    expect(mockPrisma.businessMembership.deleteMany).not.toHaveBeenCalled()
+  })
+
+  it('lets an ordinary member be removed', async () => {
+    mockPrisma.business.findUnique.mockResolvedValue({
+      ownerUserId: OWNER,
+      name: 'Acme',
+      pendingDeletionAt: null,
+    })
+
+    await POST(membershipDeleted(INVITEE))
+
+    expect(mockCreateMembership).not.toHaveBeenCalled()
+    expect(mockPrisma.businessMembership.deleteMany).toHaveBeenCalled()
+  })
+
+  it('does not fight a workspace teardown', async () => {
+    // During deletion every membership is expected to go, owner included.
+    mockPrisma.business.findUnique.mockResolvedValue({
+      ownerUserId: OWNER,
+      name: 'Acme',
+      pendingDeletionAt: new Date(),
+    })
+
+    await POST(membershipDeleted(OWNER))
+
+    expect(mockCreateMembership).not.toHaveBeenCalled()
+    expect(mockPrisma.businessMembership.deleteMany).toHaveBeenCalled()
   })
 })
