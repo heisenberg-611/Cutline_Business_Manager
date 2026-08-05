@@ -88,7 +88,18 @@ async function main() {
     };
 
     if (!apply) {
-      tally();
+      // Read the live value even in dry run. Otherwise this reports only what
+      // the database wants and never touches Clerk, so a wrong key or a plan
+      // that forbids the write looks identical to success until --apply.
+      try {
+        const org = await clerk.organizations.getOrganization({ organizationId: b.id });
+        const drift = org.maxAllowedMemberships !== cap ? `  → would set ${cap}` : "  (already correct)";
+        console.log(`  ${b.name}: Clerk has ${org.maxAllowedMemberships}${drift}`);
+        tally();
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        failures.push(`${b.id} (${b.name}) — ${reason}`);
+      }
       continue;
     }
 
