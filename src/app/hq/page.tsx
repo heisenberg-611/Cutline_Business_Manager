@@ -15,20 +15,33 @@ export default async function AdminOverviewPage() {
 
   const sixMonthsAgo = subMonths(startOfMonth(new Date()), 5);
 
-  const [totalBusinesses, totalUsers, pendingRequests, businessesByPlan] = await Promise.all([
-    prisma.business.count(),
-    prisma.user.count(),
-    prisma.subscriptionRequest.count({ where: { status: 'PENDING' } }),
-    prisma.business.groupBy({
-      by: ['subscriptionPlan'],
-      _count: { id: true }
-    })
-  ]);
+  const [totalBusinesses, totalUsers, pendingRequests, businessesByPlan, liveSubscriptions] =
+    await Promise.all([
+      prisma.business.count(),
+      prisma.user.count(),
+      prisma.subscriptionRequest.count({ where: { status: 'PENDING' } }),
+      prisma.business.groupBy({
+        by: ['subscriptionPlan'],
+        _count: { id: true }
+      }),
+      // Only subscriptions still inside the period they paid for. Grouping on
+      // the raw column counted lapsed plans as revenue, and nothing transitions
+      // a plan when its period ends, so that number could only drift upward.
+      prisma.business.findMany({
+        where: {
+          subscriptionPlan: { not: 'FREE' },
+          OR: [
+            { subscriptionPeriodEnd: null }, // admin override: no expiry
+            { subscriptionPeriodEnd: { gt: new Date() } },
+          ],
+        },
+        select: { subscriptionPlan: true },
+      })
+    ]);
 
   // Current Monthly Recurring Revenue
-  const currentMrr = businessesByPlan.reduce((acc, group) => {
-    const planPrice = PLAN_PRICES[group.subscriptionPlan as keyof typeof PLAN_PRICES] || 0;
-    return acc + (group._count.id * planPrice);
+  const currentMrr = liveSubscriptions.reduce((acc, business) => {
+    return acc + (PLAN_PRICES[business.subscriptionPlan as keyof typeof PLAN_PRICES] || 0);
   }, 0);
 
   // Compute last 6 months charts natively using DB aggregations
@@ -52,10 +65,11 @@ export default async function AdminOverviewPage() {
       })
     );
     monthQueries.push(
-      prisma.subscriptionRequest.groupBy({
-        by: ['planRequested'],
+      // Same correction as the finances page: sum what was recorded as
+      // collected rather than pricing a count at today's rates.
+      prisma.subscriptionRequest.aggregate({
         where: { status: 'APPROVED', updatedAt: { gte: monthStart, lte: monthEnd } },
-        _count: { id: true }
+        _sum: { amountPaid: true }
       })
     );
   }
@@ -64,15 +78,9 @@ export default async function AdminOverviewPage() {
   
   for (let i = 0; i < 6; i++) {
     const signupsForMonth = monthResults[i * 2] as number;
-    const requestsGroups = monthResults[i * 2 + 1] as any[];
-    
-    let mrrForMonth = 0;
-    requestsGroups.forEach(group => {
-      const planPrice = PLAN_PRICES[group.planRequested as keyof typeof PLAN_PRICES] || 0;
-      mrrForMonth += group._count.id * planPrice;
-    });
+    const revenueForMonth = (monthResults[i * 2 + 1]?._sum?.amountPaid ?? 0) as number;
 
-    revenueData.push({ month: monthNames[i], revenue: mrrForMonth });
+    revenueData.push({ month: monthNames[i], revenue: revenueForMonth });
     growthData.push({ month: monthNames[i], signups: signupsForMonth });
   }
 

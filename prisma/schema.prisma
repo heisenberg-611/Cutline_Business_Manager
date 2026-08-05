@@ -158,6 +158,9 @@ enum SubscriptionRequestStatus {
   PENDING
   APPROVED
   REJECTED
+  // Replaces deleting an approved request. Revenue is derived from these rows,
+  // so a hard delete silently rewrote historical totals.
+  VOIDED
 }
 
 model SubscriptionRequest {
@@ -167,6 +170,14 @@ model SubscriptionRequest {
   transactionId String                    @unique
   paymentMethod String
   status        SubscriptionRequestStatus @default(PENDING)
+
+  // What was actually collected, in whole BDT, captured at approval.
+  // Revenue used to be recomputed as count x current PLAN_PRICES, so changing a
+  // price retroactively rewrote every historical total and a comped admin grant
+  // was indistinguishable from a paid one. Null only for rows approved before
+  // this column existed.
+  amountPaid Int?
+
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
 

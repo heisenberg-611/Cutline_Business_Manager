@@ -17,7 +17,7 @@ export default async function AdminFinancesPage(props: {
   const currentPage = Math.max(1, parseInt(resolvedParams?.page || '1', 10));
   const ITEMS_PER_PAGE = 20;
 
-  const [totalRequests, approvedRequests, groupedRevenue] = await prisma.$transaction([
+  const [totalRequests, approvedRequests, revenueAggregate] = await prisma.$transaction([
     prisma.subscriptionRequest.count({ where: { status: 'APPROVED' } }),
     prisma.subscriptionRequest.findMany({
       where: { status: 'APPROVED' },
@@ -26,18 +26,19 @@ export default async function AdminFinancesPage(props: {
       skip: (currentPage - 1) * ITEMS_PER_PAGE,
       include: { business: { select: { name: true } } },
     }),
-    prisma.subscriptionRequest.groupBy({
-      by: ['planRequested'],
+    // Sums what was actually recorded as collected. Previously this multiplied
+    // a count of approved requests by today's PLAN_PRICES, so changing a price
+    // retroactively rewrote all-time revenue and a comped grant was billed at
+    // full list. VOIDED rows are excluded by the status filter.
+    prisma.subscriptionRequest.aggregate({
       where: { status: 'APPROVED' },
-      _count: { id: true }
+      _sum: { amountPaid: true },
     })
   ]);
 
   const totalPages = Math.ceil(totalRequests / ITEMS_PER_PAGE);
 
-  const totalRevenue = groupedRevenue.reduce((acc, group) => {
-    return acc + (group._count.id * (PLAN_PRICES[group.planRequested as keyof typeof PLAN_PRICES] || 0));
-  }, 0);
+  const totalRevenue = revenueAggregate._sum.amountPaid ?? 0;
 
   return (
     <div className="space-y-8">
@@ -75,7 +76,7 @@ export default async function AdminFinancesPage(props: {
                   {req.planRequested.toLowerCase()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  ৳{PLAN_PRICES[req.planRequested as keyof typeof PLAN_PRICES]}
+                  ৳{(req.amountPaid ?? PLAN_PRICES[req.planRequested as keyof typeof PLAN_PRICES] ?? 0).toLocaleString()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <DeleteRequestButton requestId={req.id} />

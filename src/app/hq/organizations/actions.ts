@@ -7,7 +7,13 @@ import { SubscriptionPlan } from '@prisma/client';
 import { PLAN_PRICES } from '@/lib/subscription';
 import { syncClerkSeatCap } from '@/lib/plan-guard';
 
-export async function forceUpdateSubscription(businessId: string, plan: SubscriptionPlan, periodEnd: Date | null) {
+export async function forceUpdateSubscription(
+  businessId: string,
+  plan: SubscriptionPlan,
+  periodEnd: Date | null,
+  /** Whole BDT collected out of band. Pass 0 for a comp or a test grant. */
+  amountPaid?: number
+) {
   const admin = await requireAdmin();
 
   const operations: any[] = [
@@ -41,6 +47,10 @@ export async function forceUpdateSubscription(businessId: string, plan: Subscrip
           transactionId: `ADMIN-OVERRIDE-${crypto.randomUUID()}`,
           paymentMethod: 'admin_override',
           status: 'APPROVED',
+          // Most sales here are fulfilled this way, so list price is the right
+          // default — but a comp or test grant can be recorded as 0 so it stops
+          // inflating revenue.
+          amountPaid: amountPaid ?? PLAN_PRICES[plan as keyof typeof PLAN_PRICES] ?? 0,
         }
       })
     );
