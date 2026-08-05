@@ -1,11 +1,12 @@
 import prisma from '@/modules/core/db/prisma';
-import { Users, Briefcase, Activity, TrendingUp, DollarSign } from 'lucide-react';
+import { Users, Briefcase, Activity, TrendingUp } from 'lucide-react';
 import { requireAdmin } from './actions';
 import { RevenueChart } from './components/RevenueChart';
 import { GrowthChart } from './components/GrowthChart';
 import { ExpiringSoon } from './components/ExpiringSoon';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { formatHqMoney, DEFAULT_HQ_CURRENCY } from '@/lib/hq-money';
+import { CurrencyIcon } from './components/CurrencyIcon';
 
 export const metadata = {
   title: 'Admin Overview',
@@ -177,7 +178,7 @@ export default async function AdminOverviewPage() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg">
-              <DollarSign className="w-6 h-6" />
+              <CurrencyIcon currencyCode={currency} />
             </div>
             <div>
               <p className="text-sm text-zinc-500 font-medium">Current MRR</p>

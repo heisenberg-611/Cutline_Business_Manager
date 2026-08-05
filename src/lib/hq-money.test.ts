@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatHqMoney, DEFAULT_HQ_CURRENCY } from './hq-money'
+import { formatHqMoney, currencySymbol, DEFAULT_HQ_CURRENCY } from './hq-money'
 
 describe('formatHqMoney', () => {
   it('formats the configured currency', () => {
@@ -26,5 +26,28 @@ describe('formatHqMoney', () => {
 
   it('handles zero', () => {
     expect(formatHqMoney(0, 'BDT')).toContain('0')
+  })
+})
+
+describe('currencySymbol', () => {
+  it('gives the narrow symbol, not the bare code', () => {
+    // The default currencyDisplay renders BDT as the literal string "BDT",
+    // which is why narrowSymbol is used — and why this is asserted.
+    expect(currencySymbol('BDT')).toBe('৳')
+    expect(currencySymbol('USD')).toBe('$')
+    expect(currencySymbol('EUR')).toBe('€')
+    expect(currencySymbol('GBP')).toBe('£')
+    expect(currencySymbol('INR')).toBe('₹')
+  })
+
+  it('returns null rather than the code, so callers can choose a fallback', () => {
+    // Rendering "ZZZ" where a symbol belongs would look like a bug; the icon
+    // falls back to a neutral banknote instead.
+    expect(currencySymbol('ZZZ')).toBeNull()
+  })
+
+  it('formats amounts with the symbol and Latin digits', () => {
+    expect(formatHqMoney(2988, 'BDT')).toBe('৳2,988')
+    expect(formatHqMoney(996, 'USD')).toBe('$996')
   })
 })
