@@ -59,7 +59,7 @@ export function SubscriptionRequestsTable({ initialRequests }: { initialRequests
         {optimisticRequests.map((req) => (
           <tr key={req.id}>
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {req.business.name}
+              {req.business?.name ?? <span className="italic text-zinc-400">deleted workspace</span>}
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-500 capitalize">
               {req.planRequested.toLowerCase()}

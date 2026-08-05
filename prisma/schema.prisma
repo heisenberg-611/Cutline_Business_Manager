@@ -164,8 +164,15 @@ enum SubscriptionRequestStatus {
 }
 
 model SubscriptionRequest {
-  id            String                    @id @default(cuid())
-  businessId    String
+  id String @id @default(cuid())
+
+  // Nullable, and detached rather than deleted when a workspace goes. This is
+  // Cutline's own revenue ledger, not the customer's data: what a customer paid
+  // us is our business record and our tax record, and it has to outlive their
+  // account. Cascading it meant a solo owner deleting their account silently
+  // erased their payments from our books.
+  businessId String?
+
   planRequested SubscriptionPlan
   transactionId String                    @unique
   paymentMethod String
@@ -181,7 +188,7 @@ model SubscriptionRequest {
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
 
   @@index([businessId])
   @@index([status])

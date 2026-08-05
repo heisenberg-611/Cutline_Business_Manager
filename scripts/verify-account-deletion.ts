@@ -61,6 +61,11 @@ async function countsFor(businessId: string) {
 }
 
 async function cleanup() {
+  // Detached rows outlive their business by design, so they need clearing by
+  // transaction id rather than by workspace.
+  await prisma.subscriptionRequest.deleteMany({
+    where: { transactionId: { in: [`TXN-${SOLO_ORG}`, `TXN-${SHARED_ORG}`] } },
+  })
   await prisma.business.deleteMany({ where: { id: { in: [SOLO_ORG, SHARED_ORG] } } })
   await prisma.user.deleteMany({ where: { id: { in: [SOLO_OWNER, SHARED_OWNER, MEMBER] } } })
 }
@@ -98,6 +103,19 @@ async function seedWorkspace(businessId: string, name: string, ownerId: string, 
     data: { businessId, invoiceId: invoice.id, amountCents: 10000, method: 'BANK_TRANSFER' },
   })
   await prisma.asset.create({ data: { businessId, name: 'Camera', costCents: 5000, type: 'Music' } })
+
+  // What this customer paid Cutline. Deliberately distinct from Payment above,
+  // which is what the customer's own client paid them.
+  await prisma.subscriptionRequest.create({
+    data: {
+      businessId,
+      planRequested: 'BUSINESS',
+      transactionId: `TXN-${businessId}`,
+      paymentMethod: 'Bkash/Nagad Personal',
+      status: 'APPROVED',
+      amountPaid: 299,
+    },
+  })
   await prisma.notification.create({
     data: { businessId, userId: ownerId, title: 'Hello', message: 'Test' },
   })
@@ -201,7 +219,31 @@ async function main() {
     { business: 0, clients: 0, projects: 0, tasks: 0, comments: 0, invoices: 0, lineItems: 0, payments: 0, assets: 0, conversations: 0, messages: 0, participants: 0, memberships: 0, notifications: 0 }
   )
 
-  console.log('\n5. NO DANGLING REFERENCES TO THE DELETED MEMBER')
+  console.log('\n5. CUTLINE REVENUE SURVIVES THE DELETION')
+  // The workspace is gone, but what they paid Cutline is Cutline's own business
+  // and tax record. Cascading it meant a solo owner could silently erase their
+  // payments from the books.
+  const revenueAfter = await prisma.subscriptionRequest.aggregate({
+    where: { status: 'APPROVED', transactionId: { in: [`TXN-${SOLO_ORG}`, `TXN-${SHARED_ORG}`] } },
+    _sum: { amountPaid: true },
+  })
+  check('both payments still on the books', revenueAfter._sum.amountPaid, 598)
+  check(
+    'the deleted workspace payment is detached, not deleted',
+    await prisma.subscriptionRequest.count({
+      where: { transactionId: `TXN-${SOLO_ORG}`, businessId: null },
+    }),
+    1
+  )
+  check(
+    'the surviving workspace payment stays attached',
+    await prisma.subscriptionRequest.count({
+      where: { transactionId: `TXN-${SHARED_ORG}`, businessId: SHARED_ORG },
+    }),
+    1
+  )
+
+  console.log('\n6. NO DANGLING REFERENCES TO THE DELETED MEMBER')
   // Every place their id could still be recorded. Anything non-zero here means
   // a foreign key that should cascade or null out does neither, which would
   // leave a reference to a person who no longer exists.
