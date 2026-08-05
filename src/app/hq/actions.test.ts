@@ -89,6 +89,34 @@ describe('loginAdmin — passwordless accounts', () => {
   })
 })
 
+describe('verifyAdminSession', () => {
+  it('rejects a bare email as a cookie value', async () => {
+    // The shape of a real bug: the HQ layout kept its own copy of this check
+    // and looked an admin up by the raw cookie. That worked while the cookie
+    // was an email and silently stopped working when it became a signed token,
+    // so admins who had just signed in were shown the login form again.
+    sessionCookie = 'boss@test.local'
+    mockPrisma.globalAdmin.findUnique.mockResolvedValue({
+      email: 'boss@test.local',
+      passwordHash: 'x',
+    })
+
+    await expect(removeAdmin('someone@test.local')).rejects.toThrow('Unauthorized')
+  })
+
+  it('rejects a session issued before sessionsValidFrom', async () => {
+    // How a password change signs out other devices.
+    await asAdmin('boss@test.local')
+    mockPrisma.globalAdmin.findUnique.mockResolvedValue({
+      email: 'boss@test.local',
+      passwordHash: 'x',
+      sessionsValidFrom: new Date(Date.now() + 60_000),
+    })
+
+    await expect(removeAdmin('someone@test.local')).rejects.toThrow('Unauthorized')
+  })
+})
+
 describe('loginAdmin — account lockout', () => {
   const withAttempts = (failedLoginAttempts: number) => {
     mockPrisma.globalAdmin.findUnique.mockResolvedValue({

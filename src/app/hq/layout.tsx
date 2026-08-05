@@ -1,29 +1,18 @@
 import Link from 'next/link';
-import prisma from '@/modules/core/db/prisma';
-import { cookies } from 'next/headers';
 import { AdminAuthForm } from './components/AdminAuthForm';
 import { AdminSidebar } from './components/AdminSidebar';
-import { logoutAdmin } from './actions';
+import { logoutAdmin, verifyAdminSession } from './actions';
 import { ShieldAlert } from 'lucide-react';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  // Auth Flow: Check for admin_session cookie
-  const cookieStore = await cookies();
-  const adminEmail = cookieStore.get('admin_session')?.value;
+  // The one session check, shared with requireAdmin. This used to read the
+  // cookie and look an admin up by it directly, which worked only while the
+  // cookie was a bare email — once it became a signed token that lookup could
+  // never match, and the login form was shown to admins who had just
+  // successfully signed in.
+  const admin = await verifyAdminSession();
 
-  // If no session cookie, or if the user doesn't exist in the DB, show the login screen
-  let isAuthenticated = false;
-
-  if (adminEmail) {
-    const globalAdmin = await prisma.globalAdmin.findUnique({
-      where: { email: adminEmail },
-    });
-    if (globalAdmin && globalAdmin.passwordHash) {
-      isAuthenticated = true;
-    }
-  }
-
-  if (!isAuthenticated) {
+  if (!admin) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4">
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 rounded-xl shadow-lg max-w-md w-full text-center">
@@ -44,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-indigo-500/15 via-purple-500/15 to-pink-500/15 dark:from-indigo-500/10 dark:via-purple-500/10 dark:to-pink-500/10 flex flex-row text-foreground">
       {/* Sidebar */}
-      <AdminSidebar adminEmail={adminEmail!} logoutAction={logoutAdmin} />
+      <AdminSidebar adminEmail={admin.email} logoutAction={logoutAdmin} />
 
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full">
