@@ -69,15 +69,15 @@ export async function restoreBusinessPlan() {
     throw new Error('Only a self-downgraded Pro plan can be restored to Business');
   }
 
+  // Deliberately does NOT filter out admin_override. Payment is taken manually
+  // over bKash and fulfilled by an HQ admin setting the plan, so those rows are
+  // the normal record of a sale rather than an administrative artifact —
+  // excluding them denied restore to most genuine Business customers while the
+  // billing page, which does not filter, still offered them the button.
   const lastRequest = await prisma.subscriptionRequest.findFirst({
     where: {
       businessId: orgId,
-      status: 'APPROVED',
-      // forceUpdateSubscription writes an APPROVED request purely for revenue
-      // reporting whenever HQ sets a paid plan by hand. Those are not evidence
-      // that this business ever paid for Business, so an HQ grant that was
-      // later reduced must not be self-restorable.
-      paymentMethod: { not: 'admin_override' }
+      status: 'APPROVED'
     },
     orderBy: { updatedAt: 'desc' }
   });

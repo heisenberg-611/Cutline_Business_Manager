@@ -58,26 +58,25 @@ describe('restoreBusinessPlan', () => {
     expect(mockSyncClerkSeatCap).toHaveBeenCalledWith(ORG, 'BUSINESS')
   })
 
-  it('excludes admin_override requests from the query', async () => {
-    // forceUpdateSubscription writes an APPROVED request purely for revenue
-    // reporting. Treating one as proof of purchase would let a business that HQ
-    // had reduced climb back to Business for free.
+  it('accepts an HQ-granted Business plan as proof of purchase', async () => {
+    // Payment is manual (bKash) and fulfilled by an HQ admin setting the plan,
+    // so admin_override is how most real sales are recorded here. Filtering it
+    // out denied restore to genuine customers while the billing page, which
+    // does not filter, still showed them the button.
     mockPrisma.business.findUnique.mockResolvedValue({
       subscriptionPlan: 'PRO',
       subscriptionPeriodEnd: FUTURE,
     })
-    mockPrisma.subscriptionRequest.findFirst.mockResolvedValue(null)
+    mockPrisma.subscriptionRequest.findFirst.mockResolvedValue({
+      planRequested: 'BUSINESS',
+      paymentMethod: 'admin_override',
+    })
 
-    await expect(restoreBusinessPlan()).rejects.toThrow('previously approved Business plan')
+    await restoreBusinessPlan()
 
-    expect(mockPrisma.subscriptionRequest.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          paymentMethod: { not: 'admin_override' },
-        }),
-      })
+    expect(mockPrisma.business.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { subscriptionPlan: 'BUSINESS' } })
     )
-    expect(mockPrisma.business.update).not.toHaveBeenCalled()
   })
 
   it('refuses to climb from Free, which is not a self-downgrade', async () => {
