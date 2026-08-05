@@ -993,9 +993,24 @@ model Mention {
 model GlobalAdmin {
   id           String   @id @default(cuid())
   email        String   @unique
+  // Null until the invite is accepted. A null hash must never be treated as
+  // "set it to whatever was typed" — that made every pending account claimable
+  // by anyone who knew the email address.
   passwordHash String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+
+  // Invite flow. Stored as a SHA-256 of the token rather than the token itself,
+  // so read access to this table cannot be replayed into admin access.
+  inviteTokenHash String?   @unique
+  inviteExpiresAt DateTime?
+
+  // Per-account brute-force lockout, threshold from
+  // GlobalSettings.maxFailedLogins. Account-level rather than IP-level so it
+  // survives IP rotation and works with no Redis configured.
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("global_admins")
 }
