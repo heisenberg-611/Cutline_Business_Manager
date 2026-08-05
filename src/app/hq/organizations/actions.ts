@@ -4,15 +4,19 @@ import prisma from '@/modules/core/db/prisma';
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '../actions';
 import { SubscriptionPlan } from '@prisma/client';
-import { PLAN_PRICES } from '@/lib/subscription';
 import { syncClerkSeatCap } from '@/lib/plan-guard';
 
 export async function forceUpdateSubscription(
   businessId: string,
   plan: SubscriptionPlan,
   periodEnd: Date | null,
-  /** Whole BDT collected out of band. Pass 0 for a comp or a test grant. */
-  amountPaid?: number
+  /**
+   * Whole BDT actually collected out of band. Defaults to 0, because setting a
+   * plan here is an entitlement change and not by itself a sale — an admin
+   * fixing a mistake, extending a period or setting up a test would otherwise
+   * book full list price as income. Pass the real figure for an offline sale.
+   */
+  amountPaid = 0
 ) {
   const admin = await requireAdmin();
 
@@ -37,8 +41,10 @@ export async function forceUpdateSubscription(
     }),
   ];
 
-  // Auto-create an approved SubscriptionRequest for revenue tracking when upgrading to a paid plan
-  if (plan !== 'FREE' && PLAN_PRICES[plan as keyof typeof PLAN_PRICES] > 0) {
+  // A revenue row is written only when an amount was actually collected.
+  // Previously any paid-plan grant created one at full list price, which is how
+  // 60% of reported revenue came to be admin-granted rather than received.
+  if (plan !== 'FREE' && amountPaid > 0) {
     operations.push(
       prisma.subscriptionRequest.create({
         data: {
@@ -47,10 +53,9 @@ export async function forceUpdateSubscription(
           transactionId: `ADMIN-OVERRIDE-${crypto.randomUUID()}`,
           paymentMethod: 'admin_override',
           status: 'APPROVED',
-          // Most sales here are fulfilled this way, so list price is the right
-          // default — but a comp or test grant can be recorded as 0 so it stops
-          // inflating revenue.
-          amountPaid: amountPaid ?? PLAN_PRICES[plan as keyof typeof PLAN_PRICES] ?? 0,
+          amountPaid,
+          // Only a row carrying money is dated as income.
+          paidAt: amountPaid > 0 ? new Date() : null,
         }
       })
     );

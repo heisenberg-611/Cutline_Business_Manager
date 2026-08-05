@@ -17,6 +17,9 @@ export function EditSubscriptionModal({
 }) {
   const [plan, setPlan] = useState<SubscriptionPlan>(business.subscriptionPlan || 'FREE');
   const [loading, setLoading] = useState(false);
+  // Blank means nothing was collected. Setting a plan is an entitlement change;
+  // it only becomes revenue if the admin says money actually arrived.
+  const [amountPaid, setAmountPaid] = useState<string>('');
   const [periodEnd, setPeriodEnd] = useState<string>(
     business.subscriptionPeriodEnd 
       ? new Date(business.subscriptionPeriodEnd).toISOString().split('T')[0] 
@@ -50,7 +53,7 @@ export function EditSubscriptionModal({
       onOptimisticUpdate(plan, periodEnd ? new Date(periodEnd).toISOString() : null);
       onClose(); // Close modal instantly for snappiness
 
-      await forceUpdateSubscription(business.id, plan, end);
+      await forceUpdateSubscription(business.id, plan, end, Number(amountPaid) || 0);
     } catch (err: any) {
       alert(err.message || 'Failed to update subscription');
     } finally {
@@ -150,6 +153,33 @@ export function EditSubscriptionModal({
                 Lifetime Access
               </button>
             </div>
+          </div>
+
+          {/* Amount collected — deliberately blank by default, so revenue is
+              recorded only when someone states that money was received. */}
+          <div className={plan === 'FREE' ? 'opacity-50 pointer-events-none' : ''}>
+            <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-1 block">
+              Amount received (BDT)
+            </label>
+            <p className="text-xs text-zinc-500 mb-3">
+              Leave blank for a comp, a correction, a test, or extending an existing
+              paid period. Enter a figure only when money actually changed hands — it
+              is what HQ reports as revenue.
+            </p>
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={amountPaid}
+              onChange={(e) => setAmountPaid(e.target.value)}
+              placeholder="0"
+              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            {Number(amountPaid) > 0 && (
+              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                Records BDT {Number(amountPaid).toLocaleString()} as revenue, dated today.
+              </p>
+            )}
           </div>
 
           {/* Danger Zone */}

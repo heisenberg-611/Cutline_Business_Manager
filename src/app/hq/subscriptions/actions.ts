@@ -24,8 +24,11 @@ export async function approveRequest(
       where: { id: requestId },
       data: {
         status: 'APPROVED',
-        // Captured now, so the figure cannot move when list prices change.
+        // A customer-submitted request is a real sale, so list price is the
+        // right default here — unlike an admin grant, which defaults to zero.
+        // Captured now so the figure cannot move when list prices change.
         amountPaid: amountPaid ?? PLAN_PRICES[plan as keyof typeof PLAN_PRICES] ?? 0,
+        paidAt: new Date(),
       },
     }),
     prisma.business.update({

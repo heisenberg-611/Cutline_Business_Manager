@@ -180,10 +180,15 @@ model SubscriptionRequest {
 
   // What was actually collected, in whole BDT, captured at approval.
   // Revenue used to be recomputed as count x current PLAN_PRICES, so changing a
-  // price retroactively rewrote every historical total and a comped admin grant
-  // was indistinguishable from a paid one. Null only for rows approved before
-  // this column existed.
+  // price retroactively rewrote every historical total. Zero is a real and
+  // expected value: an admin granting a plan is an entitlement change, not a
+  // sale, and only becomes revenue if money was actually received.
   amountPaid Int?
+
+  // When the money arrived, for revenue recognition. Distinct from updatedAt,
+  // which moves whenever the row is touched — bucketing a monthly revenue chart
+  // on a mutable column silently shifts past income between months.
+  paidAt DateTime?
 
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt

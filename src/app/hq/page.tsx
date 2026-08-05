@@ -93,7 +93,9 @@ export default async function AdminOverviewPage() {
       // Same correction as the finances page: sum what was recorded as
       // collected rather than pricing a count at today's rates.
       prisma.subscriptionRequest.aggregate({
-        where: { status: 'APPROVED', updatedAt: { gte: monthStart, lte: monthEnd } },
+        // paidAt, not updatedAt: bucketing on a mutable column moves past
+        // income into whichever month the row was last edited.
+        where: { status: 'APPROVED', paidAt: { gte: monthStart, lte: monthEnd } },
         _sum: { amountPaid: true }
       })
     );
