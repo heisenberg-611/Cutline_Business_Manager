@@ -10,6 +10,7 @@
     "reset-db": "tsx scripts/reset-db.ts",
     "backfill-owners": "tsx scripts/backfill-business-owner.ts",
     "sync-seat-caps": "tsx scripts/sync-seat-caps.ts",
+    "verify-deletion": "sh scripts/local-db.sh npx tsx scripts/verify-account-deletion.ts",
     "postinstall": "prisma generate",
     "vercel-build": "prisma generate && next build",
     "test": "vitest run",

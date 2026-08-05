@@ -11,6 +11,8 @@ npm run lint         # eslint --max-warnings=377 (warning budget is intentional,
 npm test             # vitest run
 npm run reset-db     # tsx scripts/reset-db.ts
 npm run backfill-owners  # tsx scripts/backfill-business-owner.ts (fills Business.ownerUserId from Clerk)
+npm run db:up            # local Docker Postgres on :55432, never touches the hosted DB
+npm run verify-deletion  # proves account deletion against that local DB (needs db:up first)
 npx prisma migrate dev   # apply schema changes locally
 npx prisma generate  # regenerate client after schema.prisma edits
 ```
