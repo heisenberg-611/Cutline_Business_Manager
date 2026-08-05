@@ -126,34 +126,55 @@ export function DeletionFlow({
             <AlertTriangle className="w-4 h-4 text-red-600" />
             What deleting your account does
           </h4>
-          <ul className="text-sm text-muted-foreground space-y-2 mb-4 list-disc pl-5">
-            <li>
-              Your account and{' '}
-              {scope.kind === 'SOLO_OWNER' ? (
-                <>
-                  the <strong>{scope.businessName}</strong> workspace
-                </>
-              ) : (
-                'your workspace membership'
-              )}{' '}
-              are removed immediately.
-            </li>
-            {scope.kind === 'SOLO_OWNER' && (
+          {/* The two cases genuinely differ, so they are described separately.
+              A single set of terms covering both would have to either overstate
+              what a leaving member loses or understate what an owner does. */}
+          {scope.kind === 'SOLO_OWNER' ? (
+            <ul className="text-sm text-muted-foreground space-y-2 mb-4 list-disc pl-5">
+              <li>
+                Your account and the <strong>{scope.businessName}</strong> workspace are removed
+                immediately.
+              </li>
               <li>
                 Every client, project, task, file, invoice, payment, expense, message and piece of
                 feedback in that workspace is deleted with it.
               </li>
-            )}
-            <li>
-              Deletion is <strong>permanent and cannot be undone</strong>. We keep no copies, no
-              backups you can be restored from, and no archived version of your records.
-            </li>
-            <li>
-              All we retain is a dated note that a deletion request was made and honoured, along
-              with the reason you gave. It contains nothing that identifies you.
-            </li>
-            <li>The copy of your data we emailed you is the only copy that will exist.</li>
-          </ul>
+              <li>
+                Deletion is <strong>permanent and cannot be undone</strong>. We keep no copies, no
+                backups you can be restored from, and no archived version of your records.
+              </li>
+              <li>
+                All we retain is a dated note that a deletion request was made and honoured, along
+                with the reason you gave. It contains nothing that identifies you.
+              </li>
+              <li>The copy of your data we emailed you is the only copy that will exist.</li>
+            </ul>
+          ) : (
+            <ul className="text-sm text-muted-foreground space-y-2 mb-4 list-disc pl-5">
+              <li>
+                Your account is removed immediately, along with your membership of every workspace
+                you belong to, your notifications, and your place in any conversation.
+              </li>
+              <li>
+                Work assigned to you stays with the workspace and simply becomes unassigned. It
+                belongs to the team, not to your account.
+              </li>
+              <li>
+                <strong>Comments and messages you posted stay in the workspaces you posted them
+                in</strong>, shown as an unknown author rather than under your name. They are part
+                of a shared record other people still rely on, so we do not remove them — but they
+                are no longer linked to you or to your account.
+              </li>
+              <li>
+                Deletion is <strong>permanent and cannot be undone</strong>. Your account cannot be
+                restored, and we keep no backup from which to recreate it.
+              </li>
+              <li>
+                All we retain is a dated note that a deletion request was made and honoured, along
+                with the reason you gave. It contains nothing that identifies you.
+              </li>
+            </ul>
+          )}
 
           <label htmlFor="confirm" className="block text-sm font-medium mb-2">
             Type <span className="font-mono font-semibold">DELETE</span> to confirm
