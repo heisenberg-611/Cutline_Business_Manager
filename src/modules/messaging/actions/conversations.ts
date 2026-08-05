@@ -434,6 +434,90 @@ export async function createGroupConversation(memberIds: string[], title?: strin
 }
 
 /**
+ * Adds business members to an existing GROUP conversation.
+ *
+ * Open to any participant rather than admins only, matching
+ * createGroupConversation: a member can already start an equivalent group with
+ * the same people, so an admin gate here would add friction without adding a
+ * boundary.
+ *
+ * Note that getMessages does not filter on joinedAt, so someone added here can
+ * read the group's history from before they joined.
+ */
+export async function addGroupMembers(conversationId: string, userIds: string[]) {
+  if (!Array.isArray(userIds)) {
+    throw new Error('Invalid members format')
+  }
+
+  const { orgId, conversation } = await authorizeConversationWrite(conversationId)
+
+  // DIRECT must stay a pair, BROADCAST auto-joins the whole business already,
+  // and GUEST_LINK is scoped to one external token.
+  if (conversation.type !== 'GROUP') {
+    throw new Error('Only group chats can have members added')
+  }
+
+  const uniqueIds = Array.from(new Set(userIds)).filter(
+    id => typeof id === 'string' && id.length > 0 && id.length <= 100
+  )
+
+  if (uniqueIds.length === 0) {
+    throw new Error('Select at least one member to add')
+  }
+  if (uniqueIds.length > 100) {
+    throw new Error('Cannot add more than 100 members at a time')
+  }
+
+  // IDOR check: every id has to be a member of this business.
+  const memberships = await prisma.businessMembership.findMany({
+    where: {
+      businessId: orgId,
+      userId: { in: uniqueIds }
+    },
+    select: { userId: true }
+  })
+
+  if (memberships.length !== uniqueIds.length) {
+    throw new Error('One or more selected users do not belong to this business')
+  }
+
+  const existingIds = new Set(conversation.participants.map(p => p.userId))
+  const toCreate = uniqueIds.filter(id => !existingIds.has(id))
+  // Someone who deleted the chat for themselves is still a participant row, so
+  // re-adding them has to clear the tombstone rather than silently no-op.
+  const hiddenIds = new Set(
+    conversation.participants.filter(p => p.deletedAt !== null).map(p => p.userId)
+  )
+  const toRestore = uniqueIds.filter(id => hiddenIds.has(id))
+  const affected = [...toCreate, ...toRestore]
+
+  if (affected.length === 0) {
+    return { added: 0, restored: 0 }
+  }
+
+  await prisma.$transaction([
+    prisma.conversationParticipant.createMany({
+      data: toCreate.map(id => ({ conversationId, userId: id })),
+      skipDuplicates: true
+    }),
+    prisma.conversationParticipant.updateMany({
+      where: { conversationId, userId: { in: toRestore } },
+      data: { deletedAt: null }
+    })
+  ])
+
+  await createManyNotifications(affected, {
+    businessId: orgId,
+    title: `Added to ${conversation.title || 'a group chat'}`,
+    message: 'You were added to a group conversation.',
+    type: 'message',
+    actionUrl: `/dashboard/messages/${conversationId}`
+  })
+
+  return { added: toCreate.length, restored: toRestore.length }
+}
+
+/**
  * Deletes a conversation.
  * Admins -> Hard delete (completely removes from DB).
  * Members -> Soft delete (hides it and its history until a new message arrives).
