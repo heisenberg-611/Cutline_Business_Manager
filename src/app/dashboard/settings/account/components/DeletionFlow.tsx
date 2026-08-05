@@ -44,25 +44,72 @@ export function DeletionFlow({
     }
   }
 
-  // Owning a workspace other people work in is a dead end until it is resolved,
-  // so say so before anything else rather than after an export has been sent.
-  if (scope.kind === 'SHARED_OWNER' && !request) {
+  // Shown whatever step they are on, not only before requesting. Someone can
+  // join the workspace after a request is filed, and the owner should meet this
+  // warning rather than discover the refusal by clicking delete.
+  if (scope.kind === 'SHARED_OWNER') {
     return (
-      <div className="flex gap-4 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-5">
-        <Users className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-        <div>
-          <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1">
-            Your workspace has other members
-          </h4>
-          <p className="text-sm text-amber-800 dark:text-amber-300">
-            You own <strong>{scope.businessName}</strong>, which {scope.otherMembers} other{' '}
-            {scope.otherMembers === 1 ? 'person is' : 'people are'} still a member of. Deleting your
-            account would take their clients, projects and invoices with it.
-          </p>
-          <p className="text-sm text-amber-800 dark:text-amber-300 mt-2">
-            Transfer ownership or remove the other members first, then come back here.
-          </p>
+      <div className="space-y-4">
+        <div className="flex gap-4 rounded-xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-5">
+          <Users className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1">
+              Remove your team members before deleting
+            </h4>
+            <p className="text-sm text-amber-800 dark:text-amber-300">
+              You own <strong>{scope.businessName}</strong>, which {scope.otherMembers} other{' '}
+              {scope.otherMembers === 1 ? 'person is' : 'people are'} still a member of. Deleting
+              your account would take every client, project and invoice in that workspace with it,
+              including theirs — so it is refused while anyone else is there.
+            </p>
+
+            <div className="mt-3">
+              <p className="text-xs font-medium text-amber-900 dark:text-amber-200 mb-1.5">
+                Still in this workspace:
+              </p>
+              <ul className="text-sm text-amber-800 dark:text-amber-300 space-y-0.5">
+                {scope.memberNames.map((name) => (
+                  <li key={name}>· {name}</li>
+                ))}
+                {scope.otherMembers > scope.memberNames.length && (
+                  <li className="text-xs opacity-75">
+                    and {scope.otherMembers - scope.memberNames.length} more
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            <p className="text-sm text-amber-800 dark:text-amber-300 mt-3">
+              Open the workspace switcher at the top of the sidebar, choose{' '}
+              <strong>Manage members</strong>, and remove them or hand ownership to someone else.
+              Then come back here and your request can go ahead.
+            </p>
+          </div>
         </div>
+
+        {request && (
+          // Their earlier request is still open and will resume by itself once
+          // the workspace is theirs alone, so it does not need cancelling.
+          <p className="text-sm text-muted-foreground">
+            Your deletion request from{' '}
+            {new Date(request.requestedAt).toLocaleDateString(undefined, {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}{' '}
+            is still open and paused until then.{' '}
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() =>
+                run(cancelAccountDeletion).then((ok) => ok && toast.success('Request cancelled'))
+              }
+              className="underline hover:text-foreground disabled:opacity-50"
+            >
+              Cancel it instead
+            </button>
+          </p>
+        )}
       </div>
     )
   }

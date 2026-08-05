@@ -15,7 +15,13 @@ export type DeletionScope =
   /** Sole member of the workspace they own: the workspace is theirs to erase. */
   | { kind: 'SOLO_OWNER'; businessId: string; businessName: string }
   /** Owns a workspace other people still work in. Refused. */
-  | { kind: 'SHARED_OWNER'; businessName: string; otherMembers: number }
+  | {
+      kind: 'SHARED_OWNER'
+      businessName: string
+      otherMembers: number
+      /** Who to remove. A bare count leaves the owner guessing at the work. */
+      memberNames: string[]
+    }
   /** Belongs to workspaces they do not own: only the person is removed. */
   | { kind: 'MEMBER_ONLY' }
 
@@ -31,6 +37,11 @@ export async function classifyDeletion(userId: string): Promise<DeletionScope> {
       id: true,
       name: true,
       _count: { select: { memberships: true } },
+      memberships: {
+        where: { userId: { not: userId } },
+        select: { user: { select: { firstName: true, lastName: true, email: true } } },
+        take: 20,
+      },
     },
   })
 
@@ -43,6 +54,10 @@ export async function classifyDeletion(userId: string): Promise<DeletionScope> {
       kind: 'SHARED_OWNER',
       businessName: shared.name,
       otherMembers: shared._count.memberships - 1,
+      memberNames: shared.memberships.map((m) => {
+        const name = [m.user.firstName, m.user.lastName].filter(Boolean).join(' ').trim()
+        return name || m.user.email
+      }),
     }
   }
 

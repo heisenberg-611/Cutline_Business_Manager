@@ -138,7 +138,20 @@ async function main() {
 
   console.log('\n1. CLASSIFICATION')
   check('solo owner is SOLO_OWNER', (await classifyDeletion(SOLO_OWNER)).kind, 'SOLO_OWNER')
-  check('shared owner is SHARED_OWNER', (await classifyDeletion(SHARED_OWNER)).kind, 'SHARED_OWNER')
+  const sharedScope = await classifyDeletion(SHARED_OWNER)
+  check('shared owner is SHARED_OWNER', sharedScope.kind, 'SHARED_OWNER')
+  // The warning names who is blocking them, so the names have to survive the
+  // round trip through the database, not just exist in the type.
+  check(
+    'blocking member is named in the scope',
+    sharedScope.kind === 'SHARED_OWNER' ? sharedScope.memberNames : null,
+    ['E2E user_e2e_member']
+  )
+  check(
+    'blocking member count excludes the owner',
+    sharedScope.kind === 'SHARED_OWNER' ? sharedScope.otherMembers : null,
+    1
+  )
   check('member is MEMBER_ONLY', (await classifyDeletion(MEMBER)).kind, 'MEMBER_ONLY')
 
   console.log('\n2. SHARED OWNER IS REFUSED, AND NOTHING CHANGES')

@@ -32,7 +32,7 @@ beforeEach(() => {
 describe('classifyDeletion', () => {
   it('treats a workspace with only its owner as solo', async () => {
     mockPrisma.business.findMany.mockResolvedValue([
-      { id: 'org_1', name: 'Solo Studio', _count: { memberships: 1 } },
+      { id: 'org_1', name: 'Solo Studio', _count: { memberships: 1 }, memberships: [] },
     ])
 
     await expect(classifyDeletion(USER)).resolves.toEqual({
@@ -42,15 +42,28 @@ describe('classifyDeletion', () => {
     })
   })
 
-  it('treats a workspace with other members as shared', async () => {
+  it('treats a workspace with other members as shared, and names them', async () => {
+    // The names are what make the warning actionable — a bare count leaves the
+    // owner guessing at who is blocking them.
     mockPrisma.business.findMany.mockResolvedValue([
-      { id: 'org_1', name: 'Agency', _count: { memberships: 4 } },
+      {
+        id: 'org_1',
+        name: 'Agency',
+        _count: { memberships: 4 },
+        memberships: [
+          { user: { firstName: 'Ada', lastName: 'Reyes', email: 'ada@test.local' } },
+          { user: { firstName: null, lastName: null, email: 'noname@test.local' } },
+          { user: { firstName: 'Sam', lastName: null, email: 'sam@test.local' } },
+        ],
+      },
     ])
 
     await expect(classifyDeletion(USER)).resolves.toEqual({
       kind: 'SHARED_OWNER',
       businessName: 'Agency',
       otherMembers: 3,
+      // Falls back to the email when there is no name to show.
+      memberNames: ['Ada Reyes', 'noname@test.local', 'Sam'],
     })
   })
 
@@ -64,8 +77,13 @@ describe('classifyDeletion', () => {
     // Owning anything shared must dominate: the risk is destroying a colleague's
     // work, and that risk exists regardless of their other workspaces.
     mockPrisma.business.findMany.mockResolvedValue([
-      { id: 'org_1', name: 'Solo Studio', _count: { memberships: 1 } },
-      { id: 'org_2', name: 'Agency', _count: { memberships: 3 } },
+      { id: 'org_1', name: 'Solo Studio', _count: { memberships: 1 }, memberships: [] },
+      {
+        id: 'org_2',
+        name: 'Agency',
+        _count: { memberships: 3 },
+        memberships: [{ user: { firstName: 'Ada', lastName: 'Reyes', email: 'a@t.l' } }],
+      },
     ])
 
     const scope = await classifyDeletion(USER)
@@ -76,7 +94,7 @@ describe('classifyDeletion', () => {
 describe('performAccountDeletion', () => {
   it('refuses to delete when the workspace has other members', async () => {
     mockPrisma.business.findMany.mockResolvedValue([
-      { id: 'org_1', name: 'Agency', _count: { memberships: 4 } },
+      { id: 'org_1', name: 'Agency', _count: { memberships: 4 }, memberships: [] },
     ])
 
     await expect(performAccountDeletion(USER)).rejects.toThrow(DeletionBlockedError)
@@ -89,7 +107,7 @@ describe('performAccountDeletion', () => {
 
   it('erases the workspace and the person for a solo owner', async () => {
     mockPrisma.business.findMany.mockResolvedValue([
-      { id: 'org_1', name: 'Solo Studio', _count: { memberships: 1 } },
+      { id: 'org_1', name: 'Solo Studio', _count: { memberships: 1 }, memberships: [] },
     ])
 
     await performAccountDeletion(USER)
