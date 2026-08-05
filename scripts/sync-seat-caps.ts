@@ -64,7 +64,18 @@ async function main() {
   let capped = 0;
   let uncapped = 0;
   const failures: string[] = [];
+  // Orgs this key cannot see. Expected rather than broken: this project runs
+  // local development against the production database, so it always holds some
+  // rows belonging to the other Clerk instance. Reported apart from real
+  // failures so a genuine error is never buried in routine noise.
+  const otherInstance: string[] = [];
   const willLock: { name: string; plan: string; locked: number; noOwner: boolean }[] = [];
+
+  const record = (id: string, name: string, error: unknown) => {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (/not found/i.test(reason)) otherInstance.push(`${name} (${id})`);
+    else failures.push(`${id} (${name}) — ${reason}`);
+  };
 
   for (const b of businesses) {
     const activePlan = getActivePlan(b);
@@ -97,8 +108,7 @@ async function main() {
         console.log(`  ${b.name}: Clerk has ${org.maxAllowedMemberships}${drift}`);
         tally();
       } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        failures.push(`${b.id} (${b.name}) — ${reason}`);
+        record(b.id, b.name, error);
       }
       continue;
     }
@@ -107,14 +117,20 @@ async function main() {
       await clerk.organizations.updateOrganization(b.id, { maxAllowedMemberships: cap });
       tally();
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      failures.push(`${b.id} (${b.name}) — ${reason}`);
+      record(b.id, b.name, error);
     }
   }
 
   console.log(`${apply ? "Set" : "Would set"} seat caps on ${businesses.length} business(es):`);
   console.log(`  capped to 1 (below Business): ${capped}`);
   console.log(`  set to ${businessSeats} (Business plan):${' '.repeat(Math.max(1, 8 - String(businessSeats).length))}${uncapped}`);
+
+  if (otherInstance.length > 0) {
+    console.log(
+      `\nℹ️  ${otherInstance.length} org(s) not present in this Clerk instance — skipped:`
+    );
+    for (const line of otherInstance) console.log(`  - ${line}`);
+  }
 
   if (failures.length > 0) {
     console.warn(`\n⚠️  ${failures.length} could not be updated:`);
