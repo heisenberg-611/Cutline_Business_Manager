@@ -7,7 +7,7 @@ import { cookies, headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { checkAdminAuthRateLimit } from '@/lib/utils/rate-limit';
 import { getAppUrl } from '@/lib/utils';
-import { INVITE_TTL_HOURS, LOCKOUT_MINUTES, hashInviteToken } from '@/lib/admin-auth';
+import { INVITE_TTL_HOURS, LOCKOUT_MINUTES, MIN_ADMIN_PASSWORD_LENGTH, hashInviteToken } from '@/lib/admin-auth';
 import { signAdminSession, verifyAdminSessionCookie } from '@/lib/admin-session';
 
 const COOKIE_NAME = 'admin_session';
@@ -270,5 +270,72 @@ export async function removeAdmin(email: string) {
   });
 
   revalidatePath('/hq/admins');
+  return { success: true };
+}
+
+/**
+ * Rotates the signed-in admin's own password.
+ *
+ * Deliberately self-service only: an admin changing someone else's password
+ * would be a takeover primitive, and every admin here is already fully
+ * privileged. Moving sessionsValidFrom forward signs out every other device,
+ * which is the point of rotating after a suspected compromise.
+ */
+export async function changeAdminPassword(currentPassword: string, newPassword: string) {
+  const admin = await requireAdmin(); // SECURITY CHECK
+
+  if (typeof newPassword !== 'string' || newPassword.length < MIN_ADMIN_PASSWORD_LENGTH) {
+    return {
+      success: false,
+      error: `New password must be at least ${MIN_ADMIN_PASSWORD_LENGTH} characters`,
+    };
+  }
+
+  if (newPassword === currentPassword) {
+    return { success: false, error: 'New password must be different from the current one' };
+  }
+
+  if (!admin.passwordHash) {
+    return { success: false, error: 'This account has no password set' };
+  }
+
+  const valid = await bcrypt.compare(currentPassword, admin.passwordHash);
+  if (!valid) {
+    await prisma.adminAuditLog.create({
+      data: {
+        adminEmail: admin.email,
+        action: 'ADMIN_PASSWORD_CHANGE_FAILED',
+        targetId: admin.email,
+      },
+    });
+    return { success: false, error: 'Current password is incorrect' };
+  }
+
+  const now = new Date();
+  await prisma.globalAdmin.update({
+    where: { email: admin.email },
+    data: {
+      passwordHash: await bcrypt.hash(newPassword, 10),
+      // Every cookie issued before now is dead, including this one.
+      sessionsValidFrom: now,
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+    },
+  });
+
+  await prisma.adminAuditLog.create({
+    data: {
+      adminEmail: admin.email,
+      action: 'ADMIN_PASSWORD_CHANGED',
+      targetId: admin.email,
+    },
+  });
+
+  // Their current session is now invalid too, so clear it and make them sign in
+  // again with the new password.
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
+
+  revalidatePath('/hq');
   return { success: true };
 }

@@ -1,17 +1,33 @@
 import prisma from '@/modules/core/db/prisma';
 import { requireAdmin } from '../actions';
 import { MessageActions } from './MessageActions';
+import { PaginationControls } from '../components/PaginationControls';
 
 export const metadata = {
   title: 'Contact Messages - Admin',
 };
 
-export default async function AdminMessagesPage() {
+export default async function AdminMessagesPage(props: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   await requireAdmin();
-  
-  const messages = await prisma.systemContactMessage.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
+
+  const resolvedParams = await props.searchParams;
+  const currentPage = Math.max(1, parseInt(resolvedParams?.page || '1', 10));
+  const ITEMS_PER_PAGE = 20;
+
+  // Bounded: this table grows with every contact form submission and was
+  // previously fetched in full on every page load.
+  const [totalMessages, messages] = await prisma.$transaction([
+    prisma.systemContactMessage.count(),
+    prisma.systemContactMessage.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: ITEMS_PER_PAGE,
+      skip: (currentPage - 1) * ITEMS_PER_PAGE,
+    }),
+  ]);
+
+  const totalPages = Math.ceil(totalMessages / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-8">
@@ -65,6 +81,16 @@ export default async function AdminMessagesPage() {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalMessages}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

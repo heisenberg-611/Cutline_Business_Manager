@@ -1,13 +1,14 @@
 import prisma from '@/modules/core/db/prisma';
 import { requireAdmin } from '../actions';
 import { AdminManager } from './components/AdminManager';
+import { ChangePasswordCard } from './components/ChangePasswordCard';
 
 export const metadata = {
   title: 'Manage Admins',
 };
 
 export default async function ManageAdminsPage() {
-  await requireAdmin();
+  const me = await requireAdmin();
 
   const admins = await prisma.globalAdmin.findMany({
     orderBy: { createdAt: 'desc' },
@@ -25,6 +26,8 @@ export default async function ManageAdminsPage() {
         <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Global Admins</h2>
         <p className="text-sm text-zinc-500">Manage who has access to this global admin panel.</p>
       </div>
+
+      <ChangePasswordCard email={me.email} />
 
       <AdminManager
         admins={admins.map((a) => ({

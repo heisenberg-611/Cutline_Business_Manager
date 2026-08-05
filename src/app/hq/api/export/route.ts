@@ -5,7 +5,7 @@ import { requireAdmin } from '../../actions';
 export async function GET(request: NextRequest) {
   try {
     // SECURITY CHECK: Verify admin session
-    await requireAdmin();
+    const admin = await requireAdmin();
     
     const searchParams = request.nextUrl.searchParams;
     const entitiesParam = searchParams.get('entities');
@@ -36,6 +36,23 @@ export async function GET(request: NextRequest) {
     }
 
     await Promise.all(promises);
+
+    // Logged before returning: this is the single most sensitive action in the
+    // product — every user's email and every business — and it was the only one
+    // leaving no trace.
+    await prisma.adminAuditLog.create({
+      data: {
+        adminEmail: admin.email,
+        action: 'EXPORT_DATABASE',
+        targetId: 'global',
+        metadata: {
+          entities,
+          rowCounts: Object.fromEntries(
+            Object.entries(backupData.data).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
+          ),
+        },
+      },
+    });
 
     const jsonString = JSON.stringify(backupData, null, 2);
     const dateStr = new Date().toISOString().split('T')[0];
