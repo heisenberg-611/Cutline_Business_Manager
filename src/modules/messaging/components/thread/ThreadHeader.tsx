@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuGroup } from '@/components/ui/dropdown-menu'
-import { Megaphone, Loader2, Users, MessageSquare, Bell, BellOff, Trash2, ChevronLeft, Timer, Check, Shield, Copy } from 'lucide-react'
+import { Megaphone, Loader2, Users, MessageSquare, Bell, BellOff, Trash2, ChevronLeft, Timer, Check, Shield, Copy, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toggleMuteConversation, deleteConversation } from '../../actions'
+import { AddGroupMembersDialog } from './AddGroupMembersDialog'
 
 export interface ThreadHeaderProps {
   conversation: any
@@ -24,6 +25,7 @@ export function ThreadHeader({
 }: ThreadHeaderProps) {
   const [isMuting, setIsMuting] = useState(false)
   const [isDeletingChat, setIsDeletingChat] = useState(false)
+  const [isAddMembersOpen, setIsAddMembersOpen] = useState(false)
   const queryClient = useQueryClient()
   const router = useRouter()
 
@@ -156,6 +158,21 @@ export function ThreadHeader({
                       )
                     })}
                   </DropdownMenuGroup>
+                  {currentUserId && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        // Deferred a tick: the menu restores focus to its
+                        // trigger as it closes, which would otherwise land
+                        // after the dialog has taken focus and pull it back.
+                        onClick={() => setTimeout(() => setIsAddMembersOpen(true), 0)}
+                        className="gap-2"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        <span className="font-medium text-sm">Add members</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
@@ -175,6 +192,16 @@ export function ThreadHeader({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {currentUserId && isGroup && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsAddMembersOpen(true)}
+            title="Add members"
+          >
+            <UserPlus className="w-4 h-4" />
+          </Button>
+        )}
         {isAdmin && isGroup && (
           <DropdownMenu>
             <DropdownMenuTrigger render={
@@ -251,6 +278,14 @@ export function ThreadHeader({
           </Button>
         )}
       </div>
+
+      {currentUserId && isGroup && (
+        <AddGroupMembersDialog
+          open={isAddMembersOpen}
+          onOpenChange={setIsAddMembersOpen}
+          conversation={conversation}
+        />
+      )}
     </div>
   )
 }

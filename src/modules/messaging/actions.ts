@@ -2,6 +2,7 @@ export {
   getConversations,
   getOrCreateDirectConversation,
   createGroupConversation,
+  addGroupMembers,
   createBroadcast,
   createBusinessGuestChatLink,
   deleteConversation,
