@@ -6,16 +6,16 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Building2, CreditCard, Mail, Workflow, LayoutList, BellRing, UserX } from 'lucide-react'
 
 const SETTINGS_NAV = [
-  { href: '/dashboard/settings/general', label: 'General', icon: Building2 },
-  { href: '/dashboard/settings/billing', label: 'Billing & Plan', icon: CreditCard },
-  { href: '/dashboard/settings/invoice', label: 'Invoicing & Email', icon: Mail },
-  { href: '/dashboard/settings/workflow', label: 'Pipeline & Workflow', icon: Workflow },
-  { href: '/dashboard/settings/navigation', label: 'Navigation & Actions', icon: LayoutList },
-  { href: '/dashboard/settings/notifications', label: 'Notifications', icon: BellRing },
-  { href: '/dashboard/settings/account', label: 'Account', icon: UserX },
+  { href: '/dashboard/settings/general', label: 'General', icon: Building2, adminOnly: true },
+  { href: '/dashboard/settings/billing', label: 'Billing & Plan', icon: CreditCard, adminOnly: true },
+  { href: '/dashboard/settings/invoice', label: 'Invoicing & Email', icon: Mail, adminOnly: true },
+  { href: '/dashboard/settings/workflow', label: 'Pipeline & Workflow', icon: Workflow, adminOnly: true },
+  { href: '/dashboard/settings/navigation', label: 'Navigation & Actions', icon: LayoutList, adminOnly: true },
+  { href: '/dashboard/settings/notifications', label: 'Notifications', icon: BellRing, adminOnly: false },
+  { href: '/dashboard/settings/account', label: 'Account', icon: UserX, adminOnly: true },
 ]
 
-export function SettingsSidebarNav() {
+export function SettingsSidebarNav({ isAdmin = true }: { isAdmin?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -29,7 +29,7 @@ export function SettingsSidebarNav() {
 
   return (
     <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible -mx-1 px-1 lg:mx-0 lg:px-0 pb-2 lg:pb-0">
-      {SETTINGS_NAV.map(({ href, label, icon: Icon }) => {
+      {SETTINGS_NAV.filter(item => isAdmin || !item.adminOnly).map(({ href, label, icon: Icon }) => {
         const active = activePath === href || activePath?.startsWith(href + '/')
         return (
           <Link

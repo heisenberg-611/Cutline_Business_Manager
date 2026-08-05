@@ -80,14 +80,23 @@ export default clerkMiddleware(async (auth, req) => {
       }
 
       if (orgRole !== 'org:admin') {
+        // Carved out of the settings block below: this page reads and writes
+        // only the signed-in user's own notification tone and Do Not Disturb
+        // switch — no organisation data — and blocking it left members unable
+        // to silence their own alerts.
+        const memberAllowedPrefixes = [
+          '/dashboard/settings/notifications'
+        ];
         const restrictedPrefixes = [
-          '/dashboard/financials', 
-          '/dashboard/analytics', 
-          '/dashboard/settings', 
-          '/dashboard/archive', 
+          '/dashboard/financials',
+          '/dashboard/analytics',
+          '/dashboard/settings',
+          '/dashboard/archive',
           '/dashboard/clients'
         ];
-        if (restrictedPrefixes.some(prefix => req.nextUrl.pathname.startsWith(prefix))) {
+        const path = req.nextUrl.pathname;
+        const allowed = memberAllowedPrefixes.some(prefix => path.startsWith(prefix));
+        if (!allowed && restrictedPrefixes.some(prefix => path.startsWith(prefix))) {
           return NextResponse.redirect(new URL('/dashboard/pipeline', req.url));
         }
       }

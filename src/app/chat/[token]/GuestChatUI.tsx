@@ -205,7 +205,7 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
         cooldownRemaining={0}
         isBroadcast={false}
         isAdmin={false}
-        scrollToBottom={() => virtuosoRef.current?.scrollToIndex({ index: 'LAST', behavior: 'smooth' })}
+        scrollToBottom={() => virtuosoRef.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' })}
       />
     </div>
     </QueryClientProvider>

@@ -102,8 +102,16 @@ export function AdminNotifications() {
               {notifications.map((n) => (
                 <div
                   key={n.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleRead(n.id, n.actionUrl)}
-                  className={`px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer group flex gap-3 ${!n.isRead ? 'bg-muted/10' : ''}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleRead(n.id, n.actionUrl)
+                    }
+                  }}
+                  className={`px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer group flex gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${!n.isRead ? 'bg-muted/10' : ''}`}
                 >
                   {!n.isRead && (
                     <div className="mt-1.5 w-2 h-2 shrink-0 rounded-full bg-primary" />
