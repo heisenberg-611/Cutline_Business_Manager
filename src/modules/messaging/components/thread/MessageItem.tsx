@@ -1,25 +1,36 @@
-import React, { useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Trash2, Shield } from 'lucide-react'
 
+// Every attachment gets this exact box, reserved before the bytes arrive. The
+// list is virtualized and measures each row, so any media that sizes itself
+// only once it has loaded drags the scroll position with it.
+const MEDIA_BOX = { width: 250, height: 250 } as const
+
 const AnimatedMeme = ({ src }: { src: string }) => {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const [loopCount, setLoopCount] = useState(0)
+  // A ref, not state: the loop counter is never rendered, and re-rendering a
+  // row mid-playback makes Virtuoso re-measure it for no reason.
+  const loopCountRef = useRef(0)
 
-  const handleEnded = () => {
+  useEffect(() => {
+    loopCountRef.current = 0
+  }, [src])
+
+  const handleEnded = useCallback(() => {
     // 0-indexed: < 1 means it will run twice total
-    if (loopCount < 1) {
-      setLoopCount(prev => prev + 1)
+    if (loopCountRef.current < 1) {
+      loopCountRef.current += 1
       videoRef.current?.play().catch(() => {})
     }
-  }
+  }, [])
 
-  const handleMouseEnter = () => {
-    setLoopCount(0)
+  const handleMouseEnter = useCallback(() => {
+    loopCountRef.current = 0
     videoRef.current?.play().catch(() => {})
-  }
+  }, [])
 
   return (
     <video
@@ -28,10 +39,15 @@ const AnimatedMeme = ({ src }: { src: string }) => {
       autoPlay
       muted
       playsInline
+      disablePictureInPicture
       onEnded={handleEnded}
       onMouseEnter={handleMouseEnter}
-      style={{ width: '250px', height: '250px' }}
-      className="rounded-lg object-contain cursor-pointer bg-muted/50"
+      width={MEDIA_BOX.width}
+      height={MEDIA_BOX.height}
+      style={MEDIA_BOX}
+      // `block` matters: as an inline element the video sits on a text baseline,
+      // so the row grew by the descender gap once fonts settled.
+      className="block rounded-lg object-contain cursor-pointer bg-muted/50"
     />
   )
 }
@@ -72,7 +88,7 @@ function formatMessageContent(text: string) {
         }
         
         return (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="block my-2" onClick={(e) => e.preventDefault()}>
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="block my-2" style={MEDIA_BOX} onClick={(e) => e.preventDefault()}>
             <AnimatedMeme src={mediaSrc} />
           </a>
         );
@@ -81,14 +97,19 @@ function formatMessageContent(text: string) {
       const isTenor = hostname === 'media.tenor.com';
       if (/\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(part) || isTenor) {
         return (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="block my-2">
-            <img 
-              src={part} 
-              alt="Attachment" 
-              loading="lazy"
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="block my-2" style={MEDIA_BOX}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={part}
+              alt="Attachment"
+              // Not lazy: rows only exist in the DOM while they are near the
+              // viewport, so lazy loading here just delays the paint of
+              // something already on screen.
               decoding="async"
-              style={{ width: '250px', height: '250px' }}
-              className="rounded-lg object-contain bg-muted/50" 
+              width={MEDIA_BOX.width}
+              height={MEDIA_BOX.height}
+              style={MEDIA_BOX}
+              className="block rounded-lg object-contain bg-muted/50"
             />
           </a>
         );
@@ -114,6 +135,31 @@ export interface MessageItemProps {
   onDeleteMessage?: (msgId: string) => void
 }
 
+// Default shallow compare never held: `conversation` gets a fresh identity on
+// every conversations refetch and both call sites pass inline callbacks, so
+// every row re-rendered on every parent render. Compare the values that are
+// actually painted instead.
+function arePropsEqual(prev: MessageItemProps, next: MessageItemProps) {
+  const a = prev.msg
+  const b = next.msg
+  return (
+    a.id === b.id &&
+    a.content === b.content &&
+    a.senderId === b.senderId &&
+    a.isGuest === b.isGuest &&
+    a.isOptimistic === b.isOptimistic &&
+    a.sender?.firstName === b.sender?.firstName &&
+    a.sender?.lastName === b.sender?.lastName &&
+    a.sender?.memberships?.[0]?.role === b.sender?.memberships?.[0]?.role &&
+    prev.currentUserId === next.currentUserId &&
+    prev.isAdmin === next.isAdmin &&
+    prev.conversation?.id === next.conversation?.id &&
+    prev.conversation?.type === next.conversation?.type &&
+    prev.conversation?.guestName === next.conversation?.guestName &&
+    prev.conversation?.client?.displayName === next.conversation?.client?.displayName
+  )
+}
+
 export const MessageItem = React.memo(function MessageItem({
   msg,
   currentUserId,
@@ -122,7 +168,7 @@ export const MessageItem = React.memo(function MessageItem({
   onDeleteMessage
 }: MessageItemProps) {
   const isMine = currentUserId ? msg.senderId === currentUserId : msg.isGuest === true;
-  
+
   const isGroup = conversation?.type === 'GROUP'
   const isBroadcast = conversation?.type === 'BROADCAST'
   const isGuest = conversation?.type === 'GUEST_LINK'
@@ -133,7 +179,10 @@ export const MessageItem = React.memo(function MessageItem({
   }
 
   const isSenderAdmin = msg.sender?.memberships?.[0]?.role === 'org:admin'
-  const onlyEmojis = isOnlyEmojis(msg.content)
+  // Both walk the message text with regexes; the content is immutable once sent.
+  const onlyEmojis = useMemo(() => isOnlyEmojis(msg.content), [msg.content])
+  const body = useMemo(() => formatMessageContent(msg.content), [msg.content])
+  const timestamp = useMemo(() => format(new Date(msg.createdAt), 'MMM d, h:mm a'), [msg.createdAt])
 
   return (
     <div className="py-2 px-4">
@@ -154,7 +203,7 @@ export const MessageItem = React.memo(function MessageItem({
               ),
           msg.isOptimistic && "opacity-70"
         )}>
-          {formatMessageContent(msg.content)}
+          {body}
           {isBroadcast && isAdmin && (
             <div className={cn(
               "absolute top-0 bottom-0 flex items-center md:opacity-0 md:group-hover/msg:opacity-100 transition-opacity",
@@ -173,9 +222,9 @@ export const MessageItem = React.memo(function MessageItem({
           )}
         </div>
         <span className="text-[10px] text-muted-foreground mt-1 mx-1">
-          {format(new Date(msg.createdAt), 'MMM d, h:mm a')}
+          {timestamp}
         </span>
       </div>
     </div>
   )
-})
+}, arePropsEqual)

@@ -1,7 +1,7 @@
 'use client'
 
 import { useConversationMessages, useConversations } from '../hooks'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Ghost, Send, Megaphone, Loader2, Users, MessageSquare, Bell, BellOff, Trash2, RefreshCcw, SmilePlus, ChevronLeft, Timer, Check, Shield, Copy } from 'lucide-react'
 import { toggleMuteConversation, deleteConversation, deleteMessage } from '../actions'
@@ -32,7 +32,11 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
   const isBroadcast = conversation?.type === 'BROADCAST'
   const isGroup = conversation?.type === 'GROUP'
 
-  const latestMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
+  // Optimistic ids are excluded: a sent message changes id from temp-* to the
+  // real one, which otherwise fired mark-read (and the conversations refetch
+  // behind it) twice per message.
+  const latestMessage = messages.length > 0 ? messages[messages.length - 1] : null
+  const latestMessageId = latestMessage && !latestMessage.isOptimistic ? latestMessage.id : null
 
   // Mark read on load and when new messages arrive
   useEffect(() => {
@@ -70,10 +74,10 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
 
 
 
-  const handleDeleteMessage = async (msgId: string) => {
+  const handleDeleteMessage = useCallback(async (msgId: string) => {
     const confirmed = confirm('Are you sure you want to permanently delete this message?')
     if (!confirmed) return
-    
+
     // Optimistically remove from UI
     queryClient.setQueryData(['messages', conversationId], (old: any) => {
       if (!old || !old.pages) return old;
@@ -94,7 +98,7 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
       queryClient.setQueryData(['messages', conversationId], undefined)
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
     }
-  }
+  }, [conversationId, queryClient])
 
   if (isLoading) {
     return <div className="flex-1 flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
