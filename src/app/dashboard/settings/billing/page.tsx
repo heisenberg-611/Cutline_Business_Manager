@@ -2,10 +2,11 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import prisma from '@/modules/core/db/prisma'
 import { getActivePlan, restorablePlan, PLANS, PLAN_PRICES, getPlanFeatures } from '@/lib/subscription'
-import { cancelSubscription, downgradeToPro, restoreBusinessPlan } from './actions'
+import { downgradeToPro, restoreBusinessPlan } from './actions'
 import { Check, X } from 'lucide-react'
 import Link from 'next/link'
 import { UpgradeContactModal } from './components/UpgradeContactModal'
+import { CancelPlanModal } from './components/CancelPlanModal'
 
 export const metadata = {
   title: 'Billing & Plans',
@@ -31,6 +32,19 @@ export default async function BillingPage() {
   if (business.customProjectLimit !== null) {
     features[activePlan][0].name = `Up to ${business.customProjectLimit} Active Projects (Custom)`;
   }
+
+  // Computed here rather than in the modal: reading the clock during a client
+  // render is impure and would let server and client disagree about the days
+  // remaining. This is a server component, so it resolves once per request.
+  const periodEnd = business.subscriptionPeriodEnd;
+  const daysLeft = periodEnd
+    ? Math.max(0, Math.ceil((periodEnd.getTime() - new Date().getTime()) / 86_400_000))
+    : 0;
+  const periodEndLabel = periodEnd?.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
   // Shared with restoreBusinessPlan so the button and the action always agree.
   // These were previously two separate inferences over request history and they
@@ -86,11 +100,11 @@ export default async function BillingPage() {
                   Current Plan
                 </button>
               ) : isDowngrade ? (
-                <form action={cancelSubscription}>
-                  <button type="submit" className="block w-full rounded-md bg-red-50 dark:bg-red-950/30 px-3 py-2 text-center text-sm font-semibold text-red-600 dark:text-red-400 shadow-sm hover:bg-red-100 dark:hover:bg-red-900/50 ring-1 ring-inset ring-red-200 dark:ring-red-900 transition-colors">
-                    Cancel Plan
-                  </button>
-                </form>
+                <CancelPlanModal
+                  planName={activePlan.charAt(0) + activePlan.slice(1).toLowerCase()}
+                  daysLeft={daysLeft}
+                  periodEndLabel={periodEndLabel}
+                />
               ) : isDowngradeToPro ? (
                 <form action={downgradeToPro}>
                   <button type="submit" className="block w-full rounded-md bg-orange-50 dark:bg-orange-950/30 px-3 py-2 text-center text-sm font-semibold text-orange-600 dark:text-orange-400 shadow-sm hover:bg-orange-100 dark:hover:bg-orange-900/50 ring-1 ring-inset ring-orange-200 dark:ring-orange-900 transition-colors">
