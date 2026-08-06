@@ -2,6 +2,9 @@
 import React, { useState, useEffect } from 'react'
 import { formatMoney, formatMoneyCompact } from '@/lib/format'
 import { getAnalyticsData } from '../actions'
+import { getProjectAnalytics } from '../project-analytics'
+import { ProjectAnalytics } from './ProjectAnalytics'
+import type { ProjectAnalytics as ProjectAnalyticsData } from '../project-analytics'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,6 +36,9 @@ export function AnalyticsDashboard() {
   })
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<any>(null)
+  // Fetched alongside the financial data rather than folded into it: the two
+  // answer different questions and one being slow should not hold the other.
+  const [projectData, setProjectData] = useState<ProjectAnalyticsData | null>(null)
 
   useEffect(() => {
     if (!startDate || !endDate) return
@@ -51,6 +57,13 @@ export function AnalyticsDashboard() {
         console.error('Failed to load analytics', err)
         if (isMounted) setLoading(false)
       })
+
+    getProjectAnalytics(startDate, endDate)
+      .then(res => {
+        if (isMounted) setProjectData(res)
+      })
+      .catch(err => console.error('Failed to load project analytics', err))
+
     return () => { isMounted = false }
   }, [startDate, endDate])
 
@@ -318,6 +331,22 @@ export function AnalyticsDashboard() {
             </Card>
 
           </div>
+
+          {/* Project and task analytics: what each project earned, how much of
+              the work shipped, and where the backlog sits. */}
+          {projectData && (
+            <section className="space-y-4 pt-2">
+              <div className="border-b border-zinc-200 pb-4 dark:border-zinc-800">
+                <h3 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                  Projects &amp; delivery
+                </h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Where the money came from, and how the work is moving.
+                </p>
+              </div>
+              <ProjectAnalytics data={projectData} />
+            </section>
+          )}
         </>
       )}
     </div>

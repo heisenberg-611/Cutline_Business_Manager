@@ -113,6 +113,11 @@
   --foreground: #334155; /* Slate 700 */
   --card: #FFFFFF; /* Pure white for contrast against background */
   --card-foreground: #334155;
+
+  /* Chart chrome. Recessive by design: the data is the only loud thing.
+     Series colours live with the charts, validated against these surfaces. */
+  --chart-grid: #E1E0D9;  /* hairline, one step off the surface */
+  --chart-muted: #898781; /* axis ticks and labels */
   --popover: #FFFFFF;
   --popover-foreground: #334155;
   --primary: #0F172A; /* Slate 900 */
@@ -146,6 +151,10 @@
   
   --card: #0A0A0A;
   --card-foreground: #F5F5F5;
+
+  /* Chart chrome, stepped for the dark surface rather than flipped. */
+  --chart-grid: #2C2C2A;
+  --chart-muted: #898781;
   
   --popover: #171717; /* Neutral 900 */
   --popover-foreground: #F5F5F5;
