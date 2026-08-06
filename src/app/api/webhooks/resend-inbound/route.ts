@@ -60,7 +60,8 @@ export async function POST(req: Request) {
     
     if (!forwardTo) {
       console.warn('Inbound webhook received but PERSONAL_FORWARD_EMAIL is not set in environment.');
-      return NextResponse.json({ success: false, message: 'Forwarding email not configured' }, { status: 500 });
+      // Return 200 to acknowledge receipt so Resend doesn't disable the webhook
+      return NextResponse.json({ success: false, message: 'Forwarding email not configured' }, { status: 200 });
     }
 
     // Forward the email using Resend's built-in forwarding method
@@ -102,12 +103,14 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error('Failed to forward email (both methods failed):', error);
-      return NextResponse.json({ success: false, error }, { status: 500 });
+      // Return 200 to acknowledge receipt so Resend doesn't disable the webhook
+      return NextResponse.json({ success: false, error: error?.message || 'Unknown error' }, { status: 200 });
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error processing inbound webhook:', error);
-    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+    // Return 200 even on unhandled exceptions to avoid webhook disablement, but log it
+    return NextResponse.json({ success: false, error: error?.message || 'Internal Server Error' }, { status: 200 });
   }
 }
