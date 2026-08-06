@@ -12,7 +12,17 @@ vi.mock('@/modules/notifications/services', () => ({
   createNotification: (...args: unknown[]) => mockCreateNotification(...args),
 }))
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+const mockRevalidatePath = vi.fn()
+vi.mock('next/cache', () => ({ revalidatePath: (...args: unknown[]) => mockRevalidatePath(...args) }))
+
+// Realtime is best-effort and off without a key; mocked so the test never
+// reaches for the network or the real SDK.
+const mockPublish = vi.fn()
+vi.mock('ably', () => ({
+  Rest: class {
+    channels = { get: () => ({ publish: (...args: unknown[]) => mockPublish(...args) }) }
+  },
+}))
 
 const mockPrisma = {
   task: {
@@ -124,6 +134,40 @@ describe('updateTaskStatus', () => {
     expect(mockPrisma.task.update.mock.calls[0][0].data.completedAt).toBeNull()
   })
 
+  it('records who marked it done', async () => {
+    await updateTaskStatus('task_1', 'DONE')
+    expect(mockPrisma.task.update.mock.calls[0][0].data.completedById).toBe('user_me')
+  })
+
+  // Same reasoning as completedAt: a completer left behind on a reopened task
+  // would credit work that is no longer finished.
+  it('clears the completer when reopening', async () => {
+    mockPrisma.task.findFirst.mockResolvedValue({ ...TASK, status: 'DONE' })
+    await updateTaskStatus('task_1', 'TODO')
+    expect(mockPrisma.task.update.mock.calls[0][0].data.completedById).toBeNull()
+  })
+
+  it('logs whose task it was when finishing someone else\'s', async () => {
+    mockPrisma.task.findFirst.mockResolvedValue({ ...TASK, assigneeId: 'user_other' })
+    await updateTaskStatus('task_1', 'DONE')
+    const meta = JSON.parse(mockPrisma.auditLog.create.mock.calls[0][0].data.metadataJson)
+    expect(meta.completedForId).toBe('user_other')
+  })
+
+  // "completed X, assigned to themselves" is noise, so the id is not written.
+  it('omits the assignee when they finish their own task', async () => {
+    mockPrisma.task.findFirst.mockResolvedValue({ ...TASK, assigneeId: 'user_me' })
+    await updateTaskStatus('task_1', 'DONE')
+    const meta = JSON.parse(mockPrisma.auditLog.create.mock.calls[0][0].data.metadataJson)
+    expect(meta.completedForId).toBeUndefined()
+  })
+
+  it('omits the assignee on an unassigned task', async () => {
+    await updateTaskStatus('task_1', 'DONE')
+    const meta = JSON.parse(mockPrisma.auditLog.create.mock.calls[0][0].data.metadataJson)
+    expect(meta.completedForId).toBeUndefined()
+  })
+
   it('writes an audit log entry', async () => {
     await updateTaskStatus('task_1', 'DONE')
     expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
@@ -137,6 +181,37 @@ describe('updateTaskStatus', () => {
     await updateTaskStatus('task_1', 'TODO')
     expect(mockPrisma.task.update).not.toHaveBeenCalled()
     expect(mockPrisma.auditLog.create).not.toHaveBeenCalled()
+  })
+
+  /**
+   * Writing nothing is not the same as telling the caller nothing.
+   *
+   * This is the shape of a second person clicking a task the first has already
+   * completed: their page is stale, so they send the status it is already in.
+   * Returning without revalidating left their optimistic tick with no server
+   * value to settle against, so it rolled back and the checkbox looked broken.
+   */
+  it('still refreshes the caller when the status is already set', async () => {
+    await updateTaskStatus('task_1', 'TODO')
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/collaboration/proj_1')
+  })
+
+  it('revalidates the collaboration page, which is where the task list lives', async () => {
+    await updateTaskStatus('task_1', 'DONE')
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/collaboration/proj_1')
+  })
+
+  it('broadcasts to other viewers of the project', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    try {
+      await updateTaskStatus('task_1', 'DONE')
+      expect(mockPublish).toHaveBeenCalledWith(
+        'collab-refresh',
+        expect.objectContaining({ actorUserId: 'user_me' })
+      )
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
   })
 
   it('rejects a task from another tenant', async () => {

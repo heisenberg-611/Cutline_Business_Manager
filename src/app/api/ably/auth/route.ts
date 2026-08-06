@@ -3,11 +3,14 @@ import { auth } from '@clerk/nextjs/server';
 import * as Ably from 'ably';
 import prisma from '@/modules/core/db/prisma';
 import {
+  allProjectCollabChannels,
   conversationChannel,
   pipelineChannel,
+  projectCollabChannel,
   userNotificationsChannel,
   userSidebarChannel,
 } from '@/lib/ably/channels';
+import { visibleProjectFilter } from '@/modules/projects/authz';
 
 export async function GET() {
   const { userId, orgId } = await auth();
@@ -44,6 +47,24 @@ export async function GET() {
       select: { conversationId: true },
     });
 
+    // Collaboration channels are granted per project the caller can actually
+    // read, using the same filter every project list screen uses so realtime
+    // visibility cannot drift from page visibility.
+    //
+    // An admin can read every project, so they get one wildcard entry and no
+    // query at all — enumerating them meant a findMany over the whole project
+    // table on every auth call, and a capability that grew with the business.
+    // A member's list is bounded by the projects they are on.
+    const { orgRole } = await auth();
+    const isAdmin = orgRole === 'org:admin';
+
+    const readableProjects = isAdmin
+      ? []
+      : await prisma.project.findMany({
+          where: { businessId: orgId, ...visibleProjectFilter(userId) },
+          select: { id: true },
+        });
+
     const capability: Record<string, string[]> = {
       // Project stage moves and presence. Org-wide by design: the payload is
       // project ids and stage ids, and each board already filters to the
@@ -56,6 +77,15 @@ export async function GET() {
 
     for (const { conversationId } of participations) {
       capability[conversationChannel(orgId, conversationId)] = ['subscribe'];
+    }
+
+    if (isAdmin) {
+      // presence too: the collaboration page shows who else is looking at it.
+      capability[allProjectCollabChannels(orgId)] = ['subscribe', 'presence'];
+    } else {
+      for (const { id } of readableProjects) {
+        capability[projectCollabChannel(orgId, id)] = ['subscribe', 'presence'];
+      }
     }
 
     const tokenRequestData = await client.auth.createTokenRequest({

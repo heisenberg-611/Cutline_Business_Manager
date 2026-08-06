@@ -2,6 +2,7 @@
 
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
+import { publishCollabRefresh } from '../realtime'
 import { createNotification } from '@/modules/notifications/services'
 import type { ProjectMemberRole } from '@prisma/client'
 import { authorizeProjectAccess } from '@/modules/projects/authz'
@@ -100,6 +101,9 @@ export async function addProjectMember(
   }
 
   revalidatePath(`/dashboard/collaboration/${projectId}`)
+  // Content-free: the roster changes rarely, and a refresh re-authorizes — which
+  // matters most here, since this is the action that revokes access.
+  await publishCollabRefresh(orgId, projectId, actorId)
 }
 
 export async function updateProjectMemberRole(
@@ -134,6 +138,9 @@ export async function updateProjectMemberRole(
   })
 
   revalidatePath(`/dashboard/collaboration/${projectId}`)
+  // Content-free: the roster changes rarely, and a refresh re-authorizes — which
+  // matters most here, since this is the action that revokes access.
+  await publishCollabRefresh(orgId, projectId, actorId)
 }
 
 export async function removeProjectMember(projectId: string, userId: string) {
@@ -162,6 +169,9 @@ export async function removeProjectMember(projectId: string, userId: string) {
   })
 
   revalidatePath(`/dashboard/collaboration/${projectId}`)
+  // Content-free: the roster changes rarely, and a refresh re-authorizes — which
+  // matters most here, since this is the action that revokes access.
+  await publishCollabRefresh(orgId, projectId, actorId)
 }
 
 /** Business members not yet on this project, for the add picker. */

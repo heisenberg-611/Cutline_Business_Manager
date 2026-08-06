@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Eye, MessageSquare } from 'lucide-react'
 import { toast } from 'sonner'
@@ -9,6 +9,8 @@ import { CommentItem } from './CommentItem'
 import { Panel, PanelEmpty, PANEL_SCROLL_MAIN } from './Panel'
 import { createComment, type CommentAuthor, type CommentNode } from '../actions/comments'
 import { EMPTY_DRAFT, encodeDraft, type MentionDraft } from '../mentions'
+import { buildCommentTree, flattenCommentTree } from '../comment-tree'
+import { useCollabRealtimeContext } from './CollabRealtimeProvider'
 
 /**
  * How many threads the pane holds before older ones are tucked behind a button.
@@ -20,7 +22,7 @@ const VISIBLE_THREADS = 20
 export function CommentThread({
   entityType,
   entityId,
-  comments,
+  comments: serverComments,
   members,
   currentUserId,
   isAdmin,
@@ -35,6 +37,28 @@ export function CommentThread({
   /** Write access. Watchers can read the thread but not post to it. */
   canComment: boolean
 }) {
+  // Comments are the one part of this page that arrives with its payload rather
+  // than as a nudge to refetch — a discussion is chatty enough that a refresh
+  // per message per reader is the cost the messaging module already moved away
+  // from. The server copy stays authoritative: anything it knows about wins, so
+  // a reader who has been here an hour converges on what a fresh load shows.
+  const { remoteComments } = useCollabRealtimeContext()
+  const comments = useMemo(() => {
+    if (remoteComments.size === 0) return serverComments
+
+    const merged = new Map(flattenCommentTree(serverComments).map((c) => [c.id, c]))
+    for (const [id, { comment: incoming }] of remoteComments) {
+      const known = merged.get(id)
+      // An edit or a delete the server has not caught up with yet still has to
+      // land; only a comment the server has never heard of is a plain insert.
+      if (!known || (incoming.editedAt?.getTime() ?? 0) >= (known.editedAt?.getTime() ?? 0)) {
+        merged.set(id, incoming)
+      }
+      if (incoming.isDeleted) merged.set(id, incoming)
+    }
+    return buildCommentTree([...merged.values()])
+  }, [serverComments, remoteComments])
+
   const [body, setBody] = useState<MentionDraft>(EMPTY_DRAFT)
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [replyBody, setReplyBody] = useState<MentionDraft>(EMPTY_DRAFT)

@@ -103,7 +103,7 @@ export async function getProjectActivity(
       const value = metadata[key]
       if (typeof value === 'string') stageIds.add(value)
     }
-    for (const key of ['userId', 'from', 'to']) {
+    for (const key of ['userId', 'from', 'to', 'completedForId']) {
       const value = metadata[key]
       // 'from'/'to' hold a status on task rows and a user id on assignee rows.
       if (typeof value === 'string' && value.startsWith('user_')) subjectIds.add(value)
@@ -153,6 +153,10 @@ export async function getProjectActivity(
         fromStageName: stageName.get(String(metadata.fromStageId)) ?? null,
         toStageName: stageName.get(String(metadata.toStageId)) ?? null,
         subjectName: nameOf(metadata.userId) ?? nameOf(metadata.to) ?? null,
+        // Kept separate from subjectName: a completion row's `to` is a status,
+        // so folding this into the same field would leave the sentence reading
+        // "assigned to DONE".
+        completedForName: nameOf(metadata.completedForId),
       },
       createdAt: row.createdAt,
     }
