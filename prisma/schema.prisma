@@ -103,9 +103,13 @@ model Business {
   Conversation         Conversation[]
 
   // Collaboration
-  tasks    Task[]
-  comments Comment[]
-  Reaction Reaction[]
+  tasks     Task[]
+  comments  Comment[]
+  reactions Reaction[]
+
+  /// Which reactions this organisation offers, in the order they are shown.
+  /// Admin-editable, so a team can keep the set to what suits their work.
+  reactionEmojis String[] @default(["👍", "✅", "🎉", "👀", "❤️", "🙏"])
 
   @@map("businesses")
 }
