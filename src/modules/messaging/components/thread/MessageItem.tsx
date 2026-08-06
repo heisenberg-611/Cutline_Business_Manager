@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Trash2, Shield } from 'lucide-react'
+import { ReactionBar } from '@/modules/reactions/components/ReactionBar'
 
 // Every attachment gets this exact box, reserved before the bytes arrive. The
 // list is virtualized and measures each row, so any media that sizes itself
@@ -132,7 +133,18 @@ export interface MessageItemProps {
   currentUserId: string | null
   conversation: any
   isAdmin: boolean
+  /** What this workspace offers; empty disables the control entirely. */
+  reactionEmojis?: string[]
   onDeleteMessage?: (msgId: string) => void
+}
+
+/** Cheap structural compare; the list is a handful of entries at most. */
+function reactionsEqual(a: any[] | undefined, b: any[] | undefined) {
+  if (a === b) return true
+  if (!a || !b || a.length !== b.length) return false
+  return a.every(
+    (g, i) => g.emoji === b[i].emoji && g.count === b[i].count && g.reacted === b[i].reacted
+  )
 }
 
 // Default shallow compare never held: `conversation` gets a fresh identity on
@@ -151,6 +163,8 @@ function arePropsEqual(prev: MessageItemProps, next: MessageItemProps) {
     a.sender?.firstName === b.sender?.firstName &&
     a.sender?.lastName === b.sender?.lastName &&
     a.sender?.memberships?.[0]?.role === b.sender?.memberships?.[0]?.role &&
+    reactionsEqual(a.reactions, b.reactions) &&
+    prev.reactionEmojis === next.reactionEmojis &&
     prev.currentUserId === next.currentUserId &&
     prev.isAdmin === next.isAdmin &&
     prev.conversation?.id === next.conversation?.id &&
@@ -165,6 +179,7 @@ export const MessageItem = React.memo(function MessageItem({
   currentUserId,
   conversation,
   isAdmin,
+  reactionEmojis = [],
   onDeleteMessage
 }: MessageItemProps) {
   const isMine = currentUserId ? msg.senderId === currentUserId : msg.isGuest === true;
@@ -185,7 +200,7 @@ export const MessageItem = React.memo(function MessageItem({
   const timestamp = useMemo(() => format(new Date(msg.createdAt), 'MMM d, h:mm a'), [msg.createdAt])
 
   return (
-    <div className="py-2 px-4">
+    <div className="py-2 px-4 group/reactable">
       <div className={cn("flex flex-col max-w-[90%] md:max-w-[80%]", isMine ? "ml-auto items-end" : "mr-auto items-start")}>
         {(!isMine && (isGroup || isBroadcast || isGuest)) && (
           <span className="text-xs text-muted-foreground mb-1 ml-1 flex items-center gap-1">
@@ -221,6 +236,18 @@ export const MessageItem = React.memo(function MessageItem({
             </div>
           )}
         </div>
+        {(reactionEmojis.length > 0 || (msg.reactions?.length ?? 0) > 0) && (
+          <ReactionBar
+            targetType="Message"
+            targetId={msg.id}
+            reactions={msg.reactions ?? []}
+            emojiSet={reactionEmojis}
+            // An optimistic message has no row to react to yet, and a guest has
+            // no account to attribute it to.
+            canReact={!msg.isOptimistic && !!currentUserId}
+            align={isMine ? 'end' : 'start'}
+          />
+        )}
         <span className="text-[10px] text-muted-foreground mt-1 mx-1">
           {timestamp}
         </span>

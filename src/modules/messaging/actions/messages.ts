@@ -8,6 +8,7 @@ import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
 import { createManyNotifications } from '@/modules/notifications/services'
 import { conversationChannel, userSidebarChannel } from '@/lib/ably/channels'
 import { requirePlan } from '@/lib/plan-guard'
+import { emojiSetOf, groupReactions, type ReactionGroup } from '@/modules/reactions/reactions'
 
 /**
  * Sends a message to a conversation.
@@ -157,9 +158,27 @@ export async function getMessages(conversationId: string, cursor?: string, take 
     nextCursor = nextItem!.id
   }
 
+  // One query for the whole page rather than one per message. Both the counts
+  // and whether the reader is among them come from the same rows, which is why
+  // this is a findMany and not a groupBy.
+  const [reactionRows, business] = await Promise.all([
+    prisma.reaction.findMany({
+      where: { targetType: 'Message', targetId: { in: messages.map((m) => m.id) } },
+      select: { targetId: true, emoji: true, userId: true },
+    }),
+    prisma.business.findUnique({
+      where: { id: orgId },
+      select: { reactionEmojis: true },
+    }),
+  ])
+  const byMessage = groupReactions(reactionRows, userId, emojiSetOf(business))
+
   // Return in chronological order (oldest to newest) for UI rendering
   return {
-    messages: messages.reverse(),
+    messages: messages.reverse().map((message) => ({
+      ...message,
+      reactions: byMessage.get(message.id) ?? ([] as ReactionGroup[]),
+    })),
     nextCursor
   }
 }

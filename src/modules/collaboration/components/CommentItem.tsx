@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 import { segmentBody, draftFromBody, encodeDraft, type MentionDraft } from '../mentions'
 import { MentionInput, displayNameOf } from './MentionInput'
 import { editComment, deleteComment, type CommentAuthor, type CommentNode } from '../actions/comments'
+import { ReactionBar } from '@/modules/reactions/components/ReactionBar'
+import { useCollabRealtimeContext } from './CollabRealtimeProvider'
 
 function CommentBody({ body, currentUserId }: { body: string; currentUserId: string }) {
   // Segmented rather than interpolated into HTML — the body is another user's
@@ -70,6 +72,7 @@ export function CommentItem({
   members,
   onReply,
   isReply = false,
+  reactionEmojis = [],
 }: {
   comment: CommentNode
   currentUserId: string
@@ -77,7 +80,12 @@ export function CommentItem({
   members: CommentAuthor[]
   onReply?: (commentId: string) => void
   isReply?: boolean
+  /** What this workspace offers; empty hides the control. */
+  reactionEmojis?: string[]
 }) {
+  // Edits and deletes return the stored row, so the thread updates without the
+  // route re-rendering.
+  const { applyComment } = useCollabRealtimeContext()
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState<MentionDraft>(() => draftFromBody(comment.body))
   const [isPending, startTransition] = useTransition()
@@ -90,7 +98,7 @@ export function CommentItem({
     const encoded = encodeDraft({ ...draft, text: draft.text.trim() })
     startTransition(async () => {
       try {
-        await editComment(comment.id, encoded)
+        applyComment(await editComment(comment.id, encoded))
         setIsEditing(false)
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to edit comment')
@@ -199,6 +207,18 @@ export function CommentItem({
               )}
             </div>
           )}
+
+          {/* A withdrawn comment keeps its place in the thread but is not
+              something to react to. */}
+          {!comment.isDeleted &&
+            (reactionEmojis.length > 0 || (comment.reactions?.length ?? 0) > 0) && (
+              <ReactionBar
+                targetType="Comment"
+                targetId={comment.id}
+                reactions={comment.reactions ?? []}
+                emojiSet={reactionEmojis}
+              />
+            )}
         </div>
       </div>
 
@@ -209,6 +229,7 @@ export function CommentItem({
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           members={members}
+          reactionEmojis={reactionEmojis}
           isReply
         />
       ))}

@@ -105,6 +105,7 @@ model Business {
   // Collaboration
   tasks    Task[]
   comments Comment[]
+  Reaction Reaction[]
 
   @@map("businesses")
 }
@@ -135,6 +136,7 @@ model User {
   assignedTasks      Task[]          @relation("TaskAssignee")
   createdTasks       Task[]          @relation("TaskCreator")
   completedTasks     Task[]          @relation("TaskCompleter")
+  reactions          Reaction[]
   comments           Comment[]       @relation("CommentAuthor")
   mentions           Mention[]
   authoredNotes      Note[]          @relation("NoteAuthor")
@@ -199,8 +201,8 @@ model SubscriptionRequest {
   // on a mutable column silently shifts past income between months.
   paidAt DateTime?
 
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   business Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
 
@@ -892,6 +894,31 @@ model ConversationParticipant {
   @@map("conversation_participants")
 }
 
+/// A single emoji from one person on one message or comment.
+///
+/// Polymorphic on targetType/targetId, following the Comment precedent —
+/// deliberately no foreign key, so one table serves both surfaces without a
+/// join table each. Cleanup of a deleted target is by targetId.
+model Reaction {
+  id         String   @id @default(cuid())
+  businessId String
+  userId     String
+  emoji      String
+  targetType String
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// One person may add several different emoji to the same thing, but only
+  /// one of each — the toggle relies on this to be idempotent.
+  @@unique([targetType, targetId, userId, emoji])
+  @@index([targetType, targetId])
+  @@index([businessId])
+  @@map("reactions")
+}
+
 model Message {
   id             String    @id @default(cuid())
   conversationId String
@@ -948,22 +975,22 @@ model ProjectMember {
 
 /// Assignable unit of work below a Project — the thing teammates hand off.
 model Task {
-  id          String     @id @default(cuid())
-  businessId  String // Denormalized from project for direct tenant-scoped queries
-  projectId   String
-  title       String
-  description String?    @db.Text
-  status      TaskStatus @default(TODO)
-  assigneeId  String?
-  dueDate     DateTime?
-  orderIndex  Int        @default(0)
-  createdBy   String?
-  completedAt DateTime?
+  id            String     @id @default(cuid())
+  businessId    String // Denormalized from project for direct tenant-scoped queries
+  projectId     String
+  title         String
+  description   String?    @db.Text
+  status        TaskStatus @default(TODO)
+  assigneeId    String?
+  dueDate       DateTime?
+  orderIndex    Int        @default(0)
+  createdBy     String?
+  completedAt   DateTime?
   /// Who marked it done — not necessarily the assignee, and the whole point of
   /// recording it separately. Cleared alongside completedAt when reopened.
   completedById String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   business  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -1027,8 +1054,8 @@ model Mention {
 // -----------------------------------------------------------------------------
 
 model GlobalAdmin {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String  @id @default(cuid())
+  email        String  @unique
   // Null until the invite is accepted. A null hash must never be treated as
   // "set it to whatever was typed" — that made every pending account claimable
   // by anyone who knew the email address.

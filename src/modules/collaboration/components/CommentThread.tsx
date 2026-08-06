@@ -11,6 +11,7 @@ import { createComment, type CommentAuthor, type CommentNode } from '../actions/
 import { EMPTY_DRAFT, encodeDraft, type MentionDraft } from '../mentions'
 import { buildCommentTree, flattenCommentTree } from '../comment-tree'
 import { useCollabRealtimeContext } from './CollabRealtimeProvider'
+import { useReactionEmojis } from '@/modules/reactions/useReactionEmojis'
 
 /**
  * How many threads the pane holds before older ones are tucked behind a button.
@@ -42,7 +43,9 @@ export function CommentThread({
   // per message per reader is the cost the messaging module already moved away
   // from. The server copy stays authoritative: anything it knows about wins, so
   // a reader who has been here an hour converges on what a fresh load shows.
-  const { remoteComments } = useCollabRealtimeContext()
+  const { remoteComments, applyComment } = useCollabRealtimeContext()
+  // Once for the thread, not once per comment.
+  const reactionEmojis = useReactionEmojis()
   const comments = useMemo(() => {
     if (remoteComments.size === 0) return serverComments
 
@@ -76,7 +79,9 @@ export function CommentThread({
 
     startTransition(async () => {
       try {
-        await createComment({ entityType, entityId, body: encoded, parentId })
+        // The action returns the stored comment, so the thread settles without
+        // re-rendering the route.
+        applyComment(await createComment({ entityType, entityId, body: encoded, parentId }))
         reset()
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to post comment')
@@ -172,6 +177,7 @@ export function CommentThread({
                   currentUserId={currentUserId}
                   isAdmin={isAdmin}
                   members={members}
+                  reactionEmojis={reactionEmojis}
                   onReply={
                     canComment
                       ? (id) => {

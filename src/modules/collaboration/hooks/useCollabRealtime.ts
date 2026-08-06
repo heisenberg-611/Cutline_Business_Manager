@@ -136,6 +136,33 @@ export function useCollabRealtime(projectId: string) {
    * resolves. Both routes go through the same ordering check, so a late
    * delivery cannot put an older list back.
    */
+  /**
+   * The single place a comment is applied, whoever produced it.
+   *
+   * The author calls this with what their own action returned rather than
+   * waiting for an echo they deliberately skip, so their thread settles the
+   * instant the action resolves.
+   */
+  const applyComment = useCallback(
+    (comment: FlatComment | null | undefined, actor?: { userId: string; name: string | null }) => {
+      if (!comment) return
+      setRemoteComments((prev) => {
+        const next = new Map(prev)
+        next.set(comment.id, {
+          actorUserId: actor?.userId ?? comment.authorId ?? '',
+          actorName: actor?.name ?? null,
+          comment: {
+            ...comment,
+            createdAt: new Date(comment.createdAt),
+            editedAt: comment.editedAt ? new Date(comment.editedAt) : null,
+          },
+        })
+        return next
+      })
+    },
+    []
+  )
+
   const applyTaskChange = useCallback((payload: ApplicableTaskChange | undefined | null) => {
     if (!payload || payload.at <= appliedTasksAt.current) return
     appliedTasksAt.current = payload.at
@@ -315,7 +342,7 @@ export function useCollabRealtime(projectId: string) {
     }
   }, [orgId, userId, projectId])
 
-  return { viewers, remoteComments, remoteTasks, remoteActivity, applyTaskChange }
+  return { viewers, remoteComments, remoteTasks, remoteActivity, applyTaskChange, applyComment }
 }
 
 /** JSON has no Date, so the fields the panel formats have to be rebuilt. */

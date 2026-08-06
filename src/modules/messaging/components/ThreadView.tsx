@@ -17,6 +17,7 @@ import { MessageComposer } from './thread/MessageComposer'
 import { ThreadHeader } from './thread/ThreadHeader'
 import { useThreadScroll } from './thread/useThreadScroll'
 import { MessageList } from './thread/MessageList'
+import { useReactionEmojis } from '@/modules/reactions/useReactionEmojis'
 
 
 
@@ -27,6 +28,8 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
   const { realtimeEnabled } = useMessagingConfig()
   const { virtuosoRef, scrollToBottom } = useThreadScroll()
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
+  // Loaded once for the whole thread rather than per message.
+  const reactionEmojis = useReactionEmojis()
 
   const conversation = conversations?.find(c => c.id === conversationId)
   const isBroadcast = conversation?.type === 'BROADCAST'
@@ -130,6 +133,7 @@ export function ThreadView({ conversationId, currentUserId, isAdmin }: { convers
         isFetchingNextPage={isFetchingNextPage}
         fetchNextPage={fetchNextPage}
         onDeleteMessage={handleDeleteMessage}
+        reactionEmojis={reactionEmojis}
       />
 
       <MessageComposer

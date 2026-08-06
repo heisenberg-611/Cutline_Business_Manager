@@ -20,6 +20,8 @@ export type CommentAuthor = {
 
 /** One comment, without its replies attached. */
 export type FlatComment = {
+  /** Grouped counts, attached by the reader that loaded the thread. */
+  reactions?: import('../reactions/reactions').ReactionGroup[]
   id: string
   parentId: string | null
   body: string

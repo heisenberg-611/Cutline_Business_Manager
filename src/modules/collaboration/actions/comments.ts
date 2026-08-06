@@ -8,6 +8,7 @@ import { mentionableUserIds, mentionableUsersForProject } from '../mentionable'
 import { authorizeEntityAccess, requireSession } from '../authz'
 import { buildCommentTree, type CommentNode as TreeNode, type FlatComment } from '../comment-tree'
 import { reconcileBusinessMembers } from '@/lib/clerk-members'
+import { emojiSetOf, groupReactions } from '@/modules/reactions/reactions'
 import { publishCollabComment } from '../realtime'
 
 const MAX_BODY_LENGTH = 5000
@@ -41,7 +42,25 @@ export async function getComments(
     include: { author: { select: authorSelect } },
   })
 
-  return buildCommentTree(rows.map(toFlatComment))
+  const { userId } = await requireSession()
+
+  // One query for the whole thread, like the message list. Counts and the
+  // reader's own participation come from the same rows.
+  const [reactionRows, business] = await Promise.all([
+    prisma.reaction.findMany({
+      where: { targetType: 'Comment', targetId: { in: rows.map((r) => r.id) } },
+      select: { targetId: true, emoji: true, userId: true },
+    }),
+    prisma.business.findUnique({
+      where: { id: orgId },
+      select: { reactionEmojis: true },
+    }),
+  ])
+  const byComment = groupReactions(reactionRows, userId, emojiSetOf(business))
+
+  return buildCommentTree(
+    rows.map((row) => ({ ...toFlatComment(row), reactions: byComment.get(row.id) ?? [] }))
+  )
 }
 
 /**
@@ -202,9 +221,7 @@ export async function createComment(input: {
     )
   }
 
-  revalidatePath(entityUrl(input.entityType, input.entityId))
-  await publishComment(orgId, input.entityType, input.entityId, userId, comment.id)
-  return comment.id
+  return publishComment(orgId, input.entityType, input.entityId, userId, comment.id)
 }
 
 
@@ -221,17 +238,19 @@ async function publishComment(
   entityId: string,
   actorUserId: string,
   commentId: string
-) {
-  if (entityType !== 'Project') return
-  // Checked before the read, not inside publish: with realtime off there is
-  // nowhere to send it, and re-reading the row would be pure waste.
-  if (!process.env.ABLY_API_KEY) return
+): Promise<FlatComment | null> {
+  // Without a channel there is nothing to carry the change, so the caller
+  // revalidates instead — the old behaviour, kept as the fallback.
+  if (entityType !== 'Project' || !process.env.ABLY_API_KEY) {
+    revalidatePath(entityUrl(entityType, entityId))
+    return null
+  }
 
   const row = await prisma.comment.findUnique({
     where: { id: commentId },
     include: { author: { select: authorSelect } },
   })
-  if (!row) return
+  if (!row) return null
 
   // Only the author may edit, so for posts and edits the actor is the author
   // and no extra lookup is needed. A delete can be an admin moderating, which
@@ -246,8 +265,12 @@ async function publishComment(
           })
         )
 
-  await publishCollabComment(orgId, entityId, actorUserId, actorName, toFlatComment(row))
-
+  const flat = toFlatComment(row)
+  await publishCollabComment(orgId, entityId, actorUserId, actorName, flat)
+  // Handed back so the author's own thread settles on the action resolving.
+  // Revalidating instead re-rendered their route from the root layout down —
+  // the dashboard queries and the navbar included — for one comment.
+  return flat
 }
 
 /** Matches how the activity feed renders a name, so the two cannot disagree. */
@@ -314,8 +337,7 @@ export async function editComment(commentId: string, body: string) {
     },
   })
 
-  revalidatePath(entityUrl(existing.entityType, existing.entityId))
-  await publishComment(orgId, existing.entityType, existing.entityId, userId, commentId)
+  return publishComment(orgId, existing.entityType, existing.entityId, userId, commentId)
 }
 
 /**
@@ -357,9 +379,8 @@ export async function deleteComment(commentId: string) {
     }),
   ])
 
-  revalidatePath(entityUrl(existing.entityType, existing.entityId))
   // Carries the blanked body, so readers drop the text without a refetch.
-  await publishComment(orgId, existing.entityType, existing.entityId, userId, commentId)
+  return publishComment(orgId, existing.entityType, existing.entityId, userId, commentId)
 }
 
 /**

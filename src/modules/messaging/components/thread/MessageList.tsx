@@ -13,6 +13,8 @@ export interface MessageListProps {
   isFetchingNextPage: boolean
   fetchNextPage: () => void
   onDeleteMessage: (msgId: string) => void
+  /** What this workspace offers; empty hides the control. */
+  reactionEmojis?: string[]
 }
 
 type ThreadMessage = MessageListProps['messages'][number]
@@ -40,7 +42,13 @@ const computeItemKey = (index: number, msg: ThreadMessage) => msg?.id ?? index
 
 type ListContext = Pick<
   MessageListProps,
-  'currentUserId' | 'conversation' | 'isAdmin' | 'hasNextPage' | 'isFetchingNextPage' | 'onDeleteMessage'
+  | 'currentUserId'
+  | 'conversation'
+  | 'isAdmin'
+  | 'hasNextPage'
+  | 'isFetchingNextPage'
+  | 'onDeleteMessage'
+  | 'reactionEmojis'
 >
 
 // Both of these live at module scope on purpose. As inline arrows they were a
@@ -66,6 +74,7 @@ const itemContent = (_index: number, msg: ThreadMessage, context: ListContext) =
     currentUserId={context.currentUserId}
     conversation={context.conversation}
     isAdmin={context.isAdmin}
+    reactionEmojis={context.reactionEmojis}
     onDeleteMessage={context.onDeleteMessage}
   />
 )
@@ -79,7 +88,8 @@ export function MessageList({
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
-  onDeleteMessage
+  onDeleteMessage,
+  reactionEmojis
 }: MessageListProps) {
   // Older pages arrive at the head of the array. Anchoring to whichever message
   // was first when this thread opened lets firstItemIndex be derived purely:
@@ -97,7 +107,8 @@ export function MessageList({
     isAdmin,
     hasNextPage,
     isFetchingNextPage,
-    onDeleteMessage
+    onDeleteMessage,
+    reactionEmojis
   }
 
   return (

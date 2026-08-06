@@ -9,6 +9,7 @@ import {
 import type { PresenceViewer } from '@/components/PresenceAvatars'
 import type { TaskRow } from '../actions/tasks'
 import type { ActivityEntry } from '../actions/activity'
+import type { FlatComment } from '../comment-tree'
 
 type CollabPresenceValue = {
   viewers: PresenceViewer[]
@@ -20,6 +21,7 @@ type CollabDataValue = {
   remoteActivity: Map<string, ActivityEntry>
   /** Lets the actor apply what their own action returned, without a refetch. */
   applyTaskChange: (payload: ApplicableTaskChange | undefined | null) => void
+  applyComment: (comment: FlatComment | null | undefined) => void
 }
 
 const EMPTY_PRESENCE: CollabPresenceValue = { viewers: [] }
@@ -28,6 +30,7 @@ const EMPTY_DATA: CollabDataValue = {
   remoteTasks: null,
   remoteActivity: new Map(),
   applyTaskChange: () => {},
+  applyComment: () => {},
 }
 
 /**
@@ -59,15 +62,15 @@ export function CollabRealtimeProvider({
   projectId: string
   children: ReactNode
 }) {
-  const { viewers, remoteComments, remoteTasks, remoteActivity, applyTaskChange } =
+  const { viewers, remoteComments, remoteTasks, remoteActivity, applyTaskChange, applyComment } =
     useCollabRealtime(projectId)
 
   // Memoized, or each object literal would be a fresh identity on every render
   // of this provider and the split above would buy nothing.
   const presence = useMemo(() => ({ viewers }), [viewers])
   const data = useMemo(
-    () => ({ remoteComments, remoteTasks, remoteActivity, applyTaskChange }),
-    [remoteComments, remoteTasks, remoteActivity, applyTaskChange]
+    () => ({ remoteComments, remoteTasks, remoteActivity, applyTaskChange, applyComment }),
+    [remoteComments, remoteTasks, remoteActivity, applyTaskChange, applyComment]
   )
 
   return (

@@ -6,6 +6,7 @@ import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
 import { WORKFLOW_PRESETS } from './config/presets'
 import { ALL_NAV_ITEMS } from '@/modules/core/ui/navigation'
+import { normalizeEmojiSet } from '@/modules/reactions/reactions'
 
 const DEFAULT_STAGES = [
   { name: 'Idea / Discovery', orderIndex: 0 },
@@ -352,6 +353,29 @@ export async function updateNotificationPreferences(preferences: { tone: string;
 
   // We don't necessarily need to revalidate the whole layout, but doing so keeps the UI in sync
   revalidatePath('/dashboard', 'layout')
+}
+
+/**
+ * Set which reactions this organisation offers.
+ *
+ * Admin-only, unlike notification preferences: this is one shared list for
+ * everybody in the workspace rather than a personal setting.
+ */
+export async function updateReactionEmojis(emojis: string[]) {
+  const { orgId } = await requireAdmin()
+
+  const cleaned = normalizeEmojiSet(emojis)
+  if (!cleaned) {
+    throw new Error('Keep at least one reaction.')
+  }
+
+  await prisma.business.update({
+    where: { id: orgId },
+    data: { reactionEmojis: cleaned },
+  })
+
+  revalidatePath('/dashboard/settings', 'layout')
+  return cleaned
 }
 
 /**
