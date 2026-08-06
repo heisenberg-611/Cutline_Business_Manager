@@ -1,17 +1,38 @@
 'use client'
 
-import { createContext, useContext, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { useCollabRealtime, type RemoteCommentEvent } from '../hooks/useCollabRealtime'
 import type { PresenceViewer } from '@/components/PresenceAvatars'
+import type { TaskRow } from '../actions/tasks'
+import type { ActivityEntry } from '../actions/activity'
 
-type CollabRealtimeValue = {
+type CollabPresenceValue = {
   viewers: PresenceViewer[]
-  remoteComments: Map<string, RemoteCommentEvent>
 }
 
-const EMPTY: CollabRealtimeValue = { viewers: [], remoteComments: new Map() }
+type CollabDataValue = {
+  remoteComments: Map<string, RemoteCommentEvent>
+  remoteTasks: TaskRow[] | null
+  remoteActivity: Map<string, ActivityEntry>
+}
 
-const CollabRealtimeContext = createContext<CollabRealtimeValue>(EMPTY)
+const EMPTY_PRESENCE: CollabPresenceValue = { viewers: [] }
+const EMPTY_DATA: CollabDataValue = {
+  remoteComments: new Map(),
+  remoteTasks: null,
+  remoteActivity: new Map(),
+}
+
+/**
+ * Two contexts, not one.
+ *
+ * They move on completely different schedules: viewers churn whenever anyone
+ * opens or closes the page, while the data changes only when someone actually
+ * edits something. Sharing a single value meant a teammate merely arriving
+ * re-rendered the task list, the discussion and the activity feed.
+ */
+const CollabPresenceContext = createContext<CollabPresenceValue>(EMPTY_PRESENCE)
+const CollabDataContext = createContext<CollabDataValue>(EMPTY_DATA)
 
 /**
  * One socket for the whole collaboration page.
@@ -31,13 +52,29 @@ export function CollabRealtimeProvider({
   projectId: string
   children: ReactNode
 }) {
-  const value = useCollabRealtime(projectId)
+  const { viewers, remoteComments, remoteTasks, remoteActivity } = useCollabRealtime(projectId)
+
+  // Memoized, or each object literal would be a fresh identity on every render
+  // of this provider and the split above would buy nothing.
+  const presence = useMemo(() => ({ viewers }), [viewers])
+  const data = useMemo(
+    () => ({ remoteComments, remoteTasks, remoteActivity }),
+    [remoteComments, remoteTasks, remoteActivity]
+  )
+
   return (
-    <CollabRealtimeContext.Provider value={value}>{children}</CollabRealtimeContext.Provider>
+    <CollabPresenceContext.Provider value={presence}>
+      <CollabDataContext.Provider value={data}>{children}</CollabDataContext.Provider>
+    </CollabPresenceContext.Provider>
   )
 }
 
-/** Defaults to empty, so a consumer outside the provider renders rather than throws. */
+/** Who else is on the page. Defaults to empty outside the provider. */
+export function useCollabPresence() {
+  return useContext(CollabPresenceContext)
+}
+
+/** Tasks, comments and activity that arrived over the channel. */
 export function useCollabRealtimeContext() {
-  return useContext(CollabRealtimeContext)
+  return useContext(CollabDataContext)
 }

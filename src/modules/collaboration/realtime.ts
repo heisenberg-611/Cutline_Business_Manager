@@ -4,8 +4,10 @@ import {
   COLLAB_EVENT,
   type CollabRefreshPayload,
   type CollabCommentPayload,
+  type CollabTasksPayload,
 } from '@/lib/ably/channels'
 import type { FlatComment } from './comment-tree'
+import type { ActivityEntry } from './actions/activity'
 
 /**
  * Publishing to a project's collaboration channel.
@@ -21,7 +23,7 @@ async function publish(
   orgId: string,
   projectId: string,
   event: string,
-  payload: CollabRefreshPayload | CollabCommentPayload
+  payload: CollabRefreshPayload | CollabCommentPayload | CollabTasksPayload
 ) {
   if (!process.env.ABLY_API_KEY) return
 
@@ -61,4 +63,26 @@ export async function publishCollabComment(
     actorName,
     comment,
   } satisfies CollabCommentPayload)
+}
+
+/**
+ * Send the task list itself, so readers apply it without a round trip.
+ *
+ * The whole list, not a delta — see CollabTasksPayload for why. `activity` is
+ * the audit row the mutation just wrote, so the feed stays live without the
+ * refresh this event exists to avoid.
+ */
+export async function publishCollabTasks(
+  orgId: string,
+  projectId: string,
+  actorUserId: string,
+  tasks: unknown[],
+  activity: ActivityEntry | null
+) {
+  await publish(orgId, projectId, COLLAB_EVENT.tasks, {
+    actorUserId,
+    at: Date.now(),
+    tasks,
+    activity,
+  } satisfies CollabTasksPayload)
 }

@@ -18,9 +18,12 @@ import {
   COLLAB_EVENT,
   type CollabRefreshPayload,
   type CollabCommentPayload,
+  type CollabTasksPayload,
 } from '@/lib/ably/channels'
 import type { PresenceViewer } from '@/components/PresenceAvatars'
 import type { FlatComment } from '../comment-tree'
+import type { TaskRow } from '../actions/tasks'
+import type { ActivityEntry } from '../actions/activity'
 
 /**
  * A comment as it arrived, with who caused it.
@@ -63,6 +66,17 @@ export function useCollabRealtime(projectId: string) {
   // server's copy by the pane rather than replacing it, so a reader who has
   // been here a while and one who just loaded see the same thread.
   const [remoteComments, setRemoteComments] = useState<Map<string, RemoteCommentEvent>>(
+    () => new Map()
+  )
+  // The task list as last broadcast. Null until one arrives, so the server's
+  // copy is what renders until there is something newer to show.
+  const [remoteTasks, setRemoteTasks] = useState<TaskRow[] | null>(null)
+  // Publish time of the applied list, so an out-of-order delivery cannot
+  // reinstate an older one.
+  const appliedTasksAt = useRef(0)
+  // Feed entries that came with a task change, keyed by their real audit id —
+  // so the server's copy of the same row replaces rather than duplicates it.
+  const [remoteActivity, setRemoteActivity] = useState<Map<string, ActivityEntry>>(
     () => new Map()
   )
 
@@ -162,20 +176,72 @@ export function useCollabRealtime(projectId: string) {
           })
           ?.catch(() => {})
 
-        const syncPresence = async () => {
+        channel
+          .subscribe(COLLAB_EVENT.tasks, (message: InboundMessage) => {
+            const payload = message.data as CollabTasksPayload | undefined
+            if (!payload) return
+
+            // Our own echo is applied too, unlike the other events. Once a
+            // broadcast has arrived it shadows the server prop, so skipping our
+            // own would leave a reader who acts after receiving someone else's
+            // change looking at the list from before their own edit.
+            if (payload.at <= appliedTasksAt.current) return
+            appliedTasksAt.current = payload.at
+
+            setRemoteTasks(reviveTasks(payload.tasks))
+
+            const activity = payload.activity as ActivityEntry | undefined | null
+            if (activity) {
+              setRemoteActivity((prev) => {
+                const next = new Map(prev)
+                next.set(activity.id, {
+                  ...activity,
+                  createdAt: new Date(activity.createdAt),
+                })
+                return next
+              })
+            }
+          })
+          ?.catch(() => {})
+
+        const viewerFrom = (m: PresenceMessage): PresenceViewer => ({
+          clientId: m.clientId!,
+          name: m.data?.name ?? 'Someone',
+          imageUrl: m.data?.imageUrl ?? null,
+        })
+
+        // Applied from the event itself rather than re-fetching the whole set.
+        // presence.get() on every enter and leave meant one person opening the
+        // page cost every other viewer a round trip, so a room of ten paid a
+        // hundred for ten arrivals.
+        const upsertViewer = (m: PresenceMessage) => {
+          if (!m.clientId || m.clientId === userId) return
+          setViewers((prev) => {
+            const index = prev.findIndex((v) => v.clientId === m.clientId)
+            if (index === -1) return [...prev, viewerFrom(m)]
+            // Replaced in place, so a name resolving late does not reshuffle
+            // the row of avatars.
+            const next = [...prev]
+            next[index] = viewerFrom(m)
+            return next
+          })
+        }
+
+        const removeViewer = (m: PresenceMessage) => {
+          if (!m.clientId) return
+          setViewers((prev) => prev.filter((v) => v.clientId !== m.clientId))
+        }
+
+        // One authoritative read, after subscribing: anything that happens in
+        // between is applied by the handlers above and then confirmed by this.
+        const seedPresence = async () => {
           try {
             const members: PresenceMessage[] = (await channel?.presence.get()) ?? []
             if (cancelled) return
             const unique = new Map<string, PresenceViewer>()
             for (const m of members) {
               // Keyed by clientId, so one person in three tabs shows once.
-              if (m.clientId && m.clientId !== userId) {
-                unique.set(m.clientId, {
-                  clientId: m.clientId,
-                  name: m.data?.name ?? 'Someone',
-                  imageUrl: m.data?.imageUrl ?? null,
-                })
-              }
+              if (m.clientId && m.clientId !== userId) unique.set(m.clientId, viewerFrom(m))
             }
             setViewers([...unique.values()])
           } catch {
@@ -183,8 +249,9 @@ export function useCollabRealtime(projectId: string) {
           }
         }
 
-        channel.presence.subscribe(['enter', 'leave', 'update'], syncPresence)?.catch(() => {})
-        channel.presence.enter(identityRef.current).then(syncPresence).catch(() => {})
+        channel.presence.subscribe(['enter', 'update'], upsertViewer)?.catch(() => {})
+        channel.presence.subscribe('leave', removeViewer)?.catch(() => {})
+        channel.presence.enter(identityRef.current).then(seedPresence).catch(() => {})
       })
       .catch((err) => console.error('Failed to load Ably for collaboration:', err))
 
@@ -218,5 +285,15 @@ export function useCollabRealtime(projectId: string) {
     }
   }, [orgId, userId, projectId, router])
 
-  return { viewers, remoteComments }
+  return { viewers, remoteComments, remoteTasks, remoteActivity }
+}
+
+/** JSON has no Date, so the fields the panel formats have to be rebuilt. */
+function reviveTasks(rows: unknown[]): TaskRow[] {
+  return (rows as TaskRow[]).map((task) => ({
+    ...task,
+    createdAt: new Date(task.createdAt),
+    dueDate: task.dueDate ? new Date(task.dueDate) : null,
+    completedAt: task.completedAt ? new Date(task.completedAt) : null,
+  }))
 }

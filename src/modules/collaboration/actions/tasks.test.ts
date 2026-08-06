@@ -35,6 +35,8 @@ const mockPrisma = {
   },
   businessMembership: { findUnique: vi.fn() },
   auditLog: { create: vi.fn() },
+  user: { findMany: vi.fn() },
+  workflowStage: { findMany: vi.fn() },
   $transaction: vi.fn((ops: unknown[]) => Promise.resolve(ops)),
 }
 vi.mock('@/modules/core/db/prisma', () => ({ default: mockPrisma }))
@@ -58,6 +60,19 @@ beforeEach(() => {
   mockPrisma.task.findFirst.mockResolvedValue(TASK)
   mockPrisma.task.create.mockResolvedValue({ id: 'task_new' })
   mockPrisma.businessMembership.findUnique.mockResolvedValue({ userId: 'user_other' })
+  // Read back to build the realtime payload.
+  mockPrisma.task.findMany.mockResolvedValue([])
+  mockPrisma.auditLog.create.mockResolvedValue({
+    id: 'audit_1',
+    action: 'TASK_COMPLETED',
+    entityType: 'Task',
+    entityId: 'task_1',
+    actorUserId: 'user_me',
+    metadataJson: '{}',
+    createdAt: new Date(),
+  })
+  mockPrisma.user.findMany.mockResolvedValue([])
+  mockPrisma.workflowStage.findMany.mockResolvedValue([])
 })
 
 describe('createTask', () => {
@@ -201,17 +216,65 @@ describe('updateTaskStatus', () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/collaboration/proj_1')
   })
 
-  it('broadcasts to other viewers of the project', async () => {
+  /**
+   * Tasks carry their list rather than nudging readers to refetch, so a remote
+   * tick costs its viewers no server render at all.
+   */
+  it('broadcasts the task list to other viewers', async () => {
     process.env.ABLY_API_KEY = 'test-key'
     try {
       await updateTaskStatus('task_1', 'DONE')
       expect(mockPublish).toHaveBeenCalledWith(
-        'collab-refresh',
-        expect.objectContaining({ actorUserId: 'user_me' })
+        'collab-tasks',
+        expect.objectContaining({ actorUserId: 'user_me', tasks: expect.any(Array) })
       )
     } finally {
       delete process.env.ABLY_API_KEY
     }
+  })
+
+  // Without it the feed would be the one panel still needing the refresh this
+  // event exists to remove.
+  it('sends the audit row alongside the tasks', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    try {
+      await updateTaskStatus('task_1', 'DONE')
+      const [, payload] = mockPublish.mock.calls[0]
+      expect(payload.activity).toMatchObject({ id: 'audit_1', action: 'TASK_COMPLETED' })
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  // A stale delivery must not reinstate an older list.
+  it('stamps the publish so readers can order deliveries', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    try {
+      await updateTaskStatus('task_1', 'DONE')
+      const [, payload] = mockPublish.mock.calls[0]
+      expect(typeof payload.at).toBe('number')
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  // Past the cap the payload stops being obviously small, so readers refetch.
+  it('falls back to a bare refresh for a very large list', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    mockPrisma.task.findMany.mockResolvedValue(
+      Array.from({ length: 201 }, (_, i) => ({ id: `t${i}`, completer: null }))
+    )
+    try {
+      await updateTaskStatus('task_1', 'DONE')
+      expect(mockPublish).toHaveBeenCalledWith('collab-refresh', expect.any(Object))
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  it('publishes nothing when realtime is switched off', async () => {
+    await updateTaskStatus('task_1', 'DONE')
+    expect(mockPublish).not.toHaveBeenCalled()
   })
 
   it('rejects a task from another tenant', async () => {

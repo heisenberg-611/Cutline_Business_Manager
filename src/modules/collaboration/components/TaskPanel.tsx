@@ -31,6 +31,7 @@ import {
 } from '../actions/tasks'
 import { displayNameOf } from './MentionInput'
 import { Panel, PanelEmpty } from './Panel'
+import { useCollabRealtimeContext } from './CollabRealtimeProvider'
 import type { CommentAuthor } from '../actions/comments'
 
 const UNASSIGNED = '__unassigned__'
@@ -105,7 +106,7 @@ function applyAction(state: TaskRow[], action: TaskAction): TaskRow[] {
 
 export function TaskPanel({
   projectId,
-  tasks: serverTasks,
+  tasks: initialTasks,
   members,
   canEdit,
 }: {
@@ -116,6 +117,13 @@ export function TaskPanel({
 }) {
   const [newTitle, setNewTitle] = useState('')
   const [isPending, startTransition] = useTransition()
+
+  // A change by someone else arrives as the whole list rather than as a nudge
+  // to refetch, so it costs its readers no server render. Once one has arrived
+  // it is newer than the prop, which only updates when this reader's own action
+  // revalidates — and that path publishes too, so the two cannot diverge.
+  const { remoteTasks } = useCollabRealtimeContext()
+  const serverTasks = remoteTasks ?? initialTasks
 
   // useOptimistic rather than mirroring the prop into state: React reverts to
   // the server value when the transition settles, so a failed action needs no

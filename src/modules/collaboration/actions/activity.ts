@@ -2,6 +2,7 @@
 
 import prisma from '@/modules/core/db/prisma'
 import { authorizeEntityAccess } from '../authz'
+import { enrichActivityRows } from '../activity-entries'
 
 export type ActivityEntry = {
   id: string
@@ -73,94 +74,7 @@ export async function getProjectActivity(
   const hasMore = rows.length > limit
   const pageRows = hasMore ? rows.slice(0, limit) : rows
 
-  // Actor names are resolved in one query. actorUserId is intentionally not
-  // FK-constrained (audit rows outlive users), so a missing user is expected
-  // rather than an error.
-  type ActorRow = {
-    id: string
-    firstName: string | null
-    lastName: string | null
-    email: string
-  }
-
-  const actorIds = [...new Set(pageRows.map((r) => r.actorUserId).filter(Boolean))] as string[]
-  const actors: ActorRow[] = actorIds.length
-    ? await prisma.user.findMany({
-        where: { id: { in: actorIds } },
-        select: { id: true, firstName: true, lastName: true, email: true },
-      })
-    : []
-  const actorById = new Map(actors.map((a) => [a.id, a]))
-
-  const parsed = pageRows.map((row) => ({ row, metadata: safeParse(row.metadataJson) }))
-
-  // Metadata stores ids. A log that reads "changed stage to wfs_abc123" is not a
-  // log anyone can use, so referenced stages and people are resolved to names.
-  const stageIds = new Set<string>()
-  const subjectIds = new Set<string>()
-  for (const { metadata } of parsed) {
-    for (const key of ['fromStageId', 'toStageId']) {
-      const value = metadata[key]
-      if (typeof value === 'string') stageIds.add(value)
-    }
-    for (const key of ['userId', 'from', 'to', 'completedForId']) {
-      const value = metadata[key]
-      // 'from'/'to' hold a status on task rows and a user id on assignee rows.
-      if (typeof value === 'string' && value.startsWith('user_')) subjectIds.add(value)
-    }
-  }
-
-  const [stages, subjects] = await Promise.all([
-    stageIds.size
-      ? prisma.workflowStage.findMany({
-          where: { id: { in: [...stageIds] } },
-          select: { id: true, name: true },
-        })
-      : Promise.resolve([]),
-    subjectIds.size
-      ? prisma.user.findMany({
-          where: { id: { in: [...subjectIds] } },
-          select: { id: true, firstName: true, lastName: true, email: true },
-        })
-      : Promise.resolve([]),
-  ])
-
-  const stageName = new Map(stages.map((s) => [s.id, s.name]))
-  const subjectName = new Map(
-    subjects.map((u) => [
-      u.id,
-      [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0],
-    ])
-  )
-
-  const nameOf = (id: unknown) =>
-    typeof id === 'string' ? (subjectName.get(id) ?? null) : null
-
-  const entries = parsed.map(({ row, metadata }) => {
-    const actor = row.actorUserId ? actorById.get(row.actorUserId) : null
-    return {
-      id: row.id,
-      action: row.action,
-      entityType: row.entityType,
-      entityId: row.entityId,
-      actorUserId: row.actorUserId,
-      actorName: actor
-        ? [actor.firstName, actor.lastName].filter(Boolean).join(' ') ||
-          actor.email.split('@')[0]
-        : null,
-      metadata: {
-        ...metadata,
-        fromStageName: stageName.get(String(metadata.fromStageId)) ?? null,
-        toStageName: stageName.get(String(metadata.toStageId)) ?? null,
-        subjectName: nameOf(metadata.userId) ?? nameOf(metadata.to) ?? null,
-        // Kept separate from subjectName: a completion row's `to` is a status,
-        // so folding this into the same field would leave the sentence reading
-        // "assigned to DONE".
-        completedForName: nameOf(metadata.completedForId),
-      },
-      createdAt: row.createdAt,
-    }
-  })
+  const entries = await enrichActivityRows(pageRows)
 
   return {
     entries,
@@ -168,13 +82,3 @@ export async function getProjectActivity(
   }
 }
 
-/** Audit metadata is free-form text; a malformed row must not break the feed. */
-function safeParse(json: string | null): Record<string, unknown> {
-  if (!json) return {}
-  try {
-    const parsed = JSON.parse(json)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
-  }
-}

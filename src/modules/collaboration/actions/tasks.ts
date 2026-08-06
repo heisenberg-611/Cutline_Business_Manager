@@ -5,22 +5,79 @@ import { revalidatePath } from 'next/cache'
 import { createNotification } from '@/modules/notifications/services'
 import type { TaskStatus } from '@prisma/client'
 import { authorizeEntityAccess, requireSession } from '../authz'
-import { publishCollabRefresh } from '../realtime'
+import { publishCollabRefresh, publishCollabTasks } from '../realtime'
+import { enrichActivityRow, type AuditRowForFeed } from '../activity-entries'
 
 const MAX_TITLE_LENGTH = 200
 
 /**
- * Rebuild this project's pages, then nudge everyone else looking at them.
- *
- * Tasks go over the content-free `refresh` signal rather than carrying their
- * payload: they change rarely, so the per-viewer invocation is cheap, and the
- * refresh re-runs the server component, which re-authorizes. The discussion
- * makes the opposite trade — see modules/collaboration/realtime.
+ * Past this many tasks the payload stops being obviously small, so the change
+ * goes out as a bare nudge instead and readers refetch. A project that large is
+ * not the case this optimizes for.
  */
-async function syncTaskViewers(orgId: string, projectId: string, actorUserId: string) {
+const MAX_BROADCAST_TASKS = 200
+
+/** The columns the panel renders, in the order it renders them. */
+const TASK_SELECT = {
+  id: true,
+  title: true,
+  description: true,
+  status: true,
+  assigneeId: true,
+  dueDate: true,
+  orderIndex: true,
+  createdAt: true,
+  completedAt: true,
+  completer: {
+    select: { id: true, firstName: true, lastName: true, email: true },
+  },
+} as const
+
+/** Reads the list without re-authorizing; every caller has already done so. */
+async function readTasks(orgId: string, projectId: string): Promise<TaskRow[]> {
+  const rows = await prisma.task.findMany({
+    where: { businessId: orgId, projectId },
+    orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }],
+    select: TASK_SELECT,
+  })
+  // `completer` is the relation name; the panel reads `completedBy`.
+  return rows.map(({ completer, ...task }) => ({ ...task, completedBy: completer }))
+}
+
+/**
+ * Rebuild this project's pages, then send the change to everyone else looking
+ * at them.
+ *
+ * Tasks carry their payload rather than nudging readers to refetch. A refresh
+ * re-renders the route from the root layout down — the navbar's queries
+ * included — so every viewer paid a function invocation and a page's worth of
+ * queries for one ticked checkbox. The list is small and bounded, so sending it
+ * outright is both cheaper and simpler than a delta per mutation.
+ *
+ * The audit row rides along, or the activity feed would be the one thing left
+ * needing the refresh this removes. Member changes still use `refresh`, because
+ * that is the action that revokes access and its reader must re-authorize.
+ */
+async function syncTaskViewers(
+  orgId: string,
+  projectId: string,
+  actorUserId: string,
+  auditRow?: AuditRowForFeed
+) {
   revalidatePath(`/dashboard/projects/${projectId}`)
   revalidatePath(`/dashboard/collaboration/${projectId}`)
-  await publishCollabRefresh(orgId, projectId, actorUserId)
+
+  // Checked before the reads below, which exist only to build the payload.
+  if (!process.env.ABLY_API_KEY) return
+
+  const tasks = await readTasks(orgId, projectId)
+  if (tasks.length > MAX_BROADCAST_TASKS) {
+    await publishCollabRefresh(orgId, projectId, actorUserId)
+    return
+  }
+
+  const activity = auditRow ? await enrichActivityRow(auditRow) : null
+  await publishCollabTasks(orgId, projectId, actorUserId, tasks, activity)
 }
 
 export type TaskCompleter = {
@@ -69,26 +126,7 @@ async function authorizeTask(taskId: string, level: 'read' | 'write') {
 export async function getTasks(projectId: string): Promise<TaskRow[]> {
   const { orgId } = await authorizeEntityAccess('Project', projectId, 'read')
 
-  return prisma.task.findMany({
-    where: { businessId: orgId, projectId },
-    orderBy: [{ orderIndex: 'asc' }, { createdAt: 'asc' }],
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      status: true,
-      assigneeId: true,
-      dueDate: true,
-      orderIndex: true,
-      createdAt: true,
-      completedAt: true,
-      completer: {
-        select: { id: true, firstName: true, lastName: true, email: true },
-      },
-    },
-  })
-    // `completer` is the relation name; the panel reads `completedBy`.
-    .then((rows) => rows.map(({ completer, ...task }) => ({ ...task, completedBy: completer })))
+  return readTasks(orgId, projectId)
 }
 
 export async function createTask(input: {
@@ -126,7 +164,7 @@ export async function createTask(input: {
     },
   })
 
-  await prisma.auditLog.create({
+  const audit = await prisma.auditLog.create({
     data: {
       businessId: orgId,
       entityType: 'Task',
@@ -141,7 +179,7 @@ export async function createTask(input: {
     await notifyAssignment(orgId, assigneeId, title, input.projectId)
   }
 
-  await syncTaskViewers(orgId, input.projectId, userId)
+  await syncTaskViewers(orgId, input.projectId, userId, audit)
   return task.id
 }
 
@@ -173,7 +211,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     },
   })
 
-  await prisma.auditLog.create({
+  const audit = await prisma.auditLog.create({
     data: {
       businessId: orgId,
       entityType: 'Task',
@@ -196,7 +234,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     },
   })
 
-  await syncTaskViewers(orgId, task.projectId, userId)
+  await syncTaskViewers(orgId, task.projectId, userId, audit)
 }
 
 export async function updateTask(
@@ -235,8 +273,9 @@ export async function updateTask(
 
   const reassigned = newAssignee !== undefined && newAssignee !== task.assigneeId
 
+  let audit: Awaited<ReturnType<typeof prisma.auditLog.create>> | undefined
   if (reassigned) {
-    await prisma.auditLog.create({
+    audit = await prisma.auditLog.create({
       data: {
         businessId: orgId,
         entityType: 'Task',
@@ -256,13 +295,13 @@ export async function updateTask(
     }
   }
 
-  await syncTaskViewers(orgId, task.projectId, userId)
+  await syncTaskViewers(orgId, task.projectId, userId, audit)
 }
 
 export async function deleteTask(taskId: string) {
   const { orgId, userId, task } = await authorizeTask(taskId, 'write')
 
-  await prisma.auditLog.create({
+  const audit = await prisma.auditLog.create({
     data: {
       businessId: orgId,
       entityType: 'Task',
@@ -275,7 +314,7 @@ export async function deleteTask(taskId: string) {
 
   await prisma.task.delete({ where: { id: taskId } })
 
-  await syncTaskViewers(orgId, task.projectId, userId)
+  await syncTaskViewers(orgId, task.projectId, userId, audit)
 }
 
 /**
