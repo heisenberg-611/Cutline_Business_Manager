@@ -5,6 +5,7 @@ import { GlobalAlerts } from './components/GlobalAlerts'
 import { getActivePlan, canInviteMembers } from '@/lib/subscription'
 import { syncClerkSeatCap } from '@/lib/plan-guard'
 import { PlanLockedScreen } from '@/modules/core/ui/PlanLockedScreen'
+import { getCachedActiveAlerts, getCachedGlobalSettings } from '@/lib/global-cache'
 import { redirect } from 'next/navigation'
 
 export default async function DashboardLayout({
@@ -34,12 +35,11 @@ export default async function DashboardLayout({
     }
   }
 
+  // Cached: this layout re-renders on every mutation anywhere under /dashboard,
+  // and neither of these is per-user. Invalidated by tag from HQ when they change.
   const [activeAlerts, globalSettings] = await Promise.all([
-    prisma.systemAlert.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: 'desc' }
-    }),
-    prisma.globalSettings.findUnique({ where: { id: 'default' } })
+    getCachedActiveAlerts(),
+    getCachedGlobalSettings()
   ]);
 
   if (globalSettings?.maintenanceMode) {
@@ -57,10 +57,18 @@ export default async function DashboardLayout({
       const activePlan = getActivePlan(business);
       canInvite = canInviteMembers(activePlan);
 
-      // Self-heal a stale Clerk seat cap. Nothing runs when a subscription
-      // simply lapses — there is no expiry job — so the stored plan can still
-      // say BUSINESS while the active plan is FREE, leaving Clerk uncapped and
-      // happy to accept invites. Only fires on real drift, and only to tighten.
+      // Self-heal a stale Clerk seat cap, covering the window between a
+      // subscription lapsing and the nightly expiry cron catching it: until
+      // then the stored plan still says BUSINESS while the active plan is FREE,
+      // leaving Clerk uncapped and happy to accept invites.
+      //
+      // (The comment here used to say no expiry job existed. One does now —
+      // /api/cron/expire-subscriptions, 02:00 daily — which is what closes the
+      // drift for good; this only narrows the gap until it runs.)
+      //
+      // Kept in the render path deliberately. It fires only on real drift, so
+      // in steady state it costs a boolean rather than a request, and the
+      // business row it tests was already being read for the seat check below.
       if (!canInvite && canInviteMembers(business.subscriptionPlan)) {
         await syncClerkSeatCap(orgId, activePlan);
       }

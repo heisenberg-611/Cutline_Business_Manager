@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import type { SubscriptionPlan } from '@prisma/client'
 import prisma from '@/modules/core/db/prisma'
 import {
@@ -85,17 +86,19 @@ export class PlanRequiredError extends Error {
  * subscription resolves to FREE. Always prefer this over reading the
  * `subscriptionPlan` column directly, which does not account for expiry.
  */
-export async function getActivePlanFor(orgId: string): Promise<SubscriptionPlan> {
-  const business = await prisma.business.findUnique({
-    where: { id: orgId },
-    select: { subscriptionPlan: true, subscriptionPeriodEnd: true },
-  })
+export const getActivePlanFor = cache(
+  async (orgId: string): Promise<SubscriptionPlan> => {
+    const business = await prisma.business.findUnique({
+      where: { id: orgId },
+      select: { subscriptionPlan: true, subscriptionPeriodEnd: true },
+    })
 
-  // No business row means nothing is provisioned yet; fail closed.
-  if (!business) return PLANS.FREE
+    // No business row means nothing is provisioned yet; fail closed.
+    if (!business) return PLANS.FREE
 
-  return getActivePlan(business)
-}
+    return getActivePlan(business)
+  }
+)
 
 /**
  * Throws unless the business's active plan unlocks `feature`. Call at the top
