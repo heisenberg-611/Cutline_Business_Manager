@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Activity } from 'lucide-react'
 import { toast } from 'sonner'
 import { getProjectActivity, type ActivityEntry } from '../actions/activity'
 import { Panel, PanelEmpty, PANEL_SCROLL_SIDE } from './Panel'
+import { useCollabRealtimeContext } from './CollabRealtimeProvider'
+import type { RemoteCommentEvent } from '../hooks/useCollabRealtime'
 
 /**
  * Turns an audit row into a sentence.
@@ -26,7 +28,11 @@ function describe(entry: ActivityEntry): string {
     case 'TASK_DELETED':
       return `deleted ${title}`
     case 'TASK_COMPLETED':
-      return `completed ${title}`
+      // Only says whose task it was when that is someone other than the person
+      // who finished it — the action writes the id only in that case.
+      return meta.completedForName
+        ? `completed ${title}, assigned to ${meta.completedForName}`
+        : `completed ${title}`
     case 'TASK_STATUS_CHANGED':
       return `moved ${title} to ${humanize(meta.to ?? '')}`
     case 'TASK_ASSIGNEE_CHANGED':
@@ -71,6 +77,78 @@ function humanize(value: string) {
   return value.replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase())
 }
 
+/** Identifies the audit row a wire comment will eventually produce. */
+function commentKey(action: string, commentId: unknown): string | null {
+  return typeof commentId === 'string' ? `${action}:${commentId}` : null
+}
+
+/**
+ * The activity line a comment would have produced server-side.
+ *
+ * Which action it maps to is inferred from the comment itself, in the same
+ * order the server decides it: a blanked comment was deleted, one with an
+ * editedAt was edited, and otherwise it is new — a reply if it has a parent.
+ */
+function toActivityEntry(
+  { comment, actorUserId, actorName }: RemoteCommentEvent,
+  projectId: string
+): ActivityEntry {
+  const action = comment.isDeleted
+    ? 'COMMENT_DELETED'
+    : comment.editedAt
+      ? 'COMMENT_EDITED'
+      : comment.parentId
+        ? 'COMMENT_REPLIED'
+        : 'COMMENT_POSTED'
+
+  return {
+    // Prefixed so it cannot collide with a real audit row id.
+    id: `local:${action}:${comment.id}`,
+    action,
+    entityType: 'Project',
+    entityId: projectId,
+    actorUserId,
+    actorName,
+    metadata: { commentId: comment.id },
+    createdAt: comment.editedAt ?? comment.createdAt,
+  }
+}
+
+/**
+ * The feed as rendered: the server's head, older pages beneath it, and lines
+ * for comments that arrived over the wire before their audit row did.
+ *
+ * Exported for its own test. The dedupe and the ordering are the parts that go
+ * wrong, and they are not reachable through the component without a DOM.
+ */
+export function mergeActivity(
+  initialEntries: ActivityEntry[],
+  older: ActivityEntry[],
+  remoteComments: Iterable<RemoteCommentEvent>,
+  projectId: string
+): ActivityEntry[] {
+  const seen = new Set(initialEntries.map((e) => e.id))
+  const merged = [...initialEntries, ...older.filter((e) => !seen.has(e.id))]
+
+  // Comments arrive with their payload rather than as a nudge to refetch, so
+  // the server's row for them may not exist here yet. Synthesize the line from
+  // what came over the wire, and drop it once the real row shows up.
+  const known = new Set(
+    merged
+      .map((e) => commentKey(e.action, e.metadata?.commentId))
+      .filter((k): k is string => k !== null)
+  )
+
+  const synthetic = [...remoteComments]
+    .map((event) => toActivityEntry(event, projectId))
+    .filter((e) => !known.has(commentKey(e.action, e.metadata.commentId)!))
+
+  // Stable sort, so entries sharing a timestamp keep the server's ordering.
+  return [...merged, ...synthetic].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+}
+
 export function ActivityFeed({
   projectId,
   initialEntries,
@@ -86,9 +164,25 @@ export function ActivityFeed({
   // Only the first page is rendered by the server; the rest is fetched on
   // demand, so opening a long-running project does not pay for its whole
   // history up front.
-  const [entries, setEntries] = useState(initialEntries)
-  const [cursor, setCursor] = useState(initialCursor)
+  //
+  // Older pages are held apart from initialEntries rather than copied into one
+  // state. Seeding state from the prop froze the feed at mount: a refresh
+  // handed down fresh entries and useState ignored them, so nothing ever
+  // appeared without a full reload — not even your own actions.
+  const [older, setOlder] = useState<ActivityEntry[]>([])
+  const [pagedCursor, setPagedCursor] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // Until someone pages back, follow the server's cursor so it stays correct as
+  // the head grows. After that our own is the one that matches what we hold.
+  const cursor = older.length > 0 ? pagedCursor : initialCursor
+
+  const { remoteComments } = useCollabRealtimeContext()
+
+  const entries = useMemo(
+    () => mergeActivity(initialEntries, older, remoteComments.values(), projectId),
+    [initialEntries, older, remoteComments, projectId]
+  )
 
   function loadMore() {
     if (!cursor) return
@@ -96,11 +190,11 @@ export function ActivityFeed({
       try {
         const page = await getProjectActivity(projectId, { cursor })
         // Guard against a double-click racing two requests for the same cursor.
-        setEntries((current) => {
+        setOlder((current) => {
           const seen = new Set(current.map((e) => e.id))
           return [...current, ...page.entries.filter((e) => !seen.has(e.id))]
         })
-        setCursor(page.nextCursor)
+        setPagedCursor(page.nextCursor)
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to load more activity')
       }

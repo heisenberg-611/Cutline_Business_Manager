@@ -5,8 +5,30 @@ import { revalidatePath } from 'next/cache'
 import { createNotification } from '@/modules/notifications/services'
 import type { TaskStatus } from '@prisma/client'
 import { authorizeEntityAccess, requireSession } from '../authz'
+import { publishCollabRefresh } from '../realtime'
 
 const MAX_TITLE_LENGTH = 200
+
+/**
+ * Rebuild this project's pages, then nudge everyone else looking at them.
+ *
+ * Tasks go over the content-free `refresh` signal rather than carrying their
+ * payload: they change rarely, so the per-viewer invocation is cheap, and the
+ * refresh re-runs the server component, which re-authorizes. The discussion
+ * makes the opposite trade — see modules/collaboration/realtime.
+ */
+async function syncTaskViewers(orgId: string, projectId: string, actorUserId: string) {
+  revalidatePath(`/dashboard/projects/${projectId}`)
+  revalidatePath(`/dashboard/collaboration/${projectId}`)
+  await publishCollabRefresh(orgId, projectId, actorUserId)
+}
+
+export type TaskCompleter = {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  email: string
+}
 
 export type TaskRow = {
   id: string
@@ -18,6 +40,12 @@ export type TaskRow = {
   orderIndex: number
   createdAt: Date
   completedAt: Date | null
+  /**
+   * Carried on the row rather than resolved from the member list, because the
+   * person who finished a task need not be on the project — an admin can close
+   * anything, and they would render as "Unknown" against a project roster.
+   */
+  completedBy: TaskCompleter | null
 }
 
 /**
@@ -54,8 +82,13 @@ export async function getTasks(projectId: string): Promise<TaskRow[]> {
       orderIndex: true,
       createdAt: true,
       completedAt: true,
+      completer: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
     },
   })
+    // `completer` is the relation name; the panel reads `completedBy`.
+    .then((rows) => rows.map(({ completer, ...task }) => ({ ...task, completedBy: completer })))
 }
 
 export async function createTask(input: {
@@ -108,14 +141,24 @@ export async function createTask(input: {
     await notifyAssignment(orgId, assigneeId, title, input.projectId)
   }
 
-  revalidatePath(`/dashboard/projects/${input.projectId}`)
+  await syncTaskViewers(orgId, input.projectId, userId)
   return task.id
 }
 
 export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   const { userId, orgId, task } = await authorizeTask(taskId, 'write')
 
-  if (task.status === status) return
+  // Already in the requested state — but still refresh the caller, because this
+  // is precisely the case where their view is stale. Returning bare left the
+  // caller's optimistic tick with nothing to reconcile against, so it rolled
+  // back to the stale value and the checkbox appeared to refuse the click,
+  // permanently, for whoever was not the one who completed it.
+  if (task.status === status) {
+    await syncTaskViewers(orgId, task.projectId, userId)
+    return
+  }
+
+  const isDone = status === 'DONE'
 
   await prisma.task.update({
     where: { id: taskId },
@@ -123,7 +166,10 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
       status,
       // completedAt tracks when it actually finished; reopening clears it so a
       // stale timestamp cannot outlive the DONE state.
-      completedAt: status === 'DONE' ? new Date() : null,
+      completedAt: isDone ? new Date() : null,
+      // Who finished it, which is not always who it was assigned to. Cleared on
+      // reopen for the same reason as the timestamp.
+      completedById: isDone ? userId : null,
     },
   })
 
@@ -132,18 +178,25 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
       businessId: orgId,
       entityType: 'Task',
       entityId: taskId,
-      action: status === 'DONE' ? 'TASK_COMPLETED' : 'TASK_STATUS_CHANGED',
+      action: isDone ? 'TASK_COMPLETED' : 'TASK_STATUS_CHANGED',
       actorUserId: userId,
       metadataJson: JSON.stringify({
         projectId: task.projectId,
         title: task.title,
         from: task.status,
         to: status,
+        // Who it was assigned to at the moment it was completed, so the feed can
+        // say "finished a task assigned to X" rather than flattening every
+        // completion into the same sentence. Omitted when nobody was on it, and
+        // when the assignee finished their own work — neither is worth a clause.
+        ...(isDone && task.assigneeId && task.assigneeId !== userId
+          ? { completedForId: task.assigneeId }
+          : {}),
       }),
     },
   })
 
-  revalidatePath(`/dashboard/projects/${task.projectId}`)
+  await syncTaskViewers(orgId, task.projectId, userId)
 }
 
 export async function updateTask(
@@ -171,7 +224,12 @@ export async function updateTask(
 
   if (data.dueDate !== undefined) patch.dueDate = data.dueDate
 
-  if (Object.keys(patch).length === 0) return
+  // Same reasoning as updateTaskStatus: nothing to write usually means the
+  // caller was acting on a value that is already set, so refresh them.
+  if (Object.keys(patch).length === 0) {
+    await syncTaskViewers(orgId, task.projectId, userId)
+    return
+  }
 
   await prisma.task.update({ where: { id: taskId }, data: patch })
 
@@ -198,7 +256,7 @@ export async function updateTask(
     }
   }
 
-  revalidatePath(`/dashboard/projects/${task.projectId}`)
+  await syncTaskViewers(orgId, task.projectId, userId)
 }
 
 export async function deleteTask(taskId: string) {
@@ -217,7 +275,7 @@ export async function deleteTask(taskId: string) {
 
   await prisma.task.delete({ where: { id: taskId } })
 
-  revalidatePath(`/dashboard/projects/${task.projectId}`)
+  await syncTaskViewers(orgId, task.projectId, userId)
 }
 
 /**
@@ -225,7 +283,7 @@ export async function deleteTask(taskId: string) {
  * cannot move a task belonging to a project the caller cannot write to.
  */
 export async function reorderTasks(projectId: string, orderedIds: string[]) {
-  const { orgId } = await authorizeEntityAccess('Project', projectId, 'write')
+  const { userId, orgId } = await authorizeEntityAccess('Project', projectId, 'write')
 
   const unique = [...new Set(orderedIds)]
   const owned = await prisma.task.count({
@@ -241,7 +299,7 @@ export async function reorderTasks(projectId: string, orderedIds: string[]) {
     )
   )
 
-  revalidatePath(`/dashboard/projects/${projectId}`)
+  await syncTaskViewers(orgId, projectId, userId)
 }
 
 /** An assignee must be a member of the caller's business. */

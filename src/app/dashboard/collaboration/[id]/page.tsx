@@ -11,6 +11,8 @@ import { getTasks } from '@/modules/collaboration/actions/tasks'
 import { getComments, getMentionableUsers } from '@/modules/collaboration/actions/comments'
 import { getProjectActivity } from '@/modules/collaboration/actions/activity'
 import { MemberPanel } from '@/modules/collaboration/components/MemberPanel'
+import { CollabPresence } from '@/modules/collaboration/components/CollabPresence'
+import { CollabRealtimeProvider } from '@/modules/collaboration/components/CollabRealtimeProvider'
 import { getProjectMembers, getAddableMembers } from '@/modules/collaboration/actions/members'
 import { Badge } from '@/components/ui/badge'
 
@@ -70,6 +72,9 @@ export default async function ProjectCollaborationPage({
   const commentCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0)
 
   return (
+    // One realtime connection for the page: the header renders presence and the
+    // discussion consumes the comment stream, both from this provider.
+    <CollabRealtimeProvider projectId={project.id}>
     <div className="space-y-6">
       <div className="border-b border-zinc-200 pb-5 dark:border-zinc-800">
         <Link
@@ -111,11 +116,16 @@ export default async function ProjectCollaborationPage({
             </p>
           </div>
 
-          <dl className="flex shrink-0 items-center gap-5 text-sm">
-            <Stat icon={CheckSquare} label="open" value={openTasks} />
-            <Stat icon={MessageSquare} label="comment" value={commentCount} plural />
-            <Stat icon={Users2} label="member" value={projectMembers.length} plural />
-          </dl>
+          {/* Who is here, then the project's vitals. Presence sits first so it
+              reads left-to-right as people-then-numbers, matching the board. */}
+          <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-2">
+            <CollabPresence />
+            <dl className="flex shrink-0 items-center gap-5 text-sm">
+              <Stat icon={CheckSquare} label="open" value={openTasks} />
+              <Stat icon={MessageSquare} label="comment" value={commentCount} plural />
+              <Stat icon={Users2} label="member" value={projectMembers.length} plural />
+            </dl>
+          </div>
         </div>
       </div>
 
@@ -172,6 +182,7 @@ export default async function ProjectCollaborationPage({
         </div>
       </div>
     </div>
+    </CollabRealtimeProvider>
   )
 }
 

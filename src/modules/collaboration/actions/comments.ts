@@ -6,27 +6,12 @@ import { createNotification } from '@/modules/notifications/services'
 import { parseMentions, stripMentionMarkup } from '../mentions'
 import { mentionableUserIds, mentionableUsersForProject } from '../mentionable'
 import { authorizeEntityAccess, requireSession } from '../authz'
+import { buildCommentTree, type CommentNode as TreeNode, type FlatComment } from '../comment-tree'
+import { publishCollabComment } from '../realtime'
 
 const MAX_BODY_LENGTH = 5000
 
-export type CommentAuthor = {
-  id: string
-  firstName: string | null
-  lastName: string | null
-  email: string
-  imageUrl: string | null
-}
-
-export type CommentNode = {
-  id: string
-  body: string
-  authorId: string | null
-  author: CommentAuthor | null
-  createdAt: Date
-  editedAt: Date | null
-  isDeleted: boolean
-  replies: CommentNode[]
-}
+export type { CommentAuthor, CommentNode } from '../comment-tree'
 
 const authorSelect = {
   id: true,
@@ -46,7 +31,7 @@ const authorSelect = {
 export async function getComments(
   entityType: string,
   entityId: string
-): Promise<CommentNode[]> {
+): Promise<TreeNode[]> {
   const { orgId } = await authorizeEntityAccess(entityType, entityId, 'read')
 
   const rows = await prisma.comment.findMany({
@@ -55,33 +40,45 @@ export async function getComments(
     include: { author: { select: authorSelect } },
   })
 
-  const toNode = (row: (typeof rows)[number]): CommentNode => ({
+  return buildCommentTree(rows.map(toFlatComment))
+}
+
+/**
+ * A stored row as the thread renders it.
+ *
+ * Deleting removes what was said, not who said it: the thread still has to show
+ * whose comment was withdrawn, and replies below it need that context. Blanking
+ * here rather than in the client means the body never reaches a browser — which
+ * matters now that comments travel over the realtime channel too.
+ */
+function toFlatComment(row: {
+  id: string
+  parentId: string | null
+  body: string
+  authorId: string | null
+  author: CommentAuthorRow | null
+  createdAt: Date
+  editedAt: Date | null
+  deletedAt: Date | null
+}): FlatComment {
+  return {
     id: row.id,
-    // Deleting removes what was said, not who said it: the thread still has to
-    // show whose comment was withdrawn, and replies below it need that context.
+    parentId: row.parentId,
     body: row.deletedAt ? '' : row.body,
     authorId: row.authorId,
     author: row.author,
     createdAt: row.createdAt,
     editedAt: row.editedAt,
     isDeleted: !!row.deletedAt,
-    replies: [],
-  })
-
-  const byId = new Map<string, CommentNode>()
-  const roots: CommentNode[] = []
-
-  for (const row of rows) {
-    byId.set(row.id, toNode(row))
   }
-  for (const row of rows) {
-    const node = byId.get(row.id)!
-    const parent = row.parentId ? byId.get(row.parentId) : null
-    if (parent) parent.replies.push(node)
-    else roots.push(node)
-  }
+}
 
-  return roots
+type CommentAuthorRow = {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  email: string
+  imageUrl: string | null
 }
 
 /**
@@ -205,7 +202,59 @@ export async function createComment(input: {
   }
 
   revalidatePath(entityUrl(input.entityType, input.entityId))
+  await publishComment(orgId, input.entityType, input.entityId, userId, comment.id)
   return comment.id
+}
+
+
+/**
+ * Sends the comment itself to everyone else on the project.
+ *
+ * Only Project comments go out: the channel is per project, and the comment
+ * table is polymorphic — an invoice thread has nowhere to publish to and should
+ * not be broadcast to a project's viewers.
+ */
+async function publishComment(
+  orgId: string,
+  entityType: string,
+  entityId: string,
+  actorUserId: string,
+  commentId: string
+) {
+  if (entityType !== 'Project') return
+  // Checked before the read, not inside publish: with realtime off there is
+  // nowhere to send it, and re-reading the row would be pure waste.
+  if (!process.env.ABLY_API_KEY) return
+
+  const row = await prisma.comment.findUnique({
+    where: { id: commentId },
+    include: { author: { select: authorSelect } },
+  })
+  if (!row) return
+
+  // Only the author may edit, so for posts and edits the actor is the author
+  // and no extra lookup is needed. A delete can be an admin moderating, which
+  // is the one case worth a query.
+  const actorName =
+    actorUserId === row.authorId
+      ? nameOf(row.author)
+      : nameOf(
+          await prisma.user.findUnique({
+            where: { id: actorUserId },
+            select: { firstName: true, lastName: true, email: true },
+          })
+        )
+
+  await publishCollabComment(orgId, entityId, actorUserId, actorName, toFlatComment(row))
+
+}
+
+/** Matches how the activity feed renders a name, so the two cannot disagree. */
+function nameOf(
+  user: { firstName: string | null; lastName: string | null; email: string } | null
+) {
+  if (!user) return null
+  return [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email.split('@')[0]
 }
 
 /** Only the author may edit their own comment; admins included cannot rewrite it. */
@@ -265,6 +314,7 @@ export async function editComment(commentId: string, body: string) {
   })
 
   revalidatePath(entityUrl(existing.entityType, existing.entityId))
+  await publishComment(orgId, existing.entityType, existing.entityId, userId, commentId)
 }
 
 /**
@@ -307,6 +357,8 @@ export async function deleteComment(commentId: string) {
   ])
 
   revalidatePath(entityUrl(existing.entityType, existing.entityId))
+  // Carries the blanked body, so readers drop the text without a refetch.
+  await publishComment(orgId, existing.entityType, existing.entityId, userId, commentId)
 }
 
 /**

@@ -97,6 +97,7 @@ function applyAction(state: TaskRow[], action: TaskAction): TaskRow[] {
           orderIndex: state.length,
           createdAt: new Date(),
           completedAt: null,
+          completedBy: null,
         },
       ]
   }
@@ -334,6 +335,14 @@ function TaskTiming({ task }: { task: TaskRow }) {
   const created = new Date(task.createdAt)
   const done = task.status === 'DONE' && task.completedAt ? new Date(task.completedAt) : null
 
+  // Named only when it was not the assignee's own work — on a task someone else
+  // owned, or one nobody was on, who picked it up is the part worth surfacing.
+  // When the assignee finished their own task the name adds nothing.
+  const completer =
+    done && task.completedBy && task.completedBy.id !== task.assigneeId
+      ? displayNameOf(task.completedBy)
+      : null
+
   return (
     <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] text-zinc-400 dark:text-zinc-500">
       <Clock className="h-3 w-3 shrink-0" />
@@ -347,6 +356,12 @@ function TaskTiming({ task }: { task: TaskRow }) {
           >
             done {format(done, STAMP)} · took {durationTaken(created, done)}
           </span>
+        </>
+      )}
+      {completer && (
+        <>
+          <span aria-hidden>·</span>
+          <span className="font-medium text-zinc-500 dark:text-zinc-400">by {completer}</span>
         </>
       )}
     </span>
