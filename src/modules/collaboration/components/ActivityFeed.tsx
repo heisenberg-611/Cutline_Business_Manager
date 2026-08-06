@@ -125,10 +125,24 @@ export function mergeActivity(
   initialEntries: ActivityEntry[],
   older: ActivityEntry[],
   remoteComments: Iterable<RemoteCommentEvent>,
-  projectId: string
+  projectId: string,
+  /**
+   * Entries that rode along with a task broadcast. Real audit rows with real
+   * ids, so the server's copy simply replaces them — nothing synthetic to
+   * reconcile, unlike the comment lines below.
+   */
+  remoteActivity: Iterable<ActivityEntry> = []
 ): ActivityEntry[] {
   const seen = new Set(initialEntries.map((e) => e.id))
   const merged = [...initialEntries, ...older.filter((e) => !seen.has(e.id))]
+
+  const knownIds = new Set(merged.map((e) => e.id))
+  for (const entry of remoteActivity) {
+    if (!knownIds.has(entry.id)) {
+      merged.push(entry)
+      knownIds.add(entry.id)
+    }
+  }
 
   // Comments arrive with their payload rather than as a nudge to refetch, so
   // the server's row for them may not exist here yet. Synthesize the line from
@@ -177,11 +191,18 @@ export function ActivityFeed({
   // the head grows. After that our own is the one that matches what we hold.
   const cursor = older.length > 0 ? pagedCursor : initialCursor
 
-  const { remoteComments } = useCollabRealtimeContext()
+  const { remoteComments, remoteActivity } = useCollabRealtimeContext()
 
   const entries = useMemo(
-    () => mergeActivity(initialEntries, older, remoteComments.values(), projectId),
-    [initialEntries, older, remoteComments, projectId]
+    () =>
+      mergeActivity(
+        initialEntries,
+        older,
+        remoteComments.values(),
+        projectId,
+        remoteActivity.values()
+      ),
+    [initialEntries, older, remoteComments, projectId, remoteActivity]
   )
 
   function loadMore() {

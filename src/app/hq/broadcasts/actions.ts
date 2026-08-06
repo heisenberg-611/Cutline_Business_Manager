@@ -2,6 +2,7 @@
 
 import prisma from '@/modules/core/db/prisma';
 import { revalidatePath } from 'next/cache';
+import { invalidateSystemAlerts } from '@/lib/global-cache';
 import { requireAdmin } from '../actions';
 
 export async function createBroadcast(title: string, message: string, type: string) {
@@ -26,6 +27,9 @@ export async function createBroadcast(title: string, message: string, type: stri
   });
 
   revalidatePath('/', 'layout');
+  // The dashboard layout reads active alerts from cache; without this the
+  // banner would wait out the fallback TTL.
+  invalidateSystemAlerts();
 }
 
 export async function toggleBroadcast(id: string, isActive: boolean) {
@@ -46,6 +50,9 @@ export async function toggleBroadcast(id: string, isActive: boolean) {
   });
 
   revalidatePath('/', 'layout');
+  // The dashboard layout reads active alerts from cache; without this the
+  // banner would wait out the fallback TTL.
+  invalidateSystemAlerts();
 }
 
 export async function deleteBroadcast(id: string) {
@@ -64,4 +71,7 @@ export async function deleteBroadcast(id: string) {
   });
 
   revalidatePath('/', 'layout');
+  // The dashboard layout reads active alerts from cache; without this the
+  // banner would wait out the fallback TTL.
+  invalidateSystemAlerts();
 }

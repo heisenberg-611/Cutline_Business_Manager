@@ -8,6 +8,7 @@ import {
   clampSetting,
 } from '@/lib/admin-auth';
 import { revalidatePath } from 'next/cache';
+import { invalidateGlobalSettings } from '@/lib/global-cache';
 
 export async function getGlobalSettings() {
   await requireAdmin(); // SECURITY CHECK: Prevent unauthenticated users from fetching global settings
@@ -127,6 +128,9 @@ export async function updateGlobalSettings(raw: {
       await Promise.all(auditPromises);
     }
     
+    // Maintenance mode lives in here, so it has to take effect on the next
+    // render rather than whenever the fallback TTL lapses.
+    invalidateGlobalSettings();
     revalidatePath('/hq/settings');
     revalidatePath('/dashboard/settings/billing/checkout');
     

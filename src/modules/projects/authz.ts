@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { auth } from '@clerk/nextjs/server'
 import prisma from '@/modules/core/db/prisma'
 import type { Project, ProjectMemberRole } from '@prisma/client'
@@ -58,19 +59,21 @@ export type ProjectAuthContext = {
 }
 
 /**
- * Throws unless the caller may act on `projectId` at `level`.
+ * Everything needed to decide access, fetched once per project per request.
  *
- * - 'read'   — view the project and its notes/tasks/comments
- * - 'write'  — edit the project and its child records
- * - 'manage' — change the member list or delete the project
+ * Split from the grant check and memoized with React's `cache` because the
+ * level is not part of what gets read. A single render of the collaboration
+ * page asks about the same project eight times over — read, write and manage
+ * for the page itself, then again inside getTasks, getComments,
+ * getProjectActivity, getMentionableUsers and the member lists — and each one
+ * repeated the same two queries. Keyed on projectId alone, they now share one
+ * result.
  *
- * Errors intentionally match the previous strings so existing UI error
- * handling keeps working.
+ * Request-scoped, so a Server Action that authorizes up front and then mutates
+ * is unaffected. Anything that needs to re-read membership *after* writing it
+ * within the same request must query directly rather than call this.
  */
-export async function authorizeProjectAccess(
-  projectId: string,
-  level: ProjectAccessLevel
-): Promise<ProjectAuthContext> {
+const loadProjectAccess = cache(async (projectId: string) => {
   const { userId, orgId, orgRole } = await auth()
 
   if (!orgId || !userId) {
@@ -88,7 +91,7 @@ export async function authorizeProjectAccess(
   }
 
   if (orgRole === 'org:admin') {
-    return { userId, orgId, orgRole, isAdmin: true, memberRole: null, project }
+    return { userId, orgId, orgRole, isAdmin: true as const, effectiveRole: null, project }
   }
 
   const membership = await prisma.projectMember.findUnique({
@@ -101,6 +104,30 @@ export async function authorizeProjectAccess(
   // assigneeId without a matching ProjectMember row.
   const effectiveRole: ProjectMemberRole | null =
     membership?.role ?? (project.assigneeId === userId ? 'OWNER' : null)
+
+  return { userId, orgId, orgRole, isAdmin: false as const, effectiveRole, project }
+})
+
+/**
+ * Throws unless the caller may act on `projectId` at `level`.
+ *
+ * - 'read'   — view the project and its notes/tasks/comments
+ * - 'write'  — edit the project and its child records
+ * - 'manage' — change the member list or delete the project
+ *
+ * Errors intentionally match the previous strings so existing UI error
+ * handling keeps working.
+ */
+export async function authorizeProjectAccess(
+  projectId: string,
+  level: ProjectAccessLevel
+): Promise<ProjectAuthContext> {
+  const { userId, orgId, orgRole, isAdmin, effectiveRole, project } =
+    await loadProjectAccess(projectId)
+
+  if (isAdmin) {
+    return { userId, orgId, orgRole, isAdmin: true, memberRole: null, project }
+  }
 
   if (!effectiveRole || !ROLE_GRANTS[effectiveRole].includes(level)) {
     throw new Error(deniedMessage(effectiveRole, level))

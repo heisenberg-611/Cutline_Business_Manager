@@ -115,20 +115,42 @@ export function usePipelineRealtime({
           onRemoteMoveRef.current(payload.updates)
         })?.catch(() => {})
 
-        const syncPresence = async () => {
+        const viewerFrom = (m: PresenceMessage): BoardViewer => ({
+          clientId: m.clientId!,
+          name: m.data?.name ?? 'Someone',
+          imageUrl: m.data?.imageUrl ?? null,
+        })
+
+        // Applied from the event rather than re-reading the whole set, so one
+        // arrival does not cost every other viewer a round trip.
+        const upsertViewer = (m: PresenceMessage) => {
+          if (!m.clientId || m.clientId === userId) return
+          setViewers((prev) => {
+            const index = prev.findIndex((v) => v.clientId === m.clientId)
+            if (index === -1) return [...prev, viewerFrom(m)]
+            // Replaced in place, so a late-resolving name does not reshuffle
+            // the row of avatars.
+            const next = [...prev]
+            next[index] = viewerFrom(m)
+            return next
+          })
+        }
+
+        const removeViewer = (m: PresenceMessage) => {
+          if (!m.clientId) return
+          setViewers((prev) => prev.filter((v) => v.clientId !== m.clientId))
+        }
+
+        // One authoritative read after subscribing; anything in between is
+        // applied by the handlers and then confirmed by this.
+        const seedPresence = async () => {
           try {
             const members: PresenceMessage[] = (await channel?.presence.get()) ?? []
             if (cancelled) return
             const unique = new Map<string, BoardViewer>()
             for (const m of members) {
               // Keyed by clientId, so one person in three tabs shows once.
-              if (m.clientId && m.clientId !== userId) {
-                unique.set(m.clientId, {
-                  clientId: m.clientId,
-                  name: m.data?.name ?? 'Someone',
-                  imageUrl: m.data?.imageUrl ?? null,
-                })
-              }
+              if (m.clientId && m.clientId !== userId) unique.set(m.clientId, viewerFrom(m))
             }
             setViewers([...unique.values()])
           } catch {
@@ -136,8 +158,9 @@ export function usePipelineRealtime({
           }
         }
 
-        channel.presence.subscribe(['enter', 'leave', 'update'], syncPresence)?.catch(() => {})
-        channel.presence.enter(identityRef.current).then(syncPresence).catch(() => {})
+        channel.presence.subscribe(['enter', 'update'], upsertViewer)?.catch(() => {})
+        channel.presence.subscribe('leave', removeViewer)?.catch(() => {})
+        channel.presence.enter(identityRef.current).then(seedPresence).catch(() => {})
       })
       .catch((err) => console.error('Failed to load Ably for pipeline:', err))
 

@@ -68,6 +68,7 @@ export function allProjectCollabChannels(businessId: string) {
 export const COLLAB_EVENT = {
   refresh: 'collab-refresh',
   comment: 'collab-comment',
+  tasks: 'collab-tasks',
 } as const
 
 /** Every collaboration payload names its actor, so a client can skip its own echo. */
@@ -124,6 +125,32 @@ export type CollabCommentPayload = CollabActor & {
     editedAt: string | Date | null
     isDeleted: boolean
   }
+}
+
+/**
+ * A project's task list after a change, carried in full.
+ *
+ * The whole list rather than a delta per mutation. Five mutations (create,
+ * status, edit, delete, reorder) would each need their own payload shape and a
+ * client reducer mirroring the server's ordering, and a dropped or reordered
+ * message would leave the two silently disagreeing. A task list is bounded and
+ * small, so replacing it wholesale is both simpler and self-correcting — the
+ * publisher falls back to `refresh` when a list is large enough for the payload
+ * to be a concern.
+ *
+ * `activity` is the audit row the mutation just wrote, enriched exactly as the
+ * paged read produces it. It carries its real id, so when the server's copy
+ * eventually arrives the two dedupe on it with nothing synthetic to reconcile.
+ */
+export type CollabTasksPayload = CollabActor & {
+  /**
+   * Server clock at publish. Publishes come from separate function instances,
+   * so Ably's per-connection ordering does not apply across them — a reader
+   * ignores anything older than what it has already applied.
+   */
+  at: number
+  tasks: unknown[]
+  activity: unknown | null
 }
 
 /**
