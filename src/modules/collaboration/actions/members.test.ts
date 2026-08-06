@@ -7,7 +7,18 @@ vi.mock('@/modules/projects/authz', () => ({
 
 vi.mock('../authz', () => ({ requireCollaborationPlan: vi.fn() }))
 vi.mock('@/modules/notifications/services', () => ({ createNotification: vi.fn() }))
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+const mockRevalidatePath = vi.fn()
+vi.mock('next/cache', () => ({
+  revalidatePath: (...args: unknown[]) => mockRevalidatePath(...args),
+}))
+
+// Realtime is off without a key; mocked so no test reaches the network.
+const mockPublish = vi.fn()
+vi.mock('ably', () => ({
+  Rest: class {
+    channels = { get: () => ({ publish: (...args: unknown[]) => mockPublish(...args) }) }
+  },
+}))
 
 const mockPrisma = {
   projectMember: {
@@ -19,6 +30,8 @@ const mockPrisma = {
   },
   businessMembership: { findUnique: vi.fn(), findMany: vi.fn() },
   auditLog: { create: vi.fn() },
+  // Read back to build the roster payload.
+  project: { findUnique: vi.fn() },
 }
 vi.mock('@/modules/core/db/prisma', () => ({ default: mockPrisma }))
 
@@ -35,6 +48,8 @@ beforeEach(() => {
   mockPrisma.projectMember.findUnique.mockResolvedValue(null)
   mockPrisma.projectMember.updateMany.mockResolvedValue({ count: 1 })
   mockPrisma.projectMember.deleteMany.mockResolvedValue({ count: 1 })
+  mockPrisma.projectMember.findMany.mockResolvedValue([])
+  mockPrisma.project.findUnique.mockResolvedValue({ assigneeId: 'user_lead' })
 })
 
 describe('addProjectMember', () => {
@@ -94,7 +109,9 @@ describe('updateProjectMemberRole', () => {
   })
 
   it('allows the lead to stay OWNER', async () => {
-    await expect(updateProjectMemberRole('proj_1', 'user_lead', 'OWNER')).resolves.toBeUndefined()
+    // Resolves rather than throwing; the value is the roster sync result, which
+    // is null with realtime off.
+    await expect(updateProjectMemberRole('proj_1', 'user_lead', 'OWNER')).resolves.toBeNull()
   })
 
   it('errors when the person is not on the project', async () => {
@@ -147,5 +164,59 @@ describe('getProjectMembers', () => {
     expect(mockAuthorizeProjectAccess).toHaveBeenCalledWith('proj_1', 'read')
     expect(rows[0]).toMatchObject({ userId: 'user_lead', isLead: true })
     expect(rows[1]).toMatchObject({ userId: 'user_other', isLead: false })
+  })
+})
+
+describe('roster changes and the caller route', () => {
+  /**
+   * The reason these actions stopped revalidating.
+   *
+   * revalidatePath inside a Server Action re-renders the caller's route from
+   * the root layout down — the dashboard queries and the navbar — so adding one
+   * person to a project cost a full page render, and the refresh it published
+   * cost every other viewer one too.
+   */
+  it('does not revalidate when the roster goes out over the channel', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    try {
+      await addProjectMember('proj_1', 'user_new')
+      expect(mockRevalidatePath).not.toHaveBeenCalled()
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  it('publishes the roster itself, not a nudge to refetch', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    try {
+      await addProjectMember('proj_1', 'user_new')
+      expect(mockPublish).toHaveBeenCalledWith(
+        'collab-members',
+        expect.objectContaining({ members: expect.any(Array), memberIds: expect.any(Array) })
+      )
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  // Whoever was removed is looking at a project they can no longer open, and
+  // memberIds is how their client recognises itself.
+  it('carries flat ids so a removed member can spot their own absence', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    mockPrisma.projectMember.findMany.mockResolvedValue([
+      { userId: 'user_stays', role: 'COLLABORATOR', createdAt: new Date(), user: { id: 'user_stays', firstName: 'A', lastName: 'B', email: 'a@b.c', imageUrl: null } },
+    ])
+    try {
+      await removeProjectMember('proj_1', 'user_gone')
+      const [, payload] = mockPublish.mock.calls[0]
+      expect(payload.memberIds).toEqual(['user_stays'])
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  it('falls back to revalidating when realtime is off', async () => {
+    await addProjectMember('proj_1', 'user_new')
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/collaboration/proj_1')
   })
 })

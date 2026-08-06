@@ -69,6 +69,7 @@ export const COLLAB_EVENT = {
   refresh: 'collab-refresh',
   comment: 'collab-comment',
   tasks: 'collab-tasks',
+  members: 'collab-members',
 } as const
 
 /** Every collaboration payload names its actor, so a client can skip its own echo. */
@@ -151,6 +152,26 @@ export type CollabTasksPayload = CollabActor & {
   at: number
   tasks: unknown[]
   activity: unknown | null
+}
+
+/**
+ * A project's member list after a change, carried in full.
+ *
+ * Like tasks, this replaces the list rather than describing a delta. Unlike
+ * tasks, one reader has to do more than repaint: whoever was just removed is
+ * looking at a project they can no longer open, so a client that cannot find
+ * itself in `memberIds` refetches and lets the server bounce it. Everyone else
+ * simply repaints.
+ *
+ * Hiding a panel was never the access control here — every action authorizes
+ * server-side — so carrying the roster is safe. The refetch is about not
+ * leaving someone stranded on a page that will deny them.
+ */
+export type CollabMembersPayload = CollabActor & {
+  at: number
+  members: unknown[]
+  /** Flat ids, so a client can check for itself without knowing the row shape. */
+  memberIds: string[]
 }
 
 /**

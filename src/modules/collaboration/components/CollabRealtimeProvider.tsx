@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import {
   useCollabRealtime,
+  type ApplicableMemberChange,
   type ApplicableTaskChange,
   type RemoteCommentEvent,
 } from '../hooks/useCollabRealtime'
@@ -22,6 +23,8 @@ type CollabDataValue = {
   /** Lets the actor apply what their own action returned, without a refetch. */
   applyTaskChange: (payload: ApplicableTaskChange | undefined | null) => void
   applyComment: (comment: FlatComment | null | undefined) => void
+  remoteMembers: unknown[] | null
+  applyMembers: (payload: ApplicableMemberChange | undefined | null) => void
 }
 
 const EMPTY_PRESENCE: CollabPresenceValue = { viewers: [] }
@@ -31,6 +34,8 @@ const EMPTY_DATA: CollabDataValue = {
   remoteActivity: new Map(),
   applyTaskChange: () => {},
   applyComment: () => {},
+  remoteMembers: null,
+  applyMembers: () => {},
 }
 
 /**
@@ -62,15 +67,39 @@ export function CollabRealtimeProvider({
   projectId: string
   children: ReactNode
 }) {
-  const { viewers, remoteComments, remoteTasks, remoteActivity, applyTaskChange, applyComment } =
-    useCollabRealtime(projectId)
+  const {
+    viewers,
+    remoteComments,
+    remoteTasks,
+    remoteActivity,
+    remoteMembers,
+    applyTaskChange,
+    applyComment,
+    applyMembers,
+  } = useCollabRealtime(projectId)
 
   // Memoized, or each object literal would be a fresh identity on every render
   // of this provider and the split above would buy nothing.
   const presence = useMemo(() => ({ viewers }), [viewers])
   const data = useMemo(
-    () => ({ remoteComments, remoteTasks, remoteActivity, applyTaskChange, applyComment }),
-    [remoteComments, remoteTasks, remoteActivity, applyTaskChange, applyComment]
+    () => ({
+      remoteComments,
+      remoteTasks,
+      remoteActivity,
+      remoteMembers,
+      applyTaskChange,
+      applyComment,
+      applyMembers,
+    }),
+    [
+      remoteComments,
+      remoteTasks,
+      remoteActivity,
+      remoteMembers,
+      applyTaskChange,
+      applyComment,
+      applyMembers,
+    ]
   )
 
   return (

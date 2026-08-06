@@ -109,7 +109,7 @@ export function CommentItem({
   function handleDelete() {
     startTransition(async () => {
       try {
-        await deleteComment(comment.id)
+        applyComment(await deleteComment(comment.id))
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to delete comment')
       }

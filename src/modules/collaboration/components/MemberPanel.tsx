@@ -17,7 +17,9 @@ import {
   removeProjectMember,
   updateProjectMemberRole,
   type ProjectMemberRow,
+  type MemberSyncResult,
 } from '../actions/members'
+import { useCollabRealtimeContext } from './CollabRealtimeProvider'
 import { displayNameOf } from './MentionInput'
 import { Panel, PanelEmpty, PANEL_SCROLL_SIDE } from './Panel'
 import type { CommentAuthor } from '../actions/comments'
@@ -36,7 +38,7 @@ const ROLE_HINT: Record<ProjectMemberRole, string> = {
 
 export function MemberPanel({
   projectId,
-  members,
+  members: initialMembers,
   addable,
   canManage,
 }: {
@@ -48,10 +50,19 @@ export function MemberPanel({
   const [picked, setPicked] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  function run(action: () => Promise<unknown>) {
+  // A roster change arrives as the list itself rather than as a nudge to
+  // refetch, so it costs its readers no route render. Once one has arrived it
+  // is newer than the prop, which only moves when this reader's own action
+  // revalidates — and that path publishes too, so the two cannot diverge.
+  const { remoteMembers, applyMembers } = useCollabRealtimeContext()
+  const members = (remoteMembers as ProjectMemberRow[] | null) ?? initialMembers
+
+  function run(action: () => Promise<MemberSyncResult>) {
     startTransition(async () => {
       try {
-        await action()
+        // The action returns the roster it just wrote, so this settles the
+        // moment it resolves rather than re-rendering the whole route.
+        applyMembers(await action())
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Something went wrong')
       }

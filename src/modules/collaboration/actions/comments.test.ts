@@ -17,10 +17,20 @@ vi.mock('@/modules/notifications/services', () => ({
   createNotification: (...args: unknown[]) => mockCreateNotification(...args),
 }))
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+const mockRevalidatePath = vi.fn()
+vi.mock('next/cache', () => ({
+  revalidatePath: (...args: unknown[]) => mockRevalidatePath(...args),
+}))
+
+const mockPublish = vi.fn()
+vi.mock('ably', () => ({
+  Rest: class {
+    channels = { get: () => ({ publish: (...args: unknown[]) => mockPublish(...args) }) }
+  },
+}))
 
 const mockPrisma = {
-  comment: { findFirst: vi.fn(), create: vi.fn() },
+  comment: { findFirst: vi.fn(), create: vi.fn(), findUnique: vi.fn() },
   auditLog: { create: vi.fn() },
   user: { findUnique: vi.fn() },
 }
@@ -171,5 +181,38 @@ describe('createComment — replies', () => {
   it('notifies nobody for a top-level comment with no mentions', async () => {
     await createComment({ entityType: 'Project', entityId: 'proj_1', body: 'Just a note' })
     expect(notified()).toEqual([])
+  })
+})
+
+describe('comments and the caller route', () => {
+  /**
+   * Posting a comment used to re-render the author's whole route — the
+   * dashboard layout, its queries and the navbar — because revalidatePath in a
+   * Server Action refreshes from the root down. The comment is returned
+   * instead, and other readers already get it off the channel.
+   */
+  it('does not revalidate when the comment goes out over the channel', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    mockPrisma.comment.findUnique.mockResolvedValue({
+      id: 'c_new',
+      parentId: null,
+      body: 'hello',
+      authorId: 'user_me',
+      author: { id: 'user_me', firstName: 'A', lastName: 'B', email: 'a@b.c', imageUrl: null },
+      createdAt: new Date(),
+      editedAt: null,
+      deletedAt: null,
+    })
+    try {
+      await createComment({ entityType: 'Project', entityId: 'proj_1', body: 'hello' })
+      expect(mockRevalidatePath).not.toHaveBeenCalled()
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  it('falls back to revalidating when realtime is off', async () => {
+    await createComment({ entityType: 'Project', entityId: 'proj_1', body: 'hello' })
+    expect(mockRevalidatePath).toHaveBeenCalled()
   })
 })

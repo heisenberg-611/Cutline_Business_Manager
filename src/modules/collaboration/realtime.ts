@@ -5,6 +5,7 @@ import {
   type CollabRefreshPayload,
   type CollabCommentPayload,
   type CollabTasksPayload,
+  type CollabMembersPayload,
 } from '@/lib/ably/channels'
 import type { FlatComment } from './comment-tree'
 import type { ActivityEntry } from './actions/activity'
@@ -23,7 +24,11 @@ async function publish(
   orgId: string,
   projectId: string,
   event: string,
-  payload: CollabRefreshPayload | CollabCommentPayload | CollabTasksPayload
+  payload:
+    | CollabRefreshPayload
+    | CollabCommentPayload
+    | CollabTasksPayload
+    | CollabMembersPayload
 ) {
   if (!process.env.ABLY_API_KEY) return
 
@@ -87,4 +92,25 @@ export async function publishCollabTasks(
     tasks,
     activity,
   } satisfies CollabTasksPayload)
+}
+
+/**
+ * Send the member list itself, so the panel repaints without a route render.
+ *
+ * `memberIds` rides alongside so the one client that must do more than repaint
+ * — the person just removed — can recognise itself without parsing the rows.
+ */
+export async function publishCollabMembers(
+  orgId: string,
+  projectId: string,
+  actorUserId: string,
+  at: number,
+  members: { userId: string }[]
+) {
+  await publish(orgId, projectId, COLLAB_EVENT.members, {
+    actorUserId,
+    at,
+    members,
+    memberIds: members.map((m) => m.userId),
+  } satisfies CollabMembersPayload)
 }

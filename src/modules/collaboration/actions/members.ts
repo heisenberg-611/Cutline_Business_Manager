@@ -2,7 +2,7 @@
 
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
-import { publishCollabRefresh } from '../realtime'
+import { publishCollabMembers } from '../realtime'
 import { reconcileBusinessMembers } from '@/lib/clerk-members'
 import { createNotification } from '@/modules/notifications/services'
 import type { ProjectMemberRole } from '@prisma/client'
@@ -20,6 +20,37 @@ export type ProjectMemberRow = {
   isLead: boolean
 }
 
+/** What a member mutation hands back; null when there is no channel. */
+export type MemberSyncResult = {
+  at: number
+  members: ProjectMemberRow[]
+} | null
+
+/**
+ * Publish the roster, and give the same list back to whoever changed it.
+ *
+ * Deliberately does not revalidate on the realtime path. revalidatePath inside
+ * a Server Action re-renders the caller's route from the root layout down — the
+ * dashboard queries and the navbar included — so adding one person to a project
+ * cost a full page render. The actor gets the list from the return value and
+ * everyone else gets it off the channel.
+ */
+async function syncMemberViewers(
+  orgId: string,
+  projectId: string,
+  actorUserId: string
+): Promise<MemberSyncResult> {
+  if (!process.env.ABLY_API_KEY) {
+    revalidatePath(`/dashboard/collaboration/${projectId}`)
+    return null
+  }
+
+  const members = await readProjectMembers(projectId)
+  const at = Date.now()
+  await publishCollabMembers(orgId, projectId, actorUserId, at, members)
+  return { at, members }
+}
+
 /**
  * Members of a project, leads first.
  *
@@ -27,8 +58,17 @@ export type ProjectMemberRow = {
  * Changing the list requires 'manage'.
  */
 export async function getProjectMembers(projectId: string): Promise<ProjectMemberRow[]> {
-  const { orgId, project } = await authorizeProjectAccess(projectId, 'read')
+  const { orgId } = await authorizeProjectAccess(projectId, 'read')
   await requireCollaborationPlan(orgId)
+  return readProjectMembers(projectId)
+}
+
+/** Reads the roster without re-authorizing; every caller has already done so. */
+async function readProjectMembers(projectId: string): Promise<ProjectMemberRow[]> {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { assigneeId: true },
+  })
 
   const rows = await prisma.projectMember.findMany({
     where: { projectId },
@@ -48,7 +88,7 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
       lastName: row.user.lastName,
       email: row.user.email,
       imageUrl: row.user.imageUrl,
-      isLead: project.assigneeId === row.userId,
+      isLead: project?.assigneeId === row.userId,
     }))
     .sort((a, b) => Number(b.isLead) - Number(a.isLead))
 }
@@ -101,10 +141,7 @@ export async function addProjectMember(
     })
   }
 
-  revalidatePath(`/dashboard/collaboration/${projectId}`)
-  // Content-free: the roster changes rarely, and a refresh re-authorizes — which
-  // matters most here, since this is the action that revokes access.
-  await publishCollabRefresh(orgId, projectId, actorId)
+  return syncMemberViewers(orgId, projectId, actorId)
 }
 
 export async function updateProjectMemberRole(
@@ -138,10 +175,7 @@ export async function updateProjectMemberRole(
     },
   })
 
-  revalidatePath(`/dashboard/collaboration/${projectId}`)
-  // Content-free: the roster changes rarely, and a refresh re-authorizes — which
-  // matters most here, since this is the action that revokes access.
-  await publishCollabRefresh(orgId, projectId, actorId)
+  return syncMemberViewers(orgId, projectId, actorId)
 }
 
 export async function removeProjectMember(projectId: string, userId: string) {
@@ -169,10 +203,7 @@ export async function removeProjectMember(projectId: string, userId: string) {
     },
   })
 
-  revalidatePath(`/dashboard/collaboration/${projectId}`)
-  // Content-free: the roster changes rarely, and a refresh re-authorizes — which
-  // matters most here, since this is the action that revokes access.
-  await publishCollabRefresh(orgId, projectId, actorId)
+  return syncMemberViewers(orgId, projectId, actorId)
 }
 
 /** Business members not yet on this project, for the add picker. */

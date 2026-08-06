@@ -19,6 +19,7 @@ import {
   type CollabRefreshPayload,
   type CollabCommentPayload,
   type CollabTasksPayload,
+  type CollabMembersPayload,
 } from '@/lib/ably/channels'
 import type { PresenceViewer } from '@/components/PresenceAvatars'
 import type { FlatComment } from '../comment-tree'
@@ -39,6 +40,16 @@ import type { ActivityEntry } from '../actions/activity'
  * not need to. Only these three fields are applied, so this is what the applier
  * asks for.
  */
+/**
+ * A roster change, from either source. `memberIds` is absent on the actor's own
+ * result — they cannot have removed themselves and then acted.
+ */
+export type ApplicableMemberChange = {
+  at: number
+  members: unknown[]
+  memberIds?: string[]
+}
+
 export type ApplicableTaskChange = {
   at: number
   tasks: unknown[]
@@ -84,6 +95,8 @@ export function useCollabRealtime(projectId: string) {
   // The task list as last broadcast. Null until one arrives, so the server's
   // copy is what renders until there is something newer to show.
   const [remoteTasks, setRemoteTasks] = useState<TaskRow[] | null>(null)
+  const [remoteMembers, setRemoteMembers] = useState<unknown[] | null>(null)
+  const appliedMembersAt = useRef(0)
   // Publish time of the applied list, so an out-of-order delivery cannot
   // reinstate an older one.
   const appliedTasksAt = useRef(0)
@@ -163,6 +176,27 @@ export function useCollabRealtime(projectId: string) {
     []
   )
 
+  /**
+   * The roster, from the actor's own action result or off the channel.
+   *
+   * The one case that needs more than a repaint is the person just removed:
+   * they are looking at a project they can no longer open, so they refetch and
+   * let the server decide what they see. Everyone else stays put, which is the
+   * whole point — a refresh for all viewers is what this replaced.
+   */
+  const applyMembers = useCallback(
+    (payload: ApplicableMemberChange | undefined | null) => {
+      if (!payload || payload.at <= appliedMembersAt.current) return
+      appliedMembersAt.current = payload.at
+      setRemoteMembers(payload.members)
+
+      if (userId && payload.memberIds && !payload.memberIds.includes(userId)) {
+        routerRef.current.refresh()
+      }
+    },
+    [userId]
+  )
+
   const applyTaskChange = useCallback((payload: ApplicableTaskChange | undefined | null) => {
     if (!payload || payload.at <= appliedTasksAt.current) return
     appliedTasksAt.current = payload.at
@@ -183,6 +217,11 @@ export function useCollabRealtime(projectId: string) {
   useEffect(() => {
     applyTaskChangeRef.current = applyTaskChange
   }, [applyTaskChange])
+
+  const applyMembersRef = useRef(applyMembers)
+  useEffect(() => {
+    applyMembersRef.current = applyMembers
+  }, [applyMembers])
 
   useEffect(() => {
     if (!orgId || !userId || !projectId) return
@@ -258,6 +297,14 @@ export function useCollabRealtime(projectId: string) {
         channel
           .subscribe(COLLAB_EVENT.tasks, (message: InboundMessage) => {
             applyTaskChangeRef.current(message.data as CollabTasksPayload | undefined)
+          })
+          ?.catch(() => {})
+
+        channel
+          .subscribe(COLLAB_EVENT.members, (message: InboundMessage) => {
+            const payload = message.data as CollabMembersPayload | undefined
+            if (!payload || payload.actorUserId === userId) return
+            applyMembersRef.current(payload)
           })
           ?.catch(() => {})
 
@@ -342,7 +389,16 @@ export function useCollabRealtime(projectId: string) {
     }
   }, [orgId, userId, projectId])
 
-  return { viewers, remoteComments, remoteTasks, remoteActivity, applyTaskChange, applyComment }
+  return {
+    viewers,
+    remoteComments,
+    remoteTasks,
+    remoteActivity,
+    remoteMembers,
+    applyTaskChange,
+    applyComment,
+    applyMembers,
+  }
 }
 
 /** JSON has no Date, so the fields the panel formats have to be rebuilt. */
