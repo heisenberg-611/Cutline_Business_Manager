@@ -18,11 +18,10 @@ import {
   type ProjectsMovedPayload,
 } from '@/lib/ably/channels'
 
-export type BoardViewer = {
-  clientId: string
-  name: string
-  imageUrl?: string | null
-}
+import type { PresenceViewer } from '@/components/PresenceAvatars'
+
+/** Kept as an alias so the board's existing references still read naturally. */
+export type BoardViewer = PresenceViewer
 
 /**
  * Live pipeline board: remote stage/order changes and presence.

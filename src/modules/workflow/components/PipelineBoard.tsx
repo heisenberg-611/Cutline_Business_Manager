@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 
 import { updateProjectStage, updateProjectOrder } from '../actions'
 import { usePipelineRealtime } from '../hooks/usePipelineRealtime'
-import { BoardViewers } from './BoardViewers'
+import { PresenceAvatars } from '@/components/PresenceAvatars'
 import { FeedbackPromptModal } from './FeedbackPromptModal'
 import { MemberDeliveryModal } from './MemberDeliveryModal'
 import { Badge } from '@/components/ui/badge'
@@ -308,7 +308,7 @@ export default function PipelineBoard({ stages, projects: initialProjects, hasFe
         }
       `}</style>
       <div className="flex items-center justify-end gap-3 px-1 shrink-0">
-        <BoardViewers viewers={viewers} />
+        <PresenceAvatars viewers={viewers} />
         <div className="flex-1" />
         <button
           onClick={resetSize}
