@@ -14,6 +14,8 @@ import { format, eachDayOfInterval, differenceInDays } from 'date-fns'
 
 /** Ranked chart shows this many, then folds the tail into one row. */
 const TOP_PROJECTS = 8
+/** Clients cap lower: the chart sits in a half-width column. */
+const TOP_CLIENTS = 6
 
 export type ProjectRevenueRow = {
   projectId: string
@@ -28,6 +30,9 @@ export type ProjectRevenueRow = {
 
 export type ProjectAnalytics = {
   revenueByProject: ProjectRevenueRow[]
+  revenueByClient: { name: string; paidCents: number }[]
+  /** In pipeline order, so the chart reads as the workflow does. */
+  stageDistribution: { name: string; count: number }[]
   deliveredOverTime: { date: string; delivered: number }[]
   taskStatus: { status: string; label: string; count: number }[]
   metrics: {
@@ -81,7 +86,7 @@ export async function getProjectAnalytics(
         title: true,
         createdAt: true,
         statusStageId: true,
-        client: { select: { displayName: true } },
+        client: { select: { id: true, displayName: true } },
         // Only the terminal stage's entries, so this stays small rather than
         // pulling every move a project ever made.
         stageHistory: terminalStage
@@ -148,6 +153,44 @@ export async function getProjectAnalytics(
     })
     .filter((row) => row.paidCents > 0 || row.outstandingCents > 0)
     .sort((a, b) => b.paidCents - a.paidCents)
+
+  // Same question one level up: which client, not which project. Rolled up from
+  // the per-project figures already computed rather than queried again.
+  const clientTotals = new Map<string, number>()
+  for (const project of projects) {
+    const paid = paidByProject.get(project.id)?.paid ?? 0
+    if (paid <= 0) continue
+    const name = project.client?.displayName ?? 'Unassigned'
+    clientTotals.set(name, (clientTotals.get(name) ?? 0) + paid)
+  }
+  const rankedClients = [...clientTotals.entries()]
+    .map(([name, paidCents]) => ({ name, paidCents }))
+    .sort((a, b) => b.paidCents - a.paidCents)
+  const clientHead = rankedClients.slice(0, TOP_CLIENTS)
+  const clientTail = rankedClients.slice(TOP_CLIENTS)
+  const revenueByClient =
+    clientTail.length > 0
+      ? [
+          ...clientHead,
+          {
+            name: `${clientTail.length} other client${clientTail.length === 1 ? '' : 's'}`,
+            paidCents: clientTail.reduce((sum, c) => sum + c.paidCents, 0),
+          },
+        ]
+      : clientHead
+
+  // Where the work currently sits. Kept in template order — a pipeline read out
+  // of order is not a pipeline — and includes empty stages, because a stage
+  // with nothing in it is itself worth seeing.
+  const countByStage = new Map<string, number>()
+  for (const project of projects) {
+    if (!project.statusStageId) continue
+    countByStage.set(project.statusStageId, (countByStage.get(project.statusStageId) ?? 0) + 1)
+  }
+  const stageDistribution = (template?.stages ?? []).map((stage) => ({
+    name: stage.name,
+    count: countByStage.get(stage.id) ?? 0,
+  }))
 
   const head = ranked.slice(0, TOP_PROJECTS)
   const tail = ranked.slice(TOP_PROJECTS)
@@ -222,6 +265,8 @@ export async function getProjectAnalytics(
 
   return {
     revenueByProject,
+    revenueByClient,
+    stageDistribution,
     deliveredOverTime,
     taskStatus,
     metrics: {

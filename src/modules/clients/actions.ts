@@ -96,7 +96,14 @@ export async function updateClient(clientId: string, data: { displayName: string
   try {
     await prisma.client.update({
       where: { id: clientId, businessId: orgId },
-      data
+      data: {
+        ...data,
+        email: emailStr || null,
+        companyName: data.companyName || null,
+        phone: data.phone || null,
+        industry: data.industry || null,
+        preferredChannel: data.preferredChannel || null,
+      }
     })
   } catch (err: any) {
     // Fallback: catch TOCTOU race on @@unique([businessId, email])
