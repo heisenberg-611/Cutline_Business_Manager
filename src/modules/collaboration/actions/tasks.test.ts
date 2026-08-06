@@ -277,6 +277,54 @@ describe('updateTaskStatus', () => {
     expect(mockPublish).not.toHaveBeenCalled()
   })
 
+  /**
+   * The reason this action stopped revalidating.
+   *
+   * revalidatePath inside a Server Action re-renders the caller's route from
+   * the root layout down — the dashboard layout, its four queries and the
+   * navbar — so every ticked checkbox cost a full page render on top of the
+   * write. The actor gets the new list from the return value instead.
+   */
+  it('does not revalidate when the change goes out over the channel', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    try {
+      await updateTaskStatus('task_1', 'DONE')
+      expect(mockRevalidatePath).not.toHaveBeenCalled()
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  it('hands the new list back to the caller', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    try {
+      const result = await updateTaskStatus('task_1', 'DONE')
+      expect(result).toMatchObject({ at: expect.any(Number), tasks: expect.any(Array) })
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  // The actor's copy and the broadcast must agree, or the actor's own echo
+  // would look newer than what it already applied and re-apply it.
+  it('stamps its return value with the same time it publishes', async () => {
+    process.env.ABLY_API_KEY = 'test-key'
+    try {
+      const result = await updateTaskStatus('task_1', 'DONE')
+      const [, payload] = mockPublish.mock.calls[0]
+      expect(result?.at).toBe(payload.at)
+    } finally {
+      delete process.env.ABLY_API_KEY
+    }
+  })
+
+  // Without a channel there is nothing to carry the change, so the old
+  // behaviour has to survive.
+  it('falls back to revalidating when realtime is off', async () => {
+    await updateTaskStatus('task_1', 'DONE')
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/collaboration/proj_1')
+  })
+
   it('rejects a task from another tenant', async () => {
     mockPrisma.task.findFirst.mockResolvedValue(null)
     await expect(updateTaskStatus('task_x', 'DONE')).rejects.toThrow('Task not found')

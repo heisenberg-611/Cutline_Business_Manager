@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth, useUser } from '@clerk/nextjs'
 // Type-only: erased at compile time, so it does not pull the SDK into SSR.
@@ -32,6 +32,19 @@ import type { ActivityEntry } from '../actions/activity'
  * they can be an admin moderating someone else's post, so the activity line
  * needs them separately from the author.
  */
+/**
+ * The shape both sources of a task change share.
+ *
+ * The channel payload also names its actor; the actor's own action result does
+ * not need to. Only these three fields are applied, so this is what the applier
+ * asks for.
+ */
+export type ApplicableTaskChange = {
+  at: number
+  tasks: unknown[]
+  activity: unknown | null
+}
+
 export type RemoteCommentEvent = {
   comment: FlatComment
   actorUserId: string
@@ -82,6 +95,16 @@ export function useCollabRealtime(projectId: string) {
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Held in a ref and kept out of the subscription effect's dependencies. As a
+  // dependency it tore the whole Ably connection down and rebuilt it whenever
+  // the router object changed identity — and every rebuild calls
+  // /api/ably/auth, so a refresh could feed straight back into another
+  // invocation. usePipelineRealtime never had it in there for the same reason.
+  const routerRef = useRef(router)
+  useEffect(() => {
+    routerRef.current = router
+  }, [router])
+
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
     user?.primaryEmailAddress?.emailAddress?.split('@')[0] ||
@@ -104,6 +127,35 @@ export function useCollabRealtime(projectId: string) {
     identityRef.current = { name: displayName, imageUrl }
     channelRef.current?.presence.update(identityRef.current).catch(() => {})
   }, [displayName, imageUrl])
+
+  /**
+   * The single place a task change is applied, whoever produced it.
+   *
+   * The actor calls this with what their own action returned rather than
+   * waiting for the echo, so their list settles the instant the action
+   * resolves. Both routes go through the same ordering check, so a late
+   * delivery cannot put an older list back.
+   */
+  const applyTaskChange = useCallback((payload: ApplicableTaskChange | undefined | null) => {
+    if (!payload || payload.at <= appliedTasksAt.current) return
+    appliedTasksAt.current = payload.at
+
+    setRemoteTasks(reviveTasks(payload.tasks))
+
+    const activity = payload.activity as ActivityEntry | undefined | null
+    if (!activity) return
+    setRemoteActivity((prev) => {
+      const next = new Map(prev)
+      next.set(activity.id, { ...activity, createdAt: new Date(activity.createdAt) })
+      return next
+    })
+  }, [])
+
+  // Held in a ref so the subscription effect does not depend on it.
+  const applyTaskChangeRef = useRef(applyTaskChange)
+  useEffect(() => {
+    applyTaskChangeRef.current = applyTaskChange
+  }, [applyTaskChange])
 
   useEffect(() => {
     if (!orgId || !userId || !projectId) return
@@ -148,7 +200,7 @@ export function useCollabRealtime(projectId: string) {
             if (!payload || payload.actorUserId === userId) return
 
             if (timerRef.current) clearTimeout(timerRef.current)
-            timerRef.current = setTimeout(() => router.refresh(), REFRESH_DEBOUNCE_MS)
+            timerRef.current = setTimeout(() => routerRef.current.refresh(), REFRESH_DEBOUNCE_MS)
           })
           ?.catch(() => {})
 
@@ -178,29 +230,7 @@ export function useCollabRealtime(projectId: string) {
 
         channel
           .subscribe(COLLAB_EVENT.tasks, (message: InboundMessage) => {
-            const payload = message.data as CollabTasksPayload | undefined
-            if (!payload) return
-
-            // Our own echo is applied too, unlike the other events. Once a
-            // broadcast has arrived it shadows the server prop, so skipping our
-            // own would leave a reader who acts after receiving someone else's
-            // change looking at the list from before their own edit.
-            if (payload.at <= appliedTasksAt.current) return
-            appliedTasksAt.current = payload.at
-
-            setRemoteTasks(reviveTasks(payload.tasks))
-
-            const activity = payload.activity as ActivityEntry | undefined | null
-            if (activity) {
-              setRemoteActivity((prev) => {
-                const next = new Map(prev)
-                next.set(activity.id, {
-                  ...activity,
-                  createdAt: new Date(activity.createdAt),
-                })
-                return next
-              })
-            }
+            applyTaskChangeRef.current(message.data as CollabTasksPayload | undefined)
           })
           ?.catch(() => {})
 
@@ -283,9 +313,9 @@ export function useCollabRealtime(projectId: string) {
           }
         })
     }
-  }, [orgId, userId, projectId, router])
+  }, [orgId, userId, projectId])
 
-  return { viewers, remoteComments, remoteTasks, remoteActivity }
+  return { viewers, remoteComments, remoteTasks, remoteActivity, applyTaskChange }
 }
 
 /** JSON has no Date, so the fields the panel formats have to be rebuilt. */

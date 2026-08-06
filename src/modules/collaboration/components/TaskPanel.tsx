@@ -28,6 +28,7 @@ import {
   updateTask,
   updateTaskStatus,
   type TaskRow,
+  type TaskSyncResult,
 } from '../actions/tasks'
 import { displayNameOf } from './MentionInput'
 import { Panel, PanelEmpty } from './Panel'
@@ -122,7 +123,7 @@ export function TaskPanel({
   // to refetch, so it costs its readers no server render. Once one has arrived
   // it is newer than the prop, which only updates when this reader's own action
   // revalidates — and that path publishes too, so the two cannot diverge.
-  const { remoteTasks } = useCollabRealtimeContext()
+  const { remoteTasks, applyTaskChange } = useCollabRealtimeContext()
   const serverTasks = remoteTasks ?? initialTasks
 
   // useOptimistic rather than mirroring the prop into state: React reverts to
@@ -140,11 +141,20 @@ export function TaskPanel({
   const memberById = new Map(members.map((m) => [m.id, m]))
   const doneCount = tasks.filter((t) => t.status === 'DONE').length
 
-  function run(optimistic: TaskAction, action: () => Promise<unknown>, onError?: () => void) {
+  function run(
+    optimistic: TaskAction,
+    action: () => Promise<TaskSyncResult>,
+    onError?: () => void
+  ) {
     startTransition(async () => {
       applyOptimistic(optimistic)
       try {
-        await action()
+        // The action hands back the list it just wrote, so this settles the
+        // moment it resolves. Waiting for our own echo would leave a gap where
+        // the optimistic overlay has already been dropped, and revalidating
+        // instead would re-render the whole route — layout, navbar and all —
+        // for one checkbox.
+        applyTaskChange(await action())
       } catch (error) {
         onError?.()
         toast.error(error instanceof Error ? error.message : 'Something went wrong')

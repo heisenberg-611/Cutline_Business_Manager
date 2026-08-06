@@ -7,6 +7,7 @@ import { getActivePlanFor } from '@/lib/plan-guard'
 import { canUseMessages } from '@/lib/subscription'
 import { checkMessageRateLimit } from '@/lib/utils/rate-limit'
 import { sendPushNotification } from '@/lib/onesignal'
+import { reconcileBusinessMembers } from '@/lib/clerk-members'
 
 
 /**
@@ -24,6 +25,10 @@ export async function getMembersForMessaging() {
   if (!canUseMessages(await getActivePlanFor(orgId))) {
     return []
   }
+
+  // Clerk is the source of truth and this table mirrors it via webhook, so
+  // somebody who joined moments ago may not be here yet.
+  await reconcileBusinessMembers(orgId)
 
   const members = await prisma.businessMembership.findMany({
     where: { businessId: orgId, userId: { not: userId } },

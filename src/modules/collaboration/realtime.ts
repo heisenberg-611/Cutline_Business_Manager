@@ -76,12 +76,14 @@ export async function publishCollabTasks(
   orgId: string,
   projectId: string,
   actorUserId: string,
+  /** Taken from the caller so the actor's own copy carries the same stamp. */
+  at: number,
   tasks: unknown[],
   activity: ActivityEntry | null
 ) {
   await publish(orgId, projectId, COLLAB_EVENT.tasks, {
     actorUserId,
-    at: Date.now(),
+    at,
     tasks,
     activity,
   } satisfies CollabTasksPayload)

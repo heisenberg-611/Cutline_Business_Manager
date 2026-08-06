@@ -7,6 +7,7 @@ import type { TaskStatus } from '@prisma/client'
 import { authorizeEntityAccess, requireSession } from '../authz'
 import { publishCollabRefresh, publishCollabTasks } from '../realtime'
 import { enrichActivityRow, type AuditRowForFeed } from '../activity-entries'
+import type { ActivityEntry } from './activity'
 
 const MAX_TITLE_LENGTH = 200
 
@@ -45,39 +46,56 @@ async function readTasks(orgId: string, projectId: string): Promise<TaskRow[]> {
 }
 
 /**
- * Rebuild this project's pages, then send the change to everyone else looking
- * at them.
+ * What a task mutation hands back to the caller that made it.
  *
- * Tasks carry their payload rather than nudging readers to refetch. A refresh
- * re-renders the route from the root layout down — the navbar's queries
- * included — so every viewer paid a function invocation and a page's worth of
- * queries for one ticked checkbox. The list is small and bounded, so sending it
- * outright is both cheaper and simpler than a delta per mutation.
+ * Null when there is no realtime to carry it — then the action revalidates
+ * instead and the caller's route re-renders, which is the old behaviour.
+ */
+export type TaskSyncResult = {
+  at: number
+  tasks: TaskRow[]
+  activity: ActivityEntry | null
+} | null
+
+/**
+ * Publish the change, and give the same payload back to whoever made it.
  *
- * The audit row rides along, or the activity feed would be the one thing left
- * needing the refresh this removes. Member changes still use `refresh`, because
- * that is the action that revokes access and its reader must re-authorize.
+ * Deliberately does NOT revalidate on the realtime path. revalidatePath inside
+ * a Server Action re-renders the caller's route from the root layout down — the
+ * dashboard layout, its queries and the navbar included — so every ticked
+ * checkbox cost a full page render on top of the action itself. The actor gets
+ * the new list from the return value and everyone else gets it off the channel,
+ * so nothing needs to re-render a route at all.
+ *
+ * Without a key there is nothing to carry it, so that path still revalidates.
  */
 async function syncTaskViewers(
   orgId: string,
   projectId: string,
   actorUserId: string,
   auditRow?: AuditRowForFeed
-) {
-  revalidatePath(`/dashboard/projects/${projectId}`)
-  revalidatePath(`/dashboard/collaboration/${projectId}`)
+): Promise<TaskSyncResult> {
+  const revalidate = () => {
+    revalidatePath(`/dashboard/projects/${projectId}`)
+    revalidatePath(`/dashboard/collaboration/${projectId}`)
+  }
 
-  // Checked before the reads below, which exist only to build the payload.
-  if (!process.env.ABLY_API_KEY) return
+  if (!process.env.ABLY_API_KEY) {
+    revalidate()
+    return null
+  }
 
   const tasks = await readTasks(orgId, projectId)
   if (tasks.length > MAX_BROADCAST_TASKS) {
+    revalidate()
     await publishCollabRefresh(orgId, projectId, actorUserId)
-    return
+    return null
   }
 
   const activity = auditRow ? await enrichActivityRow(auditRow) : null
-  await publishCollabTasks(orgId, projectId, actorUserId, tasks, activity)
+  const at = Date.now()
+  await publishCollabTasks(orgId, projectId, actorUserId, at, tasks, activity)
+  return { at, tasks, activity }
 }
 
 export type TaskCompleter = {
@@ -179,8 +197,7 @@ export async function createTask(input: {
     await notifyAssignment(orgId, assigneeId, title, input.projectId)
   }
 
-  await syncTaskViewers(orgId, input.projectId, userId, audit)
-  return task.id
+  return syncTaskViewers(orgId, input.projectId, userId, audit)
 }
 
 export async function updateTaskStatus(taskId: string, status: TaskStatus) {
@@ -192,8 +209,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
   // back to the stale value and the checkbox appeared to refuse the click,
   // permanently, for whoever was not the one who completed it.
   if (task.status === status) {
-    await syncTaskViewers(orgId, task.projectId, userId)
-    return
+    return syncTaskViewers(orgId, task.projectId, userId)
   }
 
   const isDone = status === 'DONE'
@@ -234,7 +250,7 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     },
   })
 
-  await syncTaskViewers(orgId, task.projectId, userId, audit)
+  return syncTaskViewers(orgId, task.projectId, userId, audit)
 }
 
 export async function updateTask(
@@ -265,8 +281,7 @@ export async function updateTask(
   // Same reasoning as updateTaskStatus: nothing to write usually means the
   // caller was acting on a value that is already set, so refresh them.
   if (Object.keys(patch).length === 0) {
-    await syncTaskViewers(orgId, task.projectId, userId)
-    return
+    return syncTaskViewers(orgId, task.projectId, userId)
   }
 
   await prisma.task.update({ where: { id: taskId }, data: patch })
@@ -295,7 +310,7 @@ export async function updateTask(
     }
   }
 
-  await syncTaskViewers(orgId, task.projectId, userId, audit)
+  return syncTaskViewers(orgId, task.projectId, userId, audit)
 }
 
 export async function deleteTask(taskId: string) {
@@ -314,7 +329,7 @@ export async function deleteTask(taskId: string) {
 
   await prisma.task.delete({ where: { id: taskId } })
 
-  await syncTaskViewers(orgId, task.projectId, userId, audit)
+  return syncTaskViewers(orgId, task.projectId, userId, audit)
 }
 
 /**
@@ -338,7 +353,7 @@ export async function reorderTasks(projectId: string, orderedIds: string[]) {
     )
   )
 
-  await syncTaskViewers(orgId, projectId, userId)
+  return syncTaskViewers(orgId, projectId, userId)
 }
 
 /** An assignee must be a member of the caller's business. */

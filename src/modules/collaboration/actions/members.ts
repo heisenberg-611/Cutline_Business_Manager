@@ -3,6 +3,7 @@
 import prisma from '@/modules/core/db/prisma'
 import { revalidatePath } from 'next/cache'
 import { publishCollabRefresh } from '../realtime'
+import { reconcileBusinessMembers } from '@/lib/clerk-members'
 import { createNotification } from '@/modules/notifications/services'
 import type { ProjectMemberRole } from '@prisma/client'
 import { authorizeProjectAccess } from '@/modules/projects/authz'
@@ -178,6 +179,10 @@ export async function removeProjectMember(projectId: string, userId: string) {
 export async function getAddableMembers(projectId: string) {
   const { orgId } = await authorizeProjectAccess(projectId, 'manage')
   await requireCollaborationPlan(orgId)
+
+  // Someone invited a minute ago is in Clerk but may not have reached this
+  // table yet, and this is the list you go to precisely to add them.
+  await reconcileBusinessMembers(orgId)
 
   const [businessMembers, projectMembers] = await Promise.all([
     prisma.businessMembership.findMany({

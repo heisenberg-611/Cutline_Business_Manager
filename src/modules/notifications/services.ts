@@ -2,6 +2,7 @@ import prisma from "@/modules/core/db/prisma"
 import { sendPushNotification } from "@/lib/onesignal"
 import * as Ably from "ably"
 import { userNotificationsChannel, NOTIFICATION_EVENT, type NotificationPayload } from "@/lib/ably/channels"
+import { listClerkMembers } from "@/lib/clerk-members"
 
 /**
  * Nudges recipients' open tabs so the bell updates without polling.
@@ -85,37 +86,35 @@ export async function broadcastNotification(data: {
 }) {
   const audience = data.audience ?? 'all'
 
-  const { clerkClient } = await import("@clerk/nextjs/server")
-  const client = await clerkClient()
-
-  const members = await client.organizations.getOrganizationMembershipList({
-    organizationId: data.businessId,
-  })
+  // Paginated. Clerk's membership list defaults to ten per page, so this used
+  // to broadcast to the first ten members of the business and silently skip
+  // everyone else.
+  const members = await listClerkMembers(data.businessId)
 
   const targetUserIds: string[] = []
 
-  for (const member of members.data) {
+  for (const member of members) {
     if (audience === 'admins' && member.role !== 'org:admin') continue
 
-    const userId = member.publicUserData?.userId
+    const userId = member.userId
     if (!userId) continue
 
     try {
       // 1. Ensure user exists in Prisma to satisfy foreign keys
-      let email = member.publicUserData?.identifier || ''
+      let email = member.email || ''
       try {
         await prisma.user.upsert({
           where: { id: userId },
           update: {
             email,
-            firstName: member.publicUserData?.firstName || '',
-            lastName: member.publicUserData?.lastName || '',
+            firstName: member.firstName,
+            lastName: member.lastName,
           },
           create: {
             id: userId,
             email,
-            firstName: member.publicUserData?.firstName || '',
-            lastName: member.publicUserData?.lastName || '',
+            firstName: member.firstName,
+            lastName: member.lastName,
           }
         })
       } catch (upsertError: any) {
@@ -126,14 +125,14 @@ export async function broadcastNotification(data: {
             where: { id: userId },
             update: {
               email: fallbackEmail,
-              firstName: member.publicUserData?.firstName || '',
-              lastName: member.publicUserData?.lastName || '',
+              firstName: member.firstName,
+              lastName: member.lastName,
             },
             create: {
               id: userId,
               email: fallbackEmail,
-              firstName: member.publicUserData?.firstName || '',
-              lastName: member.publicUserData?.lastName || '',
+              firstName: member.firstName,
+              lastName: member.lastName,
             }
           })
         } else {

@@ -7,6 +7,7 @@ import { parseMentions, stripMentionMarkup } from '../mentions'
 import { mentionableUserIds, mentionableUsersForProject } from '../mentionable'
 import { authorizeEntityAccess, requireSession } from '../authz'
 import { buildCommentTree, type CommentNode as TreeNode, type FlatComment } from '../comment-tree'
+import { reconcileBusinessMembers } from '@/lib/clerk-members'
 import { publishCollabComment } from '../realtime'
 
 const MAX_BODY_LENGTH = 5000
@@ -369,6 +370,9 @@ export async function deleteComment(commentId: string) {
  */
 export async function getMentionableUsers(projectId: string) {
   const { orgId } = await authorizeEntityAccess('Project', projectId, 'read')
+  // Only here, not in mentionableUsersForProject: that is also the server-side
+  // validation path for every comment posted, which must not call Clerk.
+  await reconcileBusinessMembers(orgId)
   return mentionableUsersForProject(orgId, projectId)
 }
 
