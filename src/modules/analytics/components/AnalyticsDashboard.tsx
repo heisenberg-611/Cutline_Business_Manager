@@ -77,7 +77,7 @@ export function AnalyticsDashboard() {
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Track your workflow performance and financial growth.</p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
           <div className="flex-1 flex items-center gap-2">
             <Label htmlFor="start-date" className="sr-only">Start Date</Label>
             <Input 

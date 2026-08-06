@@ -14,6 +14,7 @@ import {
 } from 'recharts'
 import { formatMoney, formatMoneyCompact } from '@/lib/format'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { CheckCircle2, Clock, FolderKanban, ListChecks, Table2 } from 'lucide-react'
 import type { ProjectAnalytics as ProjectAnalyticsData } from '../project-analytics'
 
@@ -103,7 +104,7 @@ export function ProjectAnalytics({ data }: { data: ProjectAnalyticsData }) {
     <div className="space-y-5">
       {/* items-stretch + h-full inside: all four tiles are one height, and their
           value and footnote rows line up regardless of which carry a meter. */}
-      <div className="grid grid-cols-2 items-stretch gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 items-stretch gap-4 lg:grid-cols-4">
         <StatTile
           icon={CheckCircle2}
           label="Delivered"
@@ -162,25 +163,27 @@ export function ProjectAnalytics({ data }: { data: ProjectAnalyticsData }) {
           ) : showTable ? (
             <RevenueTable rows={data.revenueByProject} money={money} />
           ) : (
-            <RankedBars
-              rows={projectRows}
-              height={rankedHeight}
-              dark={dark}
-              labelKey="title"
-              labelWidth={168}
-              moneyShort={moneyShort}
-              tooltip={(row) => (
-                <TooltipCard
-                  title={row.title}
-                  rows={[
-                    ...(row.client ? [{ label: 'Client', value: row.client }] : []),
-                    { label: 'Collected', value: money(row.paidCents) },
-                    { label: 'Outstanding', value: money(row.outstandingCents) },
-                    { label: 'Status', value: row.isDelivered ? 'Delivered' : 'In progress' },
-                  ]}
-                />
-              )}
-            />
+            <div className="max-h-[400px] overflow-y-auto">
+              <RankedBars
+                rows={projectRows}
+                height={rankedHeight}
+                dark={dark}
+                labelKey="title"
+                labelWidth={168}
+                moneyShort={moneyShort}
+                tooltip={(row) => (
+                  <TooltipCard
+                    title={row.title}
+                    rows={[
+                      ...(row.client ? [{ label: 'Client', value: row.client }] : []),
+                      { label: 'Collected', value: money(row.paidCents) },
+                      { label: 'Outstanding', value: money(row.outstandingCents) },
+                      { label: 'Status', value: row.isDelivered ? 'Delivered' : 'In progress' },
+                    ]}
+                  />
+                )}
+              />
+            </div>
           )}
         </CardContent>
       </Card>
@@ -340,20 +343,22 @@ export function ProjectAnalytics({ data }: { data: ProjectAnalyticsData }) {
             {clientRows.length === 0 ? (
               <Empty>No payments recorded yet.</Empty>
             ) : (
-              <RankedBars
-                rows={clientRows}
-                height={Math.max(160, clientRows.length * 34 + 40)}
-                dark={dark}
-                labelKey="name"
-                labelWidth={112}
-                moneyShort={moneyShort}
-                tooltip={(row) => (
-                  <TooltipCard
-                    title={row.name}
-                    rows={[{ label: 'Collected', value: money(row.paidCents) }]}
-                  />
-                )}
-              />
+              <div className="max-h-[400px] overflow-y-auto">
+                <RankedBars
+                  rows={clientRows}
+                  height={Math.max(160, clientRows.length * 34 + 40)}
+                  dark={dark}
+                  labelKey="name"
+                  labelWidth={112}
+                  moneyShort={moneyShort}
+                  tooltip={(row) => (
+                    <TooltipCard
+                      title={row.name}
+                      rows={[{ label: 'Collected', value: money(row.paidCents) }]}
+                    />
+                  )}
+                />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -400,6 +405,12 @@ function RankedBars<T extends { paid: number }>({
           type="category"
           dataKey={labelKey}
           width={labelWidth}
+          tickFormatter={(value) => {
+             const maxLen = Math.floor(labelWidth / 7);
+             return typeof value === 'string' && value.length > maxLen 
+               ? `${value.substring(0, maxLen - 2)}...` 
+               : value;
+          }}
           tick={{ fill: MUTED, fontSize: 11 }}
           axisLine={false}
           tickLine={false}
@@ -443,44 +454,53 @@ function TaskStatusBar({
   const present = statuses.filter((s) => s.count > 0)
 
   return (
-    <div className="space-y-4">
-      <div className="flex h-7 w-full gap-[2px] overflow-hidden rounded">
-        {present.map((s) => (
-          <div
-            key={s.status}
-            title={`${s.label}: ${s.count}`}
-            style={{
-              width: `${(s.count / total) * 100}%`,
-              backgroundColor: pick(SERIES.status[s.status as keyof typeof SERIES.status], dark),
-            }}
-            className="first:rounded-l last:rounded-r"
-          />
-        ))}
-      </div>
+    <TooltipProvider delay={100}>
+      <div className="space-y-4">
+        <div className="flex h-7 w-full gap-[2px] overflow-hidden rounded">
+          {present.map((s) => (
+            <UITooltip key={s.status}>
+              <TooltipTrigger
+                render={
+                  <div
+                    style={{
+                      width: `${(s.count / total) * 100}%`,
+                      backgroundColor: pick(SERIES.status[s.status as keyof typeof SERIES.status], dark),
+                    }}
+                    className="first:rounded-l last:rounded-r h-full cursor-default"
+                  />
+                }
+              />
+              <TooltipContent side="top">
+                <p className="text-xs">{s.label}: <span className="font-semibold">{s.count}</span></p>
+              </TooltipContent>
+            </UITooltip>
+          ))}
+        </div>
 
-      {/* Legend and direct labels together: two of the light-mode hues fall below
-          3:1 on white, so the count is never carried by colour alone. */}
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5">
-        {statuses.map((s) => (
-          <div key={s.status} className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="h-2.5 w-2.5 shrink-0 rounded-sm"
-              style={{
-                backgroundColor: pick(SERIES.status[s.status as keyof typeof SERIES.status], dark),
-              }}
-            />
-            <dt className="truncate text-xs text-zinc-500 dark:text-zinc-400">{s.label}</dt>
-            <dd className="ml-auto shrink-0 text-xs font-medium tabular-nums text-zinc-800 dark:text-zinc-200">
-              {s.count}
-              <span className="ml-1.5 font-normal text-zinc-400">
-                {total > 0 ? `${Math.round((s.count / total) * 100)}%` : '0%'}
-              </span>
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </div>
+        {/* Legend and direct labels together: two of the light-mode hues fall below
+            3:1 on white, so the count is never carried by colour alone. */}
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-2.5">
+          {statuses.map((s) => (
+            <div key={s.status} className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                style={{
+                  backgroundColor: pick(SERIES.status[s.status as keyof typeof SERIES.status], dark),
+                }}
+              />
+              <dt className="truncate text-xs text-zinc-500 dark:text-zinc-400">{s.label}</dt>
+              <dd className="ml-auto shrink-0 text-xs font-medium tabular-nums text-zinc-800 dark:text-zinc-200">
+                {s.count}
+                <span className="ml-1.5 font-normal text-zinc-400">
+                  {total > 0 ? `${Math.round((s.count / total) * 100)}%` : '0%'}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </TooltipProvider>
   )
 }
 
@@ -547,8 +567,8 @@ function StatTile({
   meter?: number
 }) {
   return (
-    <Card className="h-full">
-      <CardContent className="flex h-full flex-col p-4">
+    <Card className="flex h-full flex-col">
+      <div className="flex flex-1 flex-col p-4">
         <div className="flex items-center gap-1.5 text-zinc-500">
           <Icon className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate text-xs font-medium">{label}</span>
@@ -558,23 +578,25 @@ function StatTile({
           {value}
         </p>
 
-        {/* Always occupies its row, so every footnote sits on the same line. */}
-        <span
-          aria-hidden
-          className={`mt-3 block h-1 w-full overflow-hidden rounded-full ${
-            meter === undefined ? 'bg-transparent' : 'bg-zinc-200 dark:bg-zinc-800'
-          }`}
-        >
-          {meter !== undefined && (
-            <span
-              className="block h-full rounded-full bg-[#2a78d6] dark:bg-[#3987e5]"
-              style={{ width: `${Math.min(100, Math.max(0, meter))}%` }}
-            />
-          )}
-        </span>
+        <div className="mt-auto pt-4">
+          {/* Always occupies its row, so every footnote sits on the same line. */}
+          <span
+            aria-hidden
+            className={`block h-1 w-full overflow-hidden rounded-full ${
+              meter === undefined ? 'bg-transparent' : 'bg-zinc-200 dark:bg-zinc-800'
+            }`}
+          >
+            {meter !== undefined && (
+              <span
+                className="block h-full rounded-full bg-[#2a78d6] dark:bg-[#3987e5]"
+                style={{ width: `${Math.min(100, Math.max(0, meter))}%` }}
+              />
+            )}
+          </span>
 
-        <p className="mt-2 truncate text-xs text-zinc-400">{detail}</p>
-      </CardContent>
+          <p className="mt-2 truncate text-xs text-zinc-400">{detail}</p>
+        </div>
+      </div>
     </Card>
   )
 }
