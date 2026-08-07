@@ -95,9 +95,7 @@ export function ReactionBar({
           <DropdownMenuTrigger
             aria-label="Add a reaction"
             className={cn(
-              'inline-flex items-center rounded-full border border-dashed border-zinc-300 p-1 text-zinc-400 outline-none transition-colors hover:border-zinc-400 hover:text-zinc-600 dark:border-white/15 dark:hover:text-zinc-200',
-              // Always reachable on touch, where there is no hover to reveal it.
-              optimistic.length > 0 && 'md:opacity-0 md:group-hover/reactable:opacity-100 md:focus-visible:opacity-100'
+              'inline-flex items-center rounded-full border border-dashed border-zinc-300 p-1 text-zinc-400 outline-none transition-colors hover:border-zinc-400 hover:text-zinc-600 dark:border-white/15 dark:hover:text-zinc-200'
             )}
           >
             <SmilePlus className="h-3.5 w-3.5" />

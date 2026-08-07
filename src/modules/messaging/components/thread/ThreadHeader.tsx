@@ -115,31 +115,31 @@ export function ThreadHeader({
   }
 
   return (
-    <div className="p-3 sm:p-4 border-b flex items-center justify-between bg-background shrink-0">
-      <div className="flex items-center gap-3">
+    <div className="p-3 sm:p-4 border-b flex items-center justify-between bg-background shrink-0 gap-2">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         {currentUserId && (
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => router.push('/dashboard/messages')} 
-            className="md:hidden mr-0 -ml-2 h-8 w-8"
+            className="md:hidden mr-0 -ml-2 h-8 w-8 shrink-0"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
         )}
         <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center",
+          "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0",
           isBroadcast ? "bg-blue-500/10 text-blue-500" : isGroup ? "bg-green-500/10 text-green-600" : isGuest ? "bg-purple-500/10 text-purple-600" : "bg-primary/10 text-primary"
         )}>
-          {isBroadcast ? <Megaphone className="w-5 h-5" /> : isGroup ? <Users className="w-5 h-5" /> : <MessageSquare className="w-5 h-5" />}
+          {isBroadcast ? <Megaphone className="w-4 h-4 sm:w-5 sm:h-5" /> : isGroup ? <Users className="w-4 h-4 sm:w-5 sm:h-5" /> : <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />}
         </div>
-        <div>
-          <h3 className="font-semibold">{headerTitle}</h3>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <div className="min-w-0">
+          <h3 className="font-semibold truncate text-sm sm:text-base">{headerTitle}</h3>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
             {isGroup ? (
               <DropdownMenu>
-                <DropdownMenuTrigger className="hover:underline hover:text-foreground outline-none text-left flex items-center gap-1 cursor-pointer">
-                  {headerSubtitle} <Users className="w-3 h-3" />
+                <DropdownMenuTrigger className="hover:underline hover:text-foreground outline-none text-left flex items-center gap-1 cursor-pointer truncate">
+                  <span className="truncate">{headerSubtitle}</span> <Users className="w-3 h-3 shrink-0" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-auto min-w-[250px] max-w-[calc(100vw-2rem)] sm:max-w-[400px] max-h-[50vh] overflow-y-auto">
                   <DropdownMenuGroup>
@@ -191,7 +191,7 @@ export function ThreadHeader({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 shrink-0">
         {currentUserId && isGroup && (
           <Button
             variant="ghost"

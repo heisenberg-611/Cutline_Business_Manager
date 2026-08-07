@@ -163,7 +163,7 @@ function NotificationRow({
           }}
           // Always visible where there is no hover to reveal it; it was the only
           // way to read a single item, and on a phone it could never be shown.
-          className="absolute right-3 top-3 p-1 rounded-full text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100 flex-shrink-0"
+          className="absolute right-3 top-3 p-1 rounded-full text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-opacity flex-shrink-0"
           title="Mark as read"
           aria-label="Mark as read"
         >
@@ -171,7 +171,7 @@ function NotificationRow({
         </button>
       )}
       {!notification.isRead && (
-        <div className="absolute left-1.5 top-4 h-1.5 w-1.5 rounded-full bg-indigo-500 group-hover:opacity-0 transition-opacity" />
+        <div className="absolute left-1.5 top-4 h-1.5 w-1.5 rounded-full bg-indigo-500 transition-opacity" />
       )}
     </div>
   )

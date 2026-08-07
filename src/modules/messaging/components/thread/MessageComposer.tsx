@@ -89,11 +89,12 @@ export function MessageComposer({
                 <SmilePlus className="w-5 h-5" />
               </Button>
               {isEmojiPickerOpen && (
-                <div className="absolute bottom-12 left-0 z-50 shadow-xl rounded-lg">
+                <div className="absolute bottom-12 -left-2 sm:left-0 z-50 shadow-xl rounded-lg overflow-hidden w-[300px] sm:w-[350px]">
                   <EmojiPicker 
                     onEmojiClick={(emojiData) => setContent(prev => prev + emojiData.emoji)}
                     theme={resolvedTheme === 'dark' ? Theme.DARK : Theme.LIGHT}
                     lazyLoadEmojis={true}
+                    width="100%"
                   />
                 </div>
               )}

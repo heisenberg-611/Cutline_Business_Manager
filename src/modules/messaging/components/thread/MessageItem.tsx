@@ -211,7 +211,7 @@ export const MessageItem = React.memo(function MessageItem({
         <div className={cn(
           "rounded-2xl whitespace-pre-wrap break-words relative group/msg",
           onlyEmojis 
-            ? "bg-transparent p-0 text-5xl leading-tight" 
+            ? "bg-transparent p-0 text-4xl md:text-5xl leading-tight" 
             : cn(
                 "px-4 py-2.5 text-sm",
                 isMine ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-muted text-foreground rounded-tl-sm"
