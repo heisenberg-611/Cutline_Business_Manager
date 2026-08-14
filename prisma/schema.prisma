@@ -623,6 +623,7 @@ model TimeEntry {
   durationMinutes Int       @default(0)
   isBillable      Boolean   @default(true)
   source          String    @default("manual") // manual, stopwatch
+  notes           String?   @db.Text
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
