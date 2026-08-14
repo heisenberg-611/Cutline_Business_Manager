@@ -75,7 +75,7 @@ export async function updateInvoiceSettings(data: {
 /**
  * Add a new workflow stage to the business's pipeline template.
  */
-export async function addWorkflowStage(name: string, icon?: string | null) {
+export async function addWorkflowStage(name: string, icon?: string | null, estimatedHours?: number | null) {
   const { orgId } = await requireAdmin()
 
   const template = await prisma.workflowTemplate.findFirst({
@@ -93,6 +93,7 @@ export async function addWorkflowStage(name: string, icon?: string | null) {
       name,
       orderIndex: nextIndex,
       icon,
+      estimatedHours,
     },
   })
 
@@ -103,7 +104,7 @@ export async function addWorkflowStage(name: string, icon?: string | null) {
 /**
  * Update an existing workflow stage.
  */
-export async function updateWorkflowStage(stageId: string, updates: { name?: string, icon?: string | null }) {
+export async function updateWorkflowStage(stageId: string, updates: { name?: string, icon?: string | null, estimatedHours?: number | null }) {
   const { orgId } = await requireAdmin()
 
   // Verify stage belongs to this business

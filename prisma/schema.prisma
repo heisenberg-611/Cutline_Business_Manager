@@ -377,7 +377,7 @@ model WorkflowStage {
   templateId     String
   name           String
   orderIndex     Int
-  estimatedHours Int?
+  estimatedHours Float?
   billingTrigger Boolean @default(false)
   icon           String?
 

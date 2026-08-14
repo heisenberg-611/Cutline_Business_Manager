@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/trigger-analytics",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/check-stage-overdue",
+      "schedule": "0 * * * *"
     }
   ]
 }

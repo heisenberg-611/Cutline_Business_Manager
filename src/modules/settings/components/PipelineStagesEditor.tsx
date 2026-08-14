@@ -19,6 +19,7 @@ type Stage = {
   name: string
   orderIndex: number
   icon?: string | null
+  estimatedHours?: number | null
 }
 
 const IconSelector = ({ value, onChange }: { value: string, onChange: (v: string) => void }) => {
@@ -49,8 +50,10 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editIcon, setEditIcon] = useState('')
+  const [editEstimatedHours, setEditEstimatedHours] = useState('')
   const [newStageName, setNewStageName] = useState('')
   const [newStageIcon, setNewStageIcon] = useState('')
+  const [newStageEstimatedHours, setNewStageEstimatedHours] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [localStages, setLocalStages] = useState(stages)
   
@@ -83,7 +86,11 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
   const handleUpdate = (stageId: string) => {
     if (!editName.trim()) return
     startTransition(async () => {
-      await updateWorkflowStage(stageId, { name: editName.trim(), icon: editIcon || null })
+      await updateWorkflowStage(stageId, { 
+        name: editName.trim(), 
+        icon: editIcon || null,
+        estimatedHours: editEstimatedHours ? Number(editEstimatedHours) : null
+      })
       setEditingId(null)
     })
   }
@@ -98,9 +105,14 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
   const handleAdd = () => {
     if (!newStageName.trim()) return
     startTransition(async () => {
-      await addWorkflowStage(newStageName.trim(), newStageIcon || null)
+      await addWorkflowStage(
+        newStageName.trim(), 
+        newStageIcon || null,
+        newStageEstimatedHours ? Number(newStageEstimatedHours) : null
+      )
       setNewStageName('')
       setNewStageIcon('')
+      setNewStageEstimatedHours('')
       setIsAdding(false)
     })
   }
@@ -140,7 +152,18 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
                                 onChange={(e) => setEditName(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleUpdate(stage.id)}
                                 className="h-8 text-sm flex-1"
+                                placeholder="Stage Name"
                                 autoFocus
+                              />
+                              <Input
+                                value={editEstimatedHours}
+                                onChange={(e) => setEditEstimatedHours(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleUpdate(stage.id)}
+                                className="h-8 text-sm w-24 shrink-0"
+                                placeholder="Max Hours"
+                                type="number"
+                                step="any"
+                                min="0"
                               />
                               <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600 shrink-0" onClick={() => handleUpdate(stage.id)}>
                                 <Check className="w-4 h-4" />
@@ -153,8 +176,13 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
                         ) : (
                           <>
                             <DisplayIcon className="w-4 h-4 text-zinc-500" />
-                            <span className="flex-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                            <span className="flex-1 text-sm font-medium text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                               {stage.name}
+                              {stage.estimatedHours && (
+                                <span className="text-xs font-normal text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-md">
+                                  {stage.estimatedHours}h limit
+                                </span>
+                              )}
                             </span>
                             <span className="text-xs text-zinc-400 font-mono mr-2">#{index + 1}</span>
                             <Button
@@ -165,6 +193,7 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
                                 setEditingId(stage.id); 
                                 setEditName(stage.name);
                                 setEditIcon(stage.icon || '');
+                                setEditEstimatedHours(stage.estimatedHours ? String(stage.estimatedHours) : '');
                               }}
                             >
                               <Pencil className="w-3.5 h-3.5" />
@@ -202,11 +231,21 @@ export function PipelineStagesEditor({ stages }: { stages: Stage[] }) {
             className="h-8 text-sm flex-1"
             autoFocus
           />
+          <Input
+            value={newStageEstimatedHours}
+            onChange={(e) => setNewStageEstimatedHours(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+            placeholder="Max Hours"
+            type="number"
+            step="any"
+            min="0"
+            className="h-8 text-sm w-24 shrink-0"
+          />
           <div className="flex gap-2 sm:mt-0 mt-1 justify-end">
             <Button size="sm" onClick={handleAdd} disabled={!newStageName.trim() || isPending} className="flex-1 sm:flex-none">
               Add
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setIsAdding(false); setNewStageName(''); setNewStageIcon('') }} className="flex-1 sm:flex-none">
+            <Button size="sm" variant="ghost" onClick={() => { setIsAdding(false); setNewStageName(''); setNewStageIcon(''); setNewStageEstimatedHours(''); }} className="flex-1 sm:flex-none">
               Cancel
             </Button>
           </div>
