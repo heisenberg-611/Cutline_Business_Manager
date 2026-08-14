@@ -21,6 +21,9 @@ interface Project {
 
 export function UpcomingDeadlines({ projects }: { projects: Project[] }) {
   const now = new Date()
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+  
   const threeDaysFromNow = new Date()
   threeDaysFromNow.setDate(now.getDate() + 3)
 
@@ -56,18 +59,21 @@ export function UpcomingDeadlines({ projects }: { projects: Project[] }) {
         // 2. Determine status
         if (isFinal) {
           status = 'completed'
-        } else if (project.statusStage?.estimatedHours && project.stageHistory[0]) {
-          if (project.deadline && project.deadline <= threeDaysFromNow) {
+        } else if (project.deadline && project.deadline < startOfToday) {
+          status = 'overdue'
+        } else {
+          // Check hours in stage first for 'at-risk'
+          if (project.statusStage?.estimatedHours && project.stageHistory[0]) {
+            hoursInStage = (now.getTime() - new Date(project.stageHistory[0].enteredAt).getTime()) / (1000 * 60 * 60)
+            if (hoursInStage > project.statusStage.estimatedHours) {
+              status = 'at-risk'
+            }
+          }
+          
+          // If it's not 'at-risk' from stage limit, check if deadline is soon
+          if (status === 'on-track' && project.deadline && project.deadline <= threeDaysFromNow) {
             status = 'watch'
           }
-
-          hoursInStage = (now.getTime() - new Date(project.stageHistory[0].enteredAt).getTime()) / (1000 * 60 * 60)
-          if (hoursInStage > project.statusStage.estimatedHours) {
-            status = 'at-risk'
-          }
-        } else if (project.deadline && project.deadline <= threeDaysFromNow) {
-          // Fallback for close deadline but no estimated hours set
-          status = 'watch'
         }
 
         return (
@@ -86,10 +92,14 @@ export function UpcomingDeadlines({ projects }: { projects: Project[] }) {
               </div>
               
               {/* 3. Render the appropriate badge */}
-              <div className="text-right">
+              <div className="text-right ml-4 shrink-0">
                 {status === 'completed' ? (
                   <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-400 dark:hover:bg-emerald-900/70 border-emerald-200 dark:border-emerald-800">
                     Completed
+                  </Badge>
+                ) : status === 'overdue' ? (
+                  <Badge className="bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-400 dark:hover:bg-red-900/70 border-red-200 dark:border-red-800">
+                    Overdue
                   </Badge>
                 ) : status === 'at-risk' ? (
                   <Badge variant="destructive">At Risk</Badge>

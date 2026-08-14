@@ -68,7 +68,7 @@ export default async function DashboardPage() {
     prisma.project.findMany({
       where: {
         ...activeProjectWhere,
-        deadline: { gte: new Date() }
+        deadline: { not: null }
       },
       include: { 
         statusStage: {
