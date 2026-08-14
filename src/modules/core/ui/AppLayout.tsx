@@ -490,6 +490,7 @@ export function AppLayout({
                         <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                           <Link
                             href={item.href}
+                            prefetch={false}
                           onClick={() => {
                             // Only trigger the instant skeleton if navigating to a different route
                             if (pathname !== item.href) {
@@ -582,6 +583,7 @@ export function AppLayout({
                 <motion.div initial="initial" whileHover="hover" whileTap="tap" variants={ROW_HOVER_VARIANTS} transition={ICON_SPRING}>
                   <Link
                     href="/dashboard/settings"
+                    prefetch={false}
                   aria-current={(optimisticPathname || pathname)?.startsWith('/dashboard/settings') ? 'page' : undefined}
                   className={`group relative z-0 w-full flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors ${
                     (optimisticPathname || pathname)?.startsWith('/dashboard/settings')
@@ -788,6 +790,7 @@ export function AppLayout({
                       <Link
                         key={action.id}
                         href={action.href}
+                        prefetch={false}
                         onClick={() => setIsQuickActionsOpen(false)}
                         className="block p-4 rounded-xl border border-border/50 bg-muted/20 hover:border-border transition-colors"
                       >
@@ -817,6 +820,7 @@ export function AppLayout({
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               onClick={() => {
                 if (pathname !== item.href) {
                   setIsNavigating(true)
@@ -882,6 +886,7 @@ export function AppLayout({
                       <Link
                         key={item.href}
                         href={item.href}
+                        prefetch={false}
                         onClick={() => {
                           setIsMobileMenuOpen(false)
                           if (pathname !== item.href) {
@@ -921,6 +926,7 @@ export function AppLayout({
                   {isAdmin && (
                     <Link
                       href="/dashboard/settings"
+                      prefetch={false}
                       onClick={() => {
                         setIsMobileMenuOpen(false)
                         if (pathname !== '/dashboard/settings') {
