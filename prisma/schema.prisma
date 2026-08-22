@@ -641,6 +641,12 @@ model TimeEntry {
 
 enum AssetType {
   Music
+  Font
+  LUT
+  Plugin
+  StockFootage   @map("Stock Footage")
+  SFX
+  MotionGraphics @map("Motion Graphics")
 }
 
 enum LineItemSourceType {
