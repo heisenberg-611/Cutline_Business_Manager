@@ -1,9 +1,9 @@
 name: Daily Supabase Encrypted Backup
 
 on:
-  schedule:
-    # Scheduled 3 hours early (23:00 UTC) to offset GitHub's 3-hour queue delay
-    - cron: '0 23 * * *'
+  # schedule:
+  #   # Scheduled 3 hours early (23:00 UTC) to offset GitHub's 3-hour queue delay
+  #   - cron: '0 23 * * *'
   workflow_dispatch: # Allows manual trigger from the Actions tab
 permissions:
   contents: read
