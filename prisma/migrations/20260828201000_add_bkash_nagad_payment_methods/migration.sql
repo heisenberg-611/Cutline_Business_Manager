@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "PaymentMethod" ADD VALUE IF NOT EXISTS 'BKASH';
+ALTER TYPE "PaymentMethod" ADD VALUE IF NOT EXISTS 'NAGAD';

@@ -105,4 +105,34 @@ describe('Integration: recordPayment', () => {
     expect(invoice.amountPaidCents).toBe(4000) // Still 4000 from previous test
     expect(invoice.amountDueCents).toBe(6000)
   })
+
+  it('records payments with BKASH and NAGAD payment methods', async () => {
+    await recordPayment(testInvoiceId, {
+      amountCents: 3000,
+      method: 'BKASH',
+      reference: 'BKASH-TRX-12345'
+    })
+
+    let invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: testInvoiceId } })
+    expect(invoice.amountPaidCents).toBe(7000)
+    expect(invoice.amountDueCents).toBe(3000)
+
+    await recordPayment(testInvoiceId, {
+      amountCents: 3000,
+      method: 'NAGAD',
+      reference: 'NAGAD-TRX-67890'
+    })
+
+    invoice = await prisma.invoice.findUniqueOrThrow({ where: { id: testInvoiceId } })
+    expect(invoice.amountPaidCents).toBe(10000)
+    expect(invoice.amountDueCents).toBe(0)
+    expect(invoice.status).toBe('PAID')
+
+    const payments = await prisma.payment.findMany({ 
+      where: { invoiceId: testInvoiceId },
+      orderBy: { createdAt: 'asc' }
+    })
+    expect(payments.some(p => p.method === 'BKASH')).toBe(true)
+    expect(payments.some(p => p.method === 'NAGAD')).toBe(true)
+  })
 })

@@ -76,7 +76,7 @@ export type InvoiceInput = z.infer<typeof InvoiceInputSchema>
 
 const PaymentInputSchema = z.object({
   amountCents: z.number().min(1),
-  method: z.enum(["CREDIT_CARD", "BANK_TRANSFER", "CASH", "CHECK", "OTHER"]),
+  method: z.enum(["CREDIT_CARD", "BANK_TRANSFER", "CASH", "CHECK", "BKASH", "NAGAD", "OTHER"]),
   reference: z.string().optional().nullable(),
   paidAt: z.string().optional().nullable()
 })

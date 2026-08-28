@@ -15,6 +15,16 @@ import { DownloadInvoiceButton } from '@/components/invoices/DownloadInvoiceButt
 import { PreviewInvoiceDialog } from '@/modules/financials/components/PreviewInvoiceDialog'
 import { canSendEmails, getActivePlan } from '@/lib/subscription'
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  BANK_TRANSFER: 'Bank Transfer',
+  CREDIT_CARD: 'Credit Card',
+  BKASH: 'Bkash',
+  NAGAD: 'Nagad',
+  CASH: 'Cash',
+  CHECK: 'Check',
+  OTHER: 'Other',
+}
+
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { orgId } = await auth()
   if (!orgId) redirect('/dashboard/select-business')
@@ -208,7 +218,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 {invoice.payments.map(payment => (
                   <div key={payment.id} className="text-sm border-b border-zinc-100 dark:border-zinc-900 pb-3 last:border-0">
                     <div className="flex justify-between font-medium">
-                      <span>{payment.method}</span>
+                      <span>{PAYMENT_METHOD_LABELS[payment.method] || payment.method}</span>
                       <span>{formatMoney(payment.amountCents, invoice.currency)}</span>
                     </div>
                     <p className="text-zinc-500 text-xs mt-1">

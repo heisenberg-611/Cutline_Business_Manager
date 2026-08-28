@@ -423,6 +423,8 @@ enum PaymentMethod {
   BANK_TRANSFER
   CASH
   CHECK
+  BKASH
+  NAGAD
   OTHER
 }
 

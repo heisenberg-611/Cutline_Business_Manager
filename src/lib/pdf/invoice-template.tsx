@@ -439,6 +439,16 @@ const formatDateTime = (date: Date | null) => {
   }).format(date)
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  BANK_TRANSFER: 'Bank Transfer',
+  CREDIT_CARD: 'Credit Card',
+  BKASH: 'Bkash',
+  NAGAD: 'Nagad',
+  CASH: 'Cash',
+  CHECK: 'Check',
+  OTHER: 'Other',
+}
+
 const getComputedStatus = (invoice: InvoiceData): string => {
   if (invoice.amountDueCents <= 0) return 'PAID'
   if (invoice.amountPaidCents > 0 && invoice.amountDueCents > 0) return 'PARTIALLY PAID'
@@ -605,7 +615,7 @@ export const InvoiceTemplate = ({ invoice }: { invoice: InvoiceData }) => {
                 <View key={i} style={styles.paymentRow}>
                   <Text style={styles.paymentText}>
                     {formatDateTime(payment.date)}
-                    {payment.method ? ` · ${payment.method}` : ''}
+                    {payment.method ? ` · ${PAYMENT_METHOD_LABELS[payment.method] || payment.method}` : ''}
                     {payment.reference ? ` (${payment.reference})` : ''}
                   </Text>
                   <Text style={styles.paymentAmount}>

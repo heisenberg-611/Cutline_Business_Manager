@@ -79,6 +79,8 @@ export function RecordPaymentDialog({ invoiceId, amountDueCents, currency = 'USD
               <SelectContent align="start" alignItemWithTrigger={false}>
                 <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
                 <SelectItem value="CREDIT_CARD">Credit Card</SelectItem>
+                <SelectItem value="BKASH">Bkash</SelectItem>
+                <SelectItem value="NAGAD">Nagad</SelectItem>
                 <SelectItem value="CASH">Cash</SelectItem>
                 <SelectItem value="CHECK">Check</SelectItem>
                 <SelectItem value="OTHER">Other</SelectItem>
