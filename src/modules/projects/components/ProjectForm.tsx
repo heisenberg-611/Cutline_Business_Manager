@@ -77,7 +77,6 @@ export function ProjectForm({ clients, members = [], defaultOpen = false }: { cl
       const res = await createProject(formData)
       if (res?.error) {
         setError(res.error)
-        toast.error(res.error, { duration: 6000 })
         return
       }
       toast.success('Project created successfully')
@@ -88,9 +87,7 @@ export function ProjectForm({ clients, members = [], defaultOpen = false }: { cl
       setAssigneeId('')
       setDuplicateWarning(null)
     } catch (err: any) {
-      const msg = err?.message || "Error creating project."
-      setError(msg)
-      toast.error(msg, { duration: 6000 })
+      setError(err?.message || "Error creating project.")
     } finally {
       setLoading(false)
     }
