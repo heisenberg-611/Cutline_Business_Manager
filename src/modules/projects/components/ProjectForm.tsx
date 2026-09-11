@@ -73,7 +73,11 @@ export function ProjectForm({ clients, members = [], defaultOpen = false }: { cl
     setLoading(true)
     setError(null)
     try {
-      await createProject(formData)
+      const res = await createProject(formData)
+      if (res?.error) {
+        setError(res.error)
+        return
+      }
       setOpen(false)
       setClientId('')
       setPriority('')
