@@ -50,7 +50,7 @@ export async function createProject(data: FormData) {
   const { orgId, orgRole, userId } = await auth()
 
   if (!orgId) {
-    throw new Error('Unauthorized: No active business selected.')
+    return { error: 'Unauthorized: No active business selected.' }
   }
 
   const clientId = data.get('clientId') as string
@@ -62,100 +62,107 @@ export async function createProject(data: FormData) {
 
   // Only Admins can set an assignee
   if (assigneeId && orgRole !== 'org:admin') {
-    throw new Error('Forbidden: Only Admins can assign projects.')
+    return { error: 'Forbidden: Only Admins can assign projects.' }
   }
 
   if (!title || title.trim() === '') {
-    throw new Error('Title is required')
+    return { error: 'Title is required' }
   }
 
   if (!clientId || clientId.trim() === '') {
-    throw new Error('Client is required')
+    return { error: 'Client is required' }
   }
 
   const deadline = deadlineStr ? new Date(deadlineStr) : null
 
   // --- Quota Enforcement ---
-  const [businessData, globalSettings, currentProjectCount] = await Promise.all([
+  const [businessData, globalSettings, activeProjectCount] = await Promise.all([
     prisma.business.findUnique({ where: { id: orgId }, select: { subscriptionPlan: true, subscriptionPeriodEnd: true, customProjectLimit: true } }),
     prisma.globalSettings.findUnique({ where: { id: 'default' } }),
-    prisma.project.count({ where: { businessId: orgId } })
+    prisma.project.count({ where: { businessId: orgId, isArchived: false } })
   ])
 
   if (!businessData) {
-    throw new Error('Business not found')
+    return { error: 'Business not found' }
   }
 
   // Active plan, not the raw column: an expired Business subscription must fall
   // back to the FREE quota rather than keep granting unlimited projects.
   const plan = getActivePlan(businessData)
 
+  const quotaMessage = 'You are out of projects, archive projects that are delivered to create more projects.'
+
   if (businessData.customProjectLimit !== null) {
-    if (currentProjectCount >= businessData.customProjectLimit) {
-      throw new Error(`Custom project limit reached (${businessData.customProjectLimit} projects). Please contact support.`)
+    if (activeProjectCount >= businessData.customProjectLimit) {
+      return { error: quotaMessage }
     }
   } else if (plan === 'FREE') {
     const limit = globalSettings?.freeTierProjectLimit ?? 3
-    if (currentProjectCount >= limit) {
-      throw new Error(`Free tier limit reached (${limit} projects). Please upgrade to add more projects.`)
+    if (activeProjectCount >= limit) {
+      return { error: quotaMessage }
     }
   } else if (plan === 'PRO') {
     const limit = globalSettings?.proTierProjectLimit ?? 20
-    if (currentProjectCount >= limit) {
-      throw new Error(`Pro tier limit reached (${limit} projects). Please upgrade to Business plan to add more.`)
+    if (activeProjectCount >= limit) {
+      return { error: quotaMessage }
     }
   }
   // -------------------------
 
-  const business = await prisma.business.update({
-    where: { id: orgId },
-    data: { projectSequence: { increment: 1 } },
-    select: { projectSequence: true }
-  })
-  const displayId = `PRJ-${String(business.projectSequence).padStart(3, '0')}`
-
-  const template = await ensureDefaultTemplate(orgId)
-  const firstStageId = template?.stages[0]?.id || null
-
-  const project = await prisma.project.create({
-    data: {
-      businessId: orgId,
-      displayId,
-      clientId,
-      title,
-      type: type || null,
-      priority: priority || null,
-      deadline,
-      statusStageId: firstStageId,
-      assigneeId: assigneeId || null,
-      ...(firstStageId ? {
-        stageHistory: {
-          create: {
-            stageId: firstStageId
-          }
-        }
-      } : {})
-    }
-  })
-
-  if (assigneeId) {
-    // Authorization reads ProjectMember, so a new project must have its
-    // assignee recorded there or they could not open what they were just given.
-    await syncAssigneeMembership(project.id, assigneeId, null, userId ?? assigneeId)
-
-    await createNotification({
-      businessId: orgId,
-      userId: assigneeId,
-      title: 'New Project Assignment',
-      message: `You have been assigned to project "${project.title}".`,
-      type: 'project',
-      actionUrl: `/dashboard/projects/${project.id}`
+  try {
+    const business = await prisma.business.update({
+      where: { id: orgId },
+      data: { projectSequence: { increment: 1 } },
+      select: { projectSequence: true }
     })
-  }
+    const displayId = `PRJ-${String(business.projectSequence).padStart(3, '0')}`
 
-  revalidatePath('/dashboard/projects')
-  revalidatePath('/dashboard/pipeline')
-  return project
+    const template = await ensureDefaultTemplate(orgId)
+    const firstStageId = template?.stages[0]?.id || null
+
+    const project = await prisma.project.create({
+      data: {
+        businessId: orgId,
+        displayId,
+        clientId,
+        title,
+        type: type || null,
+        priority: priority || null,
+        deadline,
+        statusStageId: firstStageId,
+        assigneeId: assigneeId || null,
+        ...(firstStageId ? {
+          stageHistory: {
+            create: {
+              stageId: firstStageId
+            }
+          }
+        } : {})
+      }
+    })
+
+    if (assigneeId) {
+      // Authorization reads ProjectMember, so a new project must have its
+      // assignee recorded there or they could not open what they were just given.
+      await syncAssigneeMembership(project.id, assigneeId, null, userId ?? assigneeId)
+
+      await createNotification({
+        businessId: orgId,
+        userId: assigneeId,
+        title: 'New Project Assignment',
+        message: `You have been assigned to project "${project.title}".`,
+        type: 'project',
+        actionUrl: `/dashboard/projects/${project.id}`
+      })
+    }
+
+    revalidatePath('/dashboard/projects')
+    revalidatePath('/dashboard/pipeline')
+    return { success: true, project }
+  } catch (err: any) {
+    console.error('Error creating project:', err)
+    return { error: err?.message || 'Error creating project.' }
+  }
 }
 
 export async function updateProject(projectId: string, data: { title?: string, deadline?: Date | null, priority?: string | null, assigneeId?: string | null }) {

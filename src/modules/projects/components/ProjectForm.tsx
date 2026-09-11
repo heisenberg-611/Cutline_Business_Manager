@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, AlertTriangle } from 'lucide-react'
+import { toast } from 'sonner'
 
 type Client = {
   id: string
@@ -73,7 +74,13 @@ export function ProjectForm({ clients, members = [], defaultOpen = false }: { cl
     setLoading(true)
     setError(null)
     try {
-      await createProject(formData)
+      const res = await createProject(formData)
+      if (res?.error) {
+        setError(res.error)
+        toast.error(res.error, { duration: 6000 })
+        return
+      }
+      toast.success('Project created successfully')
       setOpen(false)
       setClientId('')
       setPriority('')
@@ -81,7 +88,9 @@ export function ProjectForm({ clients, members = [], defaultOpen = false }: { cl
       setAssigneeId('')
       setDuplicateWarning(null)
     } catch (err: any) {
-      setError(err?.message || "Error creating project.")
+      const msg = err?.message || "Error creating project."
+      setError(msg)
+      toast.error(msg, { duration: 6000 })
     } finally {
       setLoading(false)
     }

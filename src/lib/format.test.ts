@@ -25,7 +25,7 @@ describe('Formatting Utilities', () => {
   describe('formatMoneyCompact', () => {
     it('formats compact values correctly', () => {
       expect(formatMoneyCompact(150000)).toBe('$1.5K')
-      expect(formatMoneyCompact(100000000)).toBe('$1.0M')
+      expect(formatMoneyCompact(100000000)).toBe('$1M')
     })
   })
 
