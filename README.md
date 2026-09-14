@@ -15,7 +15,8 @@
 
   <p>
     <a href="https://www.cutlin.tech"><b>View Live Demo</b></a> &nbsp;·&nbsp;
-    <a href="https://github.com/heisenberg-611/Cutline_Business_manager/wiki"><b>Documentation</b></a> &nbsp;·&nbsp;
+    <a href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/heisenberg-611/Cutline_Business_Manager/main/docs/Architechture/cutline-architecture.html"><b>System Architecture ⚡</b></a> &nbsp;·&nbsp;
+    <a href="https://github.com/heisenberg-611/Cutline_Business_Manager/wiki"><b>Documentation</b></a> &nbsp;·&nbsp;
     <a href="docs/CUTLINE_FOR_DUMMIES.md"><b>User Guide</b></a> &nbsp;·&nbsp;
     <a href="docs/system_diagrams.md"><b>System Diagrams</b></a>
   </p>
@@ -38,6 +39,20 @@ Cutline OS is an enterprise-grade business management system designed specifical
 The architecture emphasizes strict data isolation (multi-tenancy), rigorous performance optimizations, and a premium, accessible user interface inspired by industry leaders like Linear and Stripe.
 
 ## 🏗 Architecture & Tech Stack
+
+<div align="center">
+  <a href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/heisenberg-611/Cutline_Business_Manager/main/docs/Architechture/cutline-architecture.html" title="Click to open interactive architecture diagram in browser">
+    <img src="docs/Architechture/cutline-architecture.visual-check.1440x900.dark.png" alt="Cutline OS High-Level Architecture Diagram" width="100%" style="border-radius: 8px; margin: 16px 0; border: 1px solid rgba(255,255,255,0.1);" />
+  </a>
+  <p>
+    <a href="https://htmlpreview.github.io/?https://raw.githubusercontent.com/heisenberg-611/Cutline_Business_Manager/main/docs/Architechture/cutline-architecture.html">
+      <img src="https://img.shields.io/badge/Open_Interactive_Diagram-Browser_View-6366f1?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Open Interactive Diagram in Browser" />
+    </a>
+  </p>
+  <p><i>💡 <b>One-click preview:</b> Click the image or badge above to open the full interactive diagram (pan/zoom, guided views, light/dark themes) directly in your browser. Locally, run <code>npm run arch</code>.</i></p>
+</div>
+
+<br>
 
 The application is built as a Modular Monolith, leveraging Server Components and Edge Middleware for security and performance.
 
@@ -279,6 +294,7 @@ src/
 
 | Where | What |
 |---|---|
+| [Interactive Architecture Diagram](https://htmlpreview.github.io/?https://raw.githubusercontent.com/heisenberg-611/Cutline_Business_Manager/main/docs/Architechture/cutline-architecture.html) | High-level interactive system architecture map ([standalone HTML](docs/Architechture/cutline-architecture.html)) |
 | [Wiki](https://github.com/heisenberg-611/Cutline_Business_Manager/wiki) | Architecture, database schema, API conventions, performance, onboarding |
 | [docs/CUTLINE_FOR_DUMMIES.md](docs/CUTLINE_FOR_DUMMIES.md) | Plain-language user guide |
 | [docs/system_diagrams.md](docs/system_diagrams.md) | Request-flow diagrams |

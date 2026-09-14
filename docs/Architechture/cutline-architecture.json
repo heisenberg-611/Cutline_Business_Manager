@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Cutline Business Manager Architecture",
+    "locale": "en",
+    "output": "cutline-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "primary-path",
+        "label": "Core App Request Flow",
+        "focus": ["clients", "edge", "app", "db"],
+        "note": "Primary end-to-end request lifecycle from web/mobile clients through Vercel Edge into Next.js App Server and PostgreSQL database."
+      },
+      {
+        "id": "auth-and-cache",
+        "label": "Identity, Cache & Rate Limiting",
+        "focus": ["clients", "clerk", "app", "redis"],
+        "note": "Clerk authentication handling session tokens and Upstash Redis managing rate limits and ephemeral caching."
+      },
+      {
+        "id": "realtime-and-async",
+        "label": "Realtime, Background Jobs & Integrations",
+        "focus": ["clients", "app", "ably", "qstash", "blob", "resend"],
+        "note": "Ably live event fan-out, QStash background job orchestration, Vercel Blob asset storage, and Resend email delivery."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "clients",
+      "type": "frontend",
+      "label": "Web & Mobile PWA",
+      "sublabel": "React 19 / Serwist PWA",
+      "pos": [40, 220],
+      "size": [150, 60]
+    },
+    {
+      "id": "clerk",
+      "type": "security",
+      "label": "Clerk Auth",
+      "sublabel": "OAuth & Session JWT",
+      "tag": "JWT + RBAC",
+      "pos": [290, 80],
+      "size": [150, 60]
+    },
+    {
+      "id": "edge",
+      "type": "cloud",
+      "label": "Vercel Edge Network",
+      "sublabel": "CDN & Edge Routing",
+      "brand": "vercel",
+      "pos": [290, 220],
+      "size": [150, 60]
+    },
+    {
+      "id": "ably",
+      "type": "messagebus",
+      "label": "Ably Realtime",
+      "sublabel": "Live WebSockets & Sync",
+      "pos": [290, 360],
+      "size": [150, 60]
+    },
+    {
+      "id": "redis",
+      "type": "database",
+      "label": "Upstash Redis",
+      "sublabel": "Rate Limiting & Cache",
+      "brand": "redis",
+      "pos": [570, 80],
+      "size": [160, 60]
+    },
+    {
+      "id": "app",
+      "type": "backend",
+      "label": "Next.js 16 App Server",
+      "sublabel": "Server Actions & API Routes",
+      "brand": "next-js",
+      "pos": [570, 220],
+      "size": [160, 60]
+    },
+    {
+      "id": "qstash",
+      "type": "messagebus",
+      "label": "Upstash QStash",
+      "sublabel": "Background Jobs & Crons",
+      "pos": [570, 360],
+      "size": [160, 60]
+    },
+    {
+      "id": "blob",
+      "type": "cloud",
+      "label": "Vercel Blob",
+      "sublabel": "Media & Document Storage",
+      "brand": "vercel",
+      "pos": [850, 80],
+      "size": [150, 60]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "PostgreSQL Database",
+      "sublabel": "Prisma ORM & Accelerate",
+      "brand": "postgresql",
+      "pos": [850, 220],
+      "size": [150, 60]
+    },
+    {
+      "id": "resend",
+      "type": "external",
+      "label": "Resend Email",
+      "sublabel": "Transactional Mail",
+      "pos": [850, 360],
+      "size": [150, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Vercel Platform Cloud",
+      "wraps": ["edge", "app", "blob"]
+    },
+    {
+      "kind": "security-group",
+      "label": "Serverless Data & Upstash",
+      "wraps": ["redis", "db", "qstash"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "clients-to-edge",
+      "from": "clients",
+      "to": "edge",
+      "label": "HTTPS / PWA",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "edge-to-app",
+      "from": "edge",
+      "to": "app",
+      "label": "SSR / API",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "labelDx": -40
+    },
+    {
+      "id": "app-to-db",
+      "from": "app",
+      "to": "db",
+      "label": "Prisma ORM",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "clients-to-clerk",
+      "from": "clients",
+      "to": "clerk",
+      "label": "Auth Flow",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "clerk-to-app",
+      "from": "clerk",
+      "to": "app",
+      "label": "JWT Verify",
+      "variant": "security",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "app-to-redis",
+      "from": "app",
+      "to": "redis",
+      "label": "Rate Limit",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDy": -35
+    },
+    {
+      "id": "app-to-blob",
+      "from": "app",
+      "to": "blob",
+      "label": "Uploads",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "clients-to-ably",
+      "from": "clients",
+      "to": "ably",
+      "label": "Subscribe",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "app-to-ably",
+      "from": "app",
+      "to": "ably",
+      "label": "Events",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "app-to-qstash",
+      "from": "app",
+      "to": "qstash",
+      "label": "Jobs",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "app-to-resend",
+      "from": "app",
+      "to": "resend",
+      "label": "Email",
+      "fromSide": "right",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Edge & Frontend",
+      "items": [
+        "Vercel Edge Network serves Next.js SSR and static PWA assets",
+        "React 19 Client with Serwist service worker for offline/PWA capabilities"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Application & Data",
+      "items": [
+        "Next.js 16 App Router handles Server Actions and API endpoints",
+        "PostgreSQL database accessed via Prisma ORM & Prisma Accelerate",
+        "Upstash Redis protects endpoints with sliding window rate limiting"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Realtime & Operations",
+      "items": [
+        "Clerk provides user authentication, RBAC, and Svix webhook sync",
+        "Ably delivers live order and queue updates to connected clients",
+        "Upstash QStash orchestrates async cron triggers and background tasks",
+        "Resend handles transactional notification emails"
+      ]
+    }
+  ]
+}

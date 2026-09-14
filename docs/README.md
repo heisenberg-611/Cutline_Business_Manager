@@ -6,6 +6,7 @@ the licence, and build configuration. Architecture and API reference live in the
 
 | File | What it covers | Written for |
 |---|---|---|
+| [Architechture/cutline-architecture.html](https://htmlpreview.github.io/?https://raw.githubusercontent.com/heisenberg-611/Cutline_Business_Manager/main/docs/Architechture/cutline-architecture.html) | High-level interactive system architecture map | Anyone / Developers |
 | [CUTLINE_FOR_DUMMIES.md](CUTLINE_FOR_DUMMIES.md) | Plain-language tour of what the product does | Anyone |
 | [system_diagrams.md](system_diagrams.md) | Request flows and system interactions | Developers |
 | [schema_erd.md](schema_erd.md) | Entity-relationship diagram | Developers |

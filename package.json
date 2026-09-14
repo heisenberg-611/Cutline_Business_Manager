@@ -22,7 +22,8 @@
     "db:seed": "sh scripts/local-db.sh npx tsx scripts/seed-local.ts",
     "db:studio": "sh scripts/local-db.sh npx prisma studio",
     "db:psql": "docker compose exec postgres psql -U cutline -d cutline_dev",
-    "dev:local": "sh scripts/local-db.sh next dev --webpack"
+    "dev:local": "sh scripts/local-db.sh next dev --webpack",
+    "arch": "open docs/Architechture/cutline-architecture.html 2>/dev/null || xdg-open docs/Architechture/cutline-architecture.html 2>/dev/null || true"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
