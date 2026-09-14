@@ -3,12 +3,13 @@
 import prisma from '@/modules/core/db/prisma';
 import * as Ably from 'ably';
 import { conversationChannel, userSidebarChannel } from '@/lib/ably/channels';
+import { emojiSetOf, groupReactions, type ReactionGroup } from '@/modules/reactions/reactions';
 
 export async function getGuestChatByToken(token: string) {
   const conversation = await prisma.conversation.findUnique({
     where: { guestToken: token },
     include: {
-      business: { select: { name: true, id: true } },
+      business: { select: { name: true, id: true, reactionEmojis: true } },
       client: { select: { displayName: true } },
       messages: {
         orderBy: { createdAt: 'asc' },
@@ -21,7 +22,30 @@ export async function getGuestChatByToken(token: string) {
   
   if (!conversation) return { success: false, error: 'Chat not found' };
   
-  return { success: true, conversation };
+  const messageIds = conversation.messages.map((m) => m.id);
+  const reactionRows = messageIds.length > 0
+    ? await prisma.reaction.findMany({
+        where: { targetType: 'Message', targetId: { in: messageIds } },
+        select: { targetId: true, emoji: true, userId: true },
+      })
+    : [];
+
+  const emojis = emojiSetOf(conversation.business);
+  const byMessage = groupReactions(reactionRows, null, emojis);
+
+  const messagesWithReactions = conversation.messages.map((m) => ({
+    ...m,
+    reactions: byMessage.get(m.id) ?? ([] as ReactionGroup[]),
+  }));
+
+  return {
+    success: true,
+    conversation: {
+      ...conversation,
+      reactionEmojis: emojis,
+      messages: messagesWithReactions,
+    },
+  };
 }
 
 export async function sendGuestMessage(token: string, content: string, guestName?: string) {
@@ -48,6 +72,11 @@ export async function sendGuestMessage(token: string, content: string, guestName
     }
   });
 
+  const messageWithReactions = {
+    ...message,
+    reactions: [] as ReactionGroup[],
+  };
+
   if (process.env.ABLY_API_KEY) {
     try {
       const ably = new Ably.Rest(process.env.ABLY_API_KEY);
@@ -55,14 +84,14 @@ export async function sendGuestMessage(token: string, content: string, guestName
       const channel = ably.channels.get(
         conversationChannel(conversation.businessId, conversation.id)
       );
-      await channel.publish('new-message', message);
+      await channel.publish('new-message', messageWithReactions);
 
       // Per participant, not to the whole business — see messages.ts.
       const participants = await prisma.conversationParticipant.findMany({
         where: { conversationId: conversation.id },
         select: { userId: true },
       });
-      const update = { conversationId: conversation.id, message, timestamp: new Date() };
+      const update = { conversationId: conversation.id, message: messageWithReactions, timestamp: new Date() };
       await Promise.all(
         participants.map((participant) =>
           ably.channels
@@ -75,7 +104,7 @@ export async function sendGuestMessage(token: string, content: string, guestName
     }
   }
 
-  return { success: true, message };
+  return { success: true, message: messageWithReactions };
 }
 
 export async function saveGuestName(token: string, name: string) {

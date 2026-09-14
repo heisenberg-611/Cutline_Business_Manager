@@ -56,7 +56,10 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
       channelRef = clientRef.channels.get(channelName);
       
       onMessageRef = (message: any) => {
-        const newMsg = message.data;
+        const newMsg = {
+          ...message.data,
+          reactions: message.data?.reactions ?? [],
+        };
         setMessages(prev => {
           // Prevent duplicates
           if (prev.some(pm => pm.id === newMsg.id)) return prev;
@@ -197,6 +200,7 @@ export function GuestChatUI({ token, conversation }: { token: string, conversati
         isFetchingNextPage={false}
         fetchNextPage={() => {}}
         onDeleteMessage={() => {}}
+        reactionEmojis={conversation.reactionEmojis || []}
       />
 
       <MessageComposer
